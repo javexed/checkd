@@ -43,5 +43,7 @@ answer beside it in `corpus/<name>/expected`.
 - On the packaged sample config the precache file was byte-identical to the
   object cache file a running Naemon writes.
 - Objects in it are fully resolved: no templates, no `use`, defaults filled in.
-- The one error tried so far, a service naming a host that doesn't exist,
-  exits 1 and writes no precache file.
+- A config Naemon refuses exits 1 and writes no precache file.
+
+What Naemon did with each config case is in
+[`../corpus/README.md`](../corpus/README.md).

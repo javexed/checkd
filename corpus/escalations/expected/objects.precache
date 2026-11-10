@@ -1,0 +1,539 @@
+
+define timeperiod {
+	timeperiod_name	always
+	alias	Every hour of every day
+	sunday	00:00-24:00
+	monday	00:00-24:00
+	tuesday	00:00-24:00
+	wednesday	00:00-24:00
+	thursday	00:00-24:00
+	friday	00:00-24:00
+	saturday	00:00-24:00
+	}
+
+define command {
+	command_name	check_dummy
+	command_line	/usr/lib/checkd-test/check_dummy $ARG1$
+	}
+
+define command {
+	command_name	notify_dummy
+	command_line	/usr/lib/checkd-test/notify_dummy
+	}
+
+define contactgroup {
+	contactgroup_name	cg-managers
+	alias	cg-managers
+	members	manager
+	}
+
+define hostgroup {
+	hostgroup_name	hg-web
+	alias	hg-web
+	members	alpha,beta
+	}
+
+define servicegroup {
+	servicegroup_name	sg-load
+	alias	sg-load
+	members	beta,Load,alpha,Load
+	}
+
+define contact {
+	contact_name	manager
+	alias	manager
+	service_notification_period	always
+	host_notification_period	always
+	service_notification_options	r,w,u,c
+	host_notification_options	r,d,u
+	service_notification_commands	notify_dummy
+	host_notification_commands	notify_dummy
+	minimum_value	1
+	host_notifications_enabled	1
+	service_notifications_enabled	1
+	can_submit_commands	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define contact {
+	contact_name	ops
+	alias	ops
+	service_notification_period	always
+	host_notification_period	always
+	service_notification_options	r,w,u,c
+	host_notification_options	r,d,u
+	service_notification_commands	notify_dummy
+	host_notification_commands	notify_dummy
+	minimum_value	1
+	host_notifications_enabled	1
+	service_notifications_enabled	1
+	can_submit_commands	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define host {
+	host_name	alpha
+	alias	alpha
+	address	192.0.2.10
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	30
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define host {
+	host_name	beta
+	alias	beta
+	address	192.0.2.11
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	30
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define host {
+	host_name	gamma
+	alias	gamma
+	address	192.0.2.12
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	30
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
+	host_name	alpha
+	service_description	Load
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
+	host_name	alpha
+	service_description	Ping
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
+	host_name	beta
+	service_description	Load
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
+	host_name	beta
+	service_description	Ping
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
+	host_name	gamma
+	service_description	Ping
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define serviceescalation {
+	host_name	alpha
+	service_description	Load
+	first_notification	3
+	last_notification	6
+	notification_interval	20.000000
+	escalation_period	always
+	escalation_options	r,w,c
+	contacts	manager
+	contact_groups	cg-managers
+	}
+
+define serviceescalation {
+	host_name	alpha
+	service_description	Load
+	first_notification	10
+	last_notification	12
+	notification_interval	0.000000
+	escalation_period	always
+	escalation_options	a
+	contact_groups	cg-managers
+	}
+
+define serviceescalation {
+	host_name	alpha
+	service_description	Ping
+	first_notification	20
+	last_notification	21
+	notification_interval	0.000000
+	escalation_period	always
+	escalation_options	a
+	contacts	manager
+	}
+
+define serviceescalation {
+	host_name	alpha
+	service_description	Ping
+	first_notification	3
+	last_notification	6
+	notification_interval	20.000000
+	escalation_period	always
+	escalation_options	r,w,c
+	contacts	manager
+	contact_groups	cg-managers
+	}
+
+define serviceescalation {
+	host_name	beta
+	service_description	Load
+	first_notification	10
+	last_notification	12
+	notification_interval	0.000000
+	escalation_period	always
+	escalation_options	a
+	contact_groups	cg-managers
+	}
+
+define serviceescalation {
+	host_name	beta
+	service_description	Ping
+	first_notification	30
+	last_notification	0
+	notification_interval	0.000000
+	escalation_period	always
+	escalation_options	a
+	contacts	manager
+	}
+
+define serviceescalation {
+	host_name	beta
+	service_description	Ping
+	first_notification	20
+	last_notification	21
+	notification_interval	0.000000
+	escalation_period	always
+	escalation_options	a
+	contacts	manager
+	}
+
+define serviceescalation {
+	host_name	gamma
+	service_description	Ping
+	first_notification	7
+	last_notification	0
+	notification_interval	0.000000
+	escalation_period	always
+	escalation_options	u
+	contacts	manager
+	}
+
+define hostescalation {
+	host_name	alpha
+	first_notification	3
+	last_notification	6
+	notification_interval	20.000000
+	escalation_period	always
+	escalation_options	r,d
+	contacts	manager
+	contact_groups	cg-managers
+	}
+
+define hostescalation {
+	host_name	alpha
+	first_notification	7
+	last_notification	0
+	notification_interval	0.000000
+	escalation_period	always
+	escalation_options	a
+	contact_groups	cg-managers
+	}
+
+define hostescalation {
+	host_name	alpha
+	first_notification	20
+	last_notification	21
+	notification_interval	0.000000
+	escalation_period	always
+	escalation_options	a
+	contacts	manager
+	}
+
+define hostescalation {
+	host_name	alpha
+	first_notification	10
+	last_notification	12
+	notification_interval	0.000000
+	escalation_period	always
+	escalation_options	u
+	contacts	manager
+	}
+
+define hostescalation {
+	host_name	beta
+	first_notification	20
+	last_notification	21
+	notification_interval	0.000000
+	escalation_period	always
+	escalation_options	a
+	contacts	manager
+	}
+
+define hostescalation {
+	host_name	beta
+	first_notification	10
+	last_notification	12
+	notification_interval	0.000000
+	escalation_period	always
+	escalation_options	u
+	contacts	manager
+	}
+
+define hostescalation {
+	host_name	beta
+	first_notification	7
+	last_notification	0
+	notification_interval	0.000000
+	escalation_period	always
+	escalation_options	a
+	contact_groups	cg-managers
+	}
+
+define hostescalation {
+	host_name	beta
+	first_notification	3
+	last_notification	6
+	notification_interval	20.000000
+	escalation_period	always
+	escalation_options	r,d
+	contacts	manager
+	contact_groups	cg-managers
+	}
+
+define hostescalation {
+	host_name	gamma
+	first_notification	10
+	last_notification	12
+	notification_interval	0.000000
+	escalation_period	always
+	escalation_options	u
+	contacts	manager
+	}
+
+define hostescalation {
+	host_name	gamma
+	first_notification	20
+	last_notification	21
+	notification_interval	0.000000
+	escalation_period	always
+	escalation_options	a
+	contacts	manager
+	}
+

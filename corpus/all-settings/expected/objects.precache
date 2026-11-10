@@ -1,0 +1,454 @@
+
+define timeperiod {
+	timeperiod_name	always
+	alias	Every hour of every day
+	sunday	00:00-24:00
+	monday	00:00-24:00
+	tuesday	00:00-24:00
+	wednesday	00:00-24:00
+	thursday	00:00-24:00
+	friday	00:00-24:00
+	saturday	00:00-24:00
+	}
+
+define timeperiod {
+	timeperiod_name	workhours
+	alias	Working hours
+	monday	09:00-17:00
+	}
+
+define command {
+	command_name	check_dummy
+	command_line	/usr/lib/checkd-test/check_dummy $ARG1$
+	}
+
+define command {
+	command_name	notify_dummy
+	command_line	/usr/lib/checkd-test/notify_dummy
+	}
+
+define contactgroup {
+	contactgroup_name	cg-admins
+	alias	cg-admins
+	members	ops,full
+	}
+
+define hostgroup {
+	hostgroup_name	hg-full
+	alias	hg-full
+	members	full
+	}
+
+define servicegroup {
+	servicegroup_name	sg-full
+	alias	sg-full
+	members	full,Every setting
+	}
+
+define contact {
+	contact_name	full
+	alias	Contact with every setting
+	service_notification_period	always
+	host_notification_period	workhours
+	service_notification_options	r,w,u,c,f,s
+	host_notification_options	r,d,u,f,s
+	service_notification_commands	notify_dummy,check_dummy
+	host_notification_commands	check_dummy,notify_dummy
+	email	full@example.test
+	pager	+1-555-0101
+	address1	first
+	address2	second
+	address3	third
+	address4	fourth
+	address5	fifth
+	address6	sixth
+	minimum_value	4
+	host_notifications_enabled	0
+	service_notifications_enabled	0
+	can_submit_commands	0
+	retain_status_information	0
+	retain_nonstatus_information	0
+	_TEAM	platform
+	}
+
+define contact {
+	contact_name	ops
+	alias	ops
+	service_notification_period	always
+	host_notification_period	always
+	service_notification_options	r,w,u,c
+	host_notification_options	r,d,u
+	service_notification_commands	notify_dummy
+	host_notification_commands	notify_dummy
+	minimum_value	1
+	host_notifications_enabled	1
+	service_notifications_enabled	1
+	can_submit_commands	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define host {
+	host_name	full
+	display_name	Full host
+	alias	Host with every setting
+	address	192.0.2.10
+	parents	upstream
+	check_period	workhours
+	check_command	check_dummy!1!two words
+	event_handler	check_dummy!2
+	contacts	ops
+	contact_groups	cg-admins
+	notification_period	workhours
+	initial_state	o
+	check_timeout	17
+	hourly_value	7
+	check_interval	2.500000
+	retry_interval	0.500000
+	max_check_attempts	9
+	active_checks_enabled	0
+	passive_checks_enabled	0
+	obsess	0
+	event_handler_enabled	0
+	low_flap_threshold	12.500000
+	high_flap_threshold	37.500000
+	flap_detection_enabled	0
+	flap_detection_options	o,d
+	freshness_threshold	600
+	check_freshness	1
+	notification_options	r,d,u,f,s
+	notifications_enabled	0
+	notification_interval	90.000000
+	first_notification_delay	15.000000
+	stalking_options	o,d,u
+	process_perf_data	0
+	icon_image	server.png
+	icon_image_alt	A server
+	vrml_image	server.wrl
+	statusmap_image	server.gd2
+	2d_coords	120,45
+	3d_coords	1.500000,2.500000,3.500000
+	notes	Host notes
+	notes_url	https://example.test/notes/$HOSTNAME$
+	action_url	https://example.test/action/$HOSTNAME$
+	retain_status_information	0
+	retain_nonstatus_information	0
+	_ASSET_TAG	A-0042
+	}
+
+define host {
+	host_name	opt-all
+	alias	opt-all
+	address	192.0.2.21
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	30
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	a
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define host {
+	host_name	opt-none
+	alias	opt-none
+	address	192.0.2.20
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	30
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	n
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	n
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define host {
+	host_name	opt-single
+	alias	opt-single
+	address	192.0.2.22
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	30
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	u
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	s
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	d
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define host {
+	host_name	upstream
+	alias	upstream
+	address	192.0.2.1
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	30
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
+	host_name	full
+	service_description	Every setting
+	display_name	Full service
+	parents	Plain
+	check_period	workhours
+	check_command	check_dummy!1!two words
+	event_handler	check_dummy!2
+	contacts	ops
+	contact_groups	cg-admins
+	notification_period	workhours
+	initial_state	o
+	check_timeout	23
+	hourly_value	3
+	check_interval	1.500000
+	retry_interval	0.250000
+	max_check_attempts	8
+	is_volatile	1
+	active_checks_enabled	0
+	passive_checks_enabled	0
+	obsess	0
+	event_handler_enabled	0
+	low_flap_threshold	10.500000
+	high_flap_threshold	30.250000
+	flap_detection_enabled	0
+	flap_detection_options	o,w,c
+	freshness_threshold	900
+	check_freshness	1
+	notification_options	r,w,u,c,f,s
+	notifications_enabled	0
+	notification_interval	75.000000
+	first_notification_delay	10.000000
+	stalking_options	o,w,u,c
+	process_perf_data	0
+	icon_image	service.png
+	icon_image_alt	A service
+	notes	Service notes
+	notes_url	https://example.test/notes/$SERVICEDESC$
+	action_url	https://example.test/action/$SERVICEDESC$
+	retain_status_information	0
+	retain_nonstatus_information	0
+	_RUNBOOK	https://example.test/runbook
+	}
+
+define service {
+	host_name	full
+	service_description	Plain
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	90.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
+	host_name	opt-all
+	service_description	Options all
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	a
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
+	host_name	opt-none
+	service_description	Options none
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	n
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	n
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
+	host_name	opt-single
+	service_description	Number formats
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	0.500000
+	retry_interval	2.000000
+	max_check_attempts	7
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	3.141593
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	7.000000
+	first_notification_delay	10.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+

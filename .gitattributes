@@ -1,0 +1,3 @@
+# Corpus files are test input and oracle output. Keep every byte as it is,
+# including the CR LF line endings some cases use on purpose.
+corpus/** -text

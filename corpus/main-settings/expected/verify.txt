@@ -1,0 +1,47 @@
+Reading configuration data...
+Warning: enable_environment_macros is deprecated and will be removed.
+Warning: child_processes_fork_twice is deprecated and will be removed.
+Warning: free_child_process_memory is deprecated and will be removed.
+Warning: use_large_installation_tweaks is deprecated and will be removed. Naemon should always be fast
+Warning: auto_rescheduling_window is deprecated and will be removed. Auto-rescheduling has been removed
+Warning: auto_rescheduling_interval is deprecated and will be removed. Auto-rescheduling has been removed
+Warning: auto_reschedule_checks is deprecated and will be removed. Auto-rescheduling has been removed
+Warning: max_host_check_spread is deprecated and will be removed. Host checks are delayed sanely - check your configuration
+Warning: host_inter_check_delay_method is deprecated and will be removed. Host checks are delayed sanely - check your configuration
+Warning: service_interleave_factor is deprecated and will be removed. Service checks are delayed sanely - check your configuration
+Warning: max_service_check_spread is deprecated and will be removed. Service checks are delayed sanely - check your configuration
+Warning: service_inter_check_delay_method is deprecated and will be removed. Service checks are delayed sanely - check your configuration
+Warning: naemon_group is deprecated and will be removed. Naemon is compiled to be run as naemon:naemon
+Warning: naemon_user is deprecated and will be removed. Naemon is compiled to be run as naemon:naemon
+   Read main config file okay...
+   Read object config files okay...
+
+Running pre-flight check on configuration data...
+
+Checking objects...
+	Checked 1 services.
+	Checked 1 hosts.
+	Checked 1 contacts.
+	Checked 0 host groups.
+	Checked 0 service groups.
+	Checked 0 contact groups.
+	Checked 3 commands.
+	Checked 1 time periods.
+	Checked 0 host escalations.
+	Checked 0 service escalations.
+Checking for circular paths...
+	Checked 1 hosts
+	Checked 0 service dependencies
+	Checked 0 host dependencies
+	Checked 1 timeperiods
+Checking global event handlers...
+Checking global notification handlers...
+Checking obsessive compulsive processor commands...
+Checking misc settings...
+
+Total Warnings: 0
+Total Errors:   0
+
+Things look okay - No serious problems were detected during the pre-flight check
+Object precache file created:
+/tmp/oracle/objects.precache

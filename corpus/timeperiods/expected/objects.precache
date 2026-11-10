@@ -1,0 +1,158 @@
+
+define timeperiod {
+	timeperiod_name	always
+	alias	Every hour of every day
+	sunday	00:00-24:00
+	monday	00:00-24:00
+	tuesday	00:00-24:00
+	wednesday	00:00-24:00
+	thursday	00:00-24:00
+	friday	00:00-24:00
+	saturday	00:00-24:00
+	}
+
+define timeperiod {
+	timeperiod_name	business
+	alias	Office hours without holidays and maintenance
+	exclude	maintenance,holidays
+	monday	09:00-17:00
+	tuesday	09:00-17:00
+	wednesday	09:00-17:00
+	thursday	09:00-17:00
+	friday	09:00-17:00
+	}
+
+define timeperiod {
+	timeperiod_name	exceptions
+	alias	One of each exception format
+	2026-12-25	00:00-24:00
+	2027-01-01 - 2027-01-07	08:00-18:00
+	2027-02-01 - 2027-12-31 / 3	00:00-24:00
+	2027-03-01 / 7	10:00-11:00
+	february 10	00:00-24:00
+	february -1	00:00-24:00
+	april 10 - may 15	00:00-24:00
+	july 10 - july 15	00:00-24:00
+	april 10 - may 15 / 2	11:00-12:00
+	day 2	00:00-24:00
+	day 1 - 15	06:00-07:00
+	day 1 - 15 / 5	07:00-08:00
+	day -1	22:00-24:00
+	thursday -1 november	00:00-24:00
+	tuesday 1 april - friday 2 may	00:00-24:00
+	monday 3	00:00-24:00
+	friday -2	00:00-24:00
+	monday 1 - thursday 2	09:00-10:00
+	monday 3 - thursday 4 / 2	00:00-24:00
+	sunday	10:00-16:00
+	}
+
+define timeperiod {
+	timeperiod_name	holidays
+	alias	Fixed holidays
+	january 1	00:00-24:00
+	december 25	00:00-24:00
+	december 26	00:00-24:00
+	}
+
+define timeperiod {
+	timeperiod_name	maintenance
+	alias	First Sunday night of the month
+	sunday 1	01:00-05:00
+	}
+
+define timeperiod {
+	timeperiod_name	never
+	alias	No time is valid
+	}
+
+define timeperiod {
+	timeperiod_name	odd-times
+	alias	Times off the hour
+	monday	00:00-00:00
+	tuesday	08:15-08:45
+	wednesday	23:59-24:00
+	thursday	00:01-23:59
+	}
+
+define timeperiod {
+	timeperiod_name	outside-office
+	alias	Evenings, nights and weekends
+	sunday	00:00-24:00
+	monday	00:00-09:00,17:00-24:00
+	tuesday	00:00-09:00,17:00-24:00
+	friday	00:00-09:00,17:00-24:00
+	saturday	00:00-24:00
+	}
+
+define timeperiod {
+	timeperiod_name	weekdays-only
+	alias	Monday to Friday, office hours
+	monday	09:00-17:00
+	tuesday	09:00-17:00
+	wednesday	09:00-17:00
+	thursday	09:00-17:00
+	friday	09:00-17:00
+	}
+
+define command {
+	command_name	check_dummy
+	command_line	/usr/lib/checkd-test/check_dummy $ARG1$
+	}
+
+define command {
+	command_name	notify_dummy
+	command_line	/usr/lib/checkd-test/notify_dummy
+	}
+
+define contact {
+	contact_name	ops
+	alias	ops
+	service_notification_period	always
+	host_notification_period	always
+	service_notification_options	r,w,u,c
+	host_notification_options	r,d,u
+	service_notification_commands	notify_dummy
+	host_notification_commands	notify_dummy
+	minimum_value	1
+	host_notifications_enabled	1
+	service_notifications_enabled	1
+	can_submit_commands	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define host {
+	host_name	alpha
+	alias	alpha
+	address	192.0.2.10
+	check_period	business
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	outside-office
+	initial_state	o
+	check_timeout	30
+	hourly_value	1
+	check_interval	5.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
