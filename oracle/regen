@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Regenerates corpus/<case>/expected for every case, or for the cases named.
+#
+#   oracle/regen [case-name...]
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+corpus="$here/../corpus"
+
+if [ $# -gt 0 ]; then
+    cases=("$@")
+else
+    cases=()
+    for dir in "$corpus"/*/; do
+        cases+=("$(basename "$dir")")
+    done
+fi
+
+for name in "${cases[@]}"; do
+    echo "$name" >&2
+    "$here/run" "$corpus/$name/config" "$corpus/$name/expected"
+done

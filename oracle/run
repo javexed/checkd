@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Runs the Naemon oracle on one config case.
+#
+#   oracle/run <case-dir> <out-dir> [main-config-name]
+#
+# Writes to <out-dir>:
+#   verify.txt        output of `naemon -v -p`
+#   verify.exit       its exit code
+#   objects.precache  Naemon's resolved objects (absent if it wrote none)
+#   oracle.version    the Naemon version that produced them
+set -euo pipefail
+
+if [ $# -lt 2 ]; then
+    sed -n '2,10p' "$0" >&2
+    exit 2
+fi
+
+here=$(cd "$(dirname "$0")" && pwd)
+case_dir=$(realpath "$1")
+mkdir -p "$2"
+out_dir=$(realpath "$2")
+main=${3:-naemon.cfg}
+
+[ -f "$case_dir/$main" ] || { echo "no $main in $case_dir" >&2; exit 2; }
+
+# The tag changes whenever the image inputs change, so a stale image is never reused.
+core=$(sed -n 's/^ARG NAEMON_CORE_VERSION=//p' "$here/Dockerfile")
+inputs=$(cat "$here/Dockerfile" "$here/entry.sh" | sha256sum | cut -c1-12)
+image="checkd-oracle:naemon-${core}-${inputs}"
+
+if ! docker image inspect "$image" >/dev/null 2>&1; then
+    echo "building $image" >&2
+    docker build -q -t "$image" "$here" >&2
+fi
+
+docker run --rm --network none --user "$(id -u):$(id -g)" \
+    -v "$case_dir:/in:ro" -v "$out_dir:/out" "$image" "$main"

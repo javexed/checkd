@@ -25,6 +25,8 @@ Phases, each with a gate that must pass before the next starts:
 
 - `crates/checkd-config`: the config loader (phase 1).
 - `crates/checkd`: the daemon binary.
+- `oracle/`: the Naemon test oracle, see [oracle/README.md](oracle/README.md).
+- `corpus/`: config cases, each with the oracle's expected output.
 
 ## Licence
 
