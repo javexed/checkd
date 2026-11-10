@@ -3,6 +3,8 @@
 Configs written for this project, each with what the reference Naemon makes
 of it. The config loader is tested against these: it has to accept what
 Naemon accepts, refuse what Naemon refuses, and end up with the same objects.
+Seven cases are the exception: Naemon accepts them and checkd refuses them
+on purpose. They are listed under "Fault cases".
 
 Nothing here is copied from Naemon's or Nagios's sample configs. The cases
 were written from the public docs, and where the docs were silent the
@@ -42,24 +44,37 @@ To add a case, make `corpus/<name>/config/naemon.cfg`, run
 | `cfg-dir` | `cfg_dir` with subdirectories, files it skips, relative and absolute `cfg_file` |
 | `definition-order` | Everything used before it is defined |
 | `main-settings` | Every setting on the main configuration page of the docs, and a resource file |
+| `main-check-timeouts` | `host_check_timeout` and `service_check_timeout` as the default for hosts and services |
 | `templates-chain` | Templates through several levels, for hosts, services, contacts, timeperiods and commands |
 | `templates-multiple` | Several templates in one `use`, and which one wins |
 | `unregistered` | `register 0` on objects that are not templates |
 | `inherit-null-additive` | `null` to cancel an inherited value, `+` to add to one |
+| `setting-twice` | The same setting twice in one definition |
+| `display-name` | `display_name` the same as the name, different, and not set |
+| `loose-numbers` | Numbers with letters, spaces, commas or a fraction after the digits, or no digits at all |
+| `options-every-letter` | Option lists that name every letter one by one |
+| `contact-defaults` | A contact with only the settings it has to have |
 | `custom-vars` | Custom variables: inheritance, letter case, `null`, `+`, duplicates |
 | `implied-inheritance` | What services take from their host, and escalations from their host or service |
 | `check-command-override` | `!` in front of a template's `check_command` |
 | `hostgroups` | Members listed in the group, on the host, through other groups, and `*` |
 | `hostgroup-exclusion` | `!` in the members of a host group |
 | `servicegroups` | The same for service groups |
+| `servicegroup-wildcard` | `*` as the description in the members of a service group |
 | `contactgroups` | The same for contact groups, and every contact setting |
 | `service-expansion` | One service on many hosts: lists, groups, `*`, `!` |
 | `service-duplicates` | The same service defined for a group and for one host of the group |
 | `parents` | Parent hosts and parent services |
+| `service-parents` | Parent services written as pairs of host and description |
 | `dependencies` | Host and service dependencies with lists, groups and `*` |
+| `dependency-exclusions` | `!` in each list of a host or service dependency |
 | `escalations` | Host and service escalations with lists, groups and `*` |
+| `escalation-exclusions` | `!` in each list of a host or service escalation |
 | `timeperiods` | Weekdays, several ranges, every documented exception format, `exclude` |
+| `timeperiod-short-spans` | Spans whose second end leaves out what it shares with the first |
+| `loose-times` | Times of day with minutes above 59, single digits, seconds or extra zeros |
 | `regexp` | `use_regexp_matching=1` |
+| `regexp-servicegroups` | Patterns in the members of a service group |
 | `true-regexp` | `use_true_regexp_matching=1` |
 
 ## Fault cases
@@ -77,16 +92,22 @@ Refused while reading (exit 1, one fault reported):
 `bad-host-no-max-check-attempts`, `bad-host-no-name`,
 `bad-illegal-name-char`, `bad-main-empty-value`, `bad-main-no-equals-sign`,
 `bad-main-unknown-setting`, `bad-missing-cfg-dir`, `bad-missing-cfg-file`,
-`bad-negative-interval`, `bad-old-name-checks-enabled`,
+`bad-negative-interval`, `bad-number-no-digits`,
+`bad-old-name-checks-enabled`,
 `bad-option-letter-in-capitals`, `bad-option-letter-wrong-type`,
-`bad-parent-is-self`, `bad-servicegroup-odd-members`,
+`bad-parent-is-self`, `bad-regexp-servicegroup-star-host`,
+`bad-servicegroup-odd-members`, `bad-servicegroup-star-host`,
 `bad-servicegroup-unknown-member`, `bad-service-name-only`,
 `bad-service-no-check-command`, `bad-service-no-description`,
-`bad-service-no-host`, `bad-service-unknown-host`,
+`bad-service-no-host`, `bad-service-parents-odd`,
+`bad-service-parents-two-descriptions`, `bad-service-unknown-host`,
 `bad-setting-in-capitals`, `bad-setting-outside-definition`,
 `bad-stray-closing-brace`, `bad-text-for-number`,
 `bad-timeperiod-excludes-unknown`, `bad-timeperiod-hour-25`,
-`bad-timeperiod-no-alias`, `bad-timeperiod-space-in-ranges`,
+`bad-timeperiod-letters-for-minutes`,
+`bad-timeperiod-minutes-past-midnight`, `bad-timeperiod-no-alias`,
+`bad-timeperiod-no-colon`, `bad-timeperiod-short-span-with-month`,
+`bad-timeperiod-space-in-ranges`,
 `bad-two-faults`, `bad-two-for-flag`, `bad-unclosed-at-end-of-file`,
 `bad-unclosed-definition`, `bad-unknown-check-command`,
 `bad-unknown-contact`, `bad-unknown-contactgroup`,
@@ -125,6 +146,21 @@ Accepted without a word (exit 0):
 | `bad-host-no-check-command` | Loaded the host with no check command |
 | `bad-main-no-object-files`, `bad-no-hosts` | Loaded a config with no hosts |
 
+Accepted by Naemon (exit 0), refused by checkd on purpose:
+
+| Case | Input | What Naemon did |
+| --- | --- | --- |
+| `bad-number-hex` | `check_interval 0x10` | Stored 16 |
+| `bad-number-inf` | `check_interval inf` | Stored `inf` |
+| `bad-number-nan` | `check_interval nan` | Stored `nan` |
+| `bad-number-too-large-for-interval` | `check_interval 1e400` | Stored `inf` |
+| `bad-number-too-large` | `max_check_attempts 99999999999` | Stored 1215752191 |
+| `bad-escalation-negative-notification` | `first_notification -1` | Stored -1 |
+| `bad-extinfo` | `hostextinfo` and `serviceextinfo` definitions | Put their `notes` on the host and the service, with a "deprecated" warning |
+
+[`../crates/checkd-config/README.md`](../crates/checkd-config/README.md)
+says why checkd refuses each one.
+
 ## What the oracle showed
 
 Each point below was seen in the case named, with Naemon Core 1.5.2. A point
@@ -144,6 +180,9 @@ is what one case showed, not a rule checked from several sides.
   `bad-setting-in-capitals`)
 - `normal_check_interval` and `retry_check_interval` are accepted as older
   names. `checks_enabled` is not. (`syntax`, `bad-old-name-checks-enabled`)
+- A setting given twice in one definition: the later line counts, with no
+  warning. That holds when one line uses the older name of the setting.
+  (`setting-twice`)
 - CR LF line endings load. A last line with no newline loads.
   (`crlf-line-endings`, `syntax`)
 - Non-ASCII bytes pass through unchanged, in names too. (`non-ascii`)
@@ -172,6 +211,11 @@ is what one case showed, not a rule checked from several sides.
   setting. (`bad-main-empty-value`, `bad-main-no-equals-sign`,
   `bad-main-unknown-setting`)
 - `$USERn$` macros are left as written in the dump. (`main-settings`)
+- `host_check_timeout` and `service_check_timeout` are the `check_timeout`
+  of a host or service that sets none. Without them it is 30 for a host and
+  60 for a service. (`main-check-timeouts`, `minimal`)
+- A config that names no object files, or defines no hosts, is accepted
+  with no warning about it. (`bad-main-no-object-files`, `bad-no-hosts`)
 
 ### Templates
 
@@ -233,6 +277,10 @@ is what one case showed, not a rule checked from several sides.
 - Spaces around the commas in `members` are fine. A host listed twice is a
   member once. An empty group is fine. (`hostgroups`)
 - Group membership loops are an error. (`bad-hostgroup-loop`)
+- In the members of a service group, `*` can stand for the description
+  (`web-1,*` is every service on web-1) and not for the host (`*,Other` is
+  an error, with or without regular expressions). (`servicegroup-wildcard`,
+  `bad-servicegroup-star-host`, `bad-regexp-servicegroup-star-host`)
 
 ### Services on many hosts
 
@@ -256,6 +304,27 @@ is what one case showed, not a rule checked from several sides.
 - With no `dependent_host_name`, a service dependency stays on the same
   host. (`dependencies`)
 - `escalation_options` defaults to `a`. (`escalations`)
+- In a host escalation or host dependency, a `!host` item in a host list
+  has no effect unless the host group setting beside it is given too:
+  `host_name alpha,beta,gamma,!beta` and `host_name *,!beta` both still
+  include beta. With `hostgroup_name hg-all` and `host_name !beta`, beta is
+  left out. `!group` in the host group list works. This looks like a fault
+  in Naemon rather than a rule. (`escalation-exclusions`,
+  `dependency-exclusions`, `escalations`)
+- In a service escalation or service dependency, `!` works in the host
+  list, the host group list and the description list, on both sides of a
+  dependency. (`escalation-exclusions`, `dependency-exclusions`)
+
+### Service parents
+
+- One item in `parents` is a description on the service's own host. Two or
+  more items are pairs of host name and description, so `parents Ping,Load`
+  looks for the service 'Load' on a host 'Ping'. An odd number of three or
+  more is an error. (`parents`, `service-parents`,
+  `bad-service-parents-two-descriptions`, `bad-service-parents-odd`)
+- The dump writes a single parent on the service's own host as the
+  description alone, also when it was given as a pair. With two or more
+  parents, all are written as pairs. (`service-parents`)
 
 ### Timeperiods
 
@@ -264,6 +333,18 @@ is what one case showed, not a rule checked from several sides.
   (`bad-timeperiod-space-in-ranges`)
 - Dates that do not exist and ranges that run backwards are accepted.
   (`bad-timeperiod-impossible-date`, `bad-timeperiod-backwards-range`)
+- `monday 1 - 3` is accepted and written back as `monday 1 - monday 3`.
+  `tuesday 1 april - 3` is an error. (`timeperiod-short-spans`,
+  `bad-timeperiod-short-span-with-month`)
+- Minutes above 59 are carried into the hours: `09:75-17:00` is written
+  back as `10:15-17:00`, `09:00-17:99` as `09:00-18:39` and `09:00-23:60`
+  as `09:00-24:00`. A time that ends up after 24:00 is an error.
+  (`loose-times`, `bad-timeperiod-minutes-past-midnight`,
+  `bad-timeperiod-hour-25`)
+- `9:5` is read as `09:05` and `009:00` as `09:00`. Seconds are dropped:
+  `09:00:30-17:00` is written back as `09:00-17:00`. (`loose-times`)
+- A time with no colon, or with letters where the minutes belong, is an
+  error. (`bad-timeperiod-no-colon`, `bad-timeperiod-letters-for-minutes`)
 
 ### Regular expressions
 
@@ -275,6 +356,14 @@ is what one case showed, not a rule checked from several sides.
 - A dotted host name used as a plain name still finds its host. (`regexp`)
 - Patterns work in `host_name`, `hostgroup_name`, group `members` and an
   escalation's `service_description`. (`regexp`)
+- In the members of a service group, when the host half of a pair is a
+  pattern, every service on the matching hosts becomes a member and the
+  description half is not looked at: `web-.*,Star suffix`, `web-.*,^Other$`
+  and `web-.*,Nothing like it` all give every service on web-1 and web-2.
+  When the host is a plain name, a pattern in the description works. This
+  looks like a fault in Naemon rather than a rule. A service escalation or
+  dependency with a host pattern does use the description.
+  (`regexp-servicegroups`)
 
 ### Values
 
@@ -282,10 +371,39 @@ is what one case showed, not a rule checked from several sides.
 - Numbers: `.5`, `2.`, `+7`, `1e1` and `007` are all accepted. Intervals are
   written with six decimals, so `3.14159265358979` becomes `3.141593`.
   (`all-settings`)
+- A number is read from its leading digits and the rest of the value is
+  dropped. For a whole number, `3abc`, `3 4`, `3,4` and `3.7` are 3, `1e2`
+  is 1 and `5 # five tries` is 5. For an interval, `5x`, `5,5` and `5 6`
+  are 5, `1e1x` is 10, `7e` is 7 and `.5.5` is 0.5. None of these gives a
+  warning. (`loose-numbers`)
+- A value with no leading digits is read as 0: `freshness_threshold x`,
+  `check_interval often`, `first_notification two`. For
+  `max_check_attempts` that is an error, because 0 is not allowed there.
+  (`loose-numbers`, `bad-number-no-digits`, `bad-text-for-number`)
+- `check_interval -0` is written as `-0.000000`. A negative interval is an
+  error. A negative `first_notification` is not: -1 is stored.
+  (`loose-numbers`, `bad-negative-interval`,
+  `bad-escalation-negative-notification`)
+- An interval also takes `0x10` (16), `inf` and `nan`, and `1e400` becomes
+  `inf`. A whole number too large for 32 bits wraps: `99999999999` is
+  stored as 1215752191. (`bad-number-hex`, `bad-number-inf`,
+  `bad-number-nan`, `bad-number-too-large-for-interval`,
+  `bad-number-too-large`)
+- `hostextinfo` and `serviceextinfo` definitions are accepted with the line
+  "WARNING: Extinfo objects are deprecated and will be removed in future
+  versions". Their `notes` end up on the host and the service.
+  (`bad-extinfo`)
 - `max_check_attempts` has to be given and be 1 or more. A check command is
   required for a service and not for a host. (`bad-host-no-max-check-attempts`,
   `bad-service-no-check-command`, `bad-host-no-check-command`)
 - A flag takes 0 or 1 only. (`bad-two-for-flag`)
+- A contact that sets no notification options gets `n` for both. A contact
+  with no notification periods loads, with a warning for each.
+  (`contact-defaults`)
+- `display_name` is written when set, also when it is the same as the name.
+  (`display-name`)
+- An option list that names every letter is written as the letters, not as
+  `a`. (`options-every-letter`)
 
 ### The dump itself
 
@@ -320,6 +438,12 @@ is what one case showed, not a rule checked from several sides.
 - Any setting or object type that is not on the docs pages used:
   object definitions, object inheritance, time-saving tricks, main
   configuration.
-- `include_dir` and `broker_module` in the main config.
+- `include_file`, `include_dir` and `broker_module` in the main config.
+- Numbers in settings other than the ones tried: `max_check_attempts`,
+  `check_interval`, `freshness_threshold` and the three numbers of a host
+  escalation.
+- `hostextinfo` and `serviceextinfo` settings other than `notes`.
+- Files that are not UTF-8.
+- Regular expressions beyond the simple forms in the regexp cases.
 - Very large configs. That belongs to the load benchmark.
 - What Naemon does after loading. `initial_state` is one example.
