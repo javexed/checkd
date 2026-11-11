@@ -36,6 +36,23 @@ impl History {
         }
     }
 
+    /// The recorded states, oldest first.
+    pub fn states(&self) -> Vec<u8> {
+        self.states.to_vec()
+    }
+
+    /// A history with these states, oldest first. Missing places take the
+    /// first state given.
+    pub fn from_states(states: &[u8]) -> History {
+        let first = states.first().copied().unwrap_or(0);
+        let mut all = [first; LEN];
+        let skip = LEN.saturating_sub(states.len());
+        for (place, state) in states.iter().rev().take(LEN).rev().enumerate() {
+            all[skip + place] = *state;
+        }
+        History { states: all }
+    }
+
     /// The percent change over the states kept now.
     pub fn percent_change(&self) -> f64 {
         let mut sum = 0.0;

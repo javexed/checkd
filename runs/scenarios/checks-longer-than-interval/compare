@@ -14,3 +14,9 @@ ignore s7
 ignore q
 ignore a
 ignore-log a;s7
+
+# A contact's line about a notification it was not sent is written once
+# for a reason, whichever service it is about. Which of these services
+# comes first depends on when they are checked, which differs here.
+ignore-log a;s3
+ignore-log a;s5

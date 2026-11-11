@@ -29,10 +29,17 @@ Each module's header comment gives the rules it follows.
 - `timeperiod`: when a timeperiod is valid.
 - `settings`: the main-config settings the engine goes by, and their
   defaults.
+- `notify`: notifications, escalations, acknowledgements, downtimes and
+  comments.
+- `commands`: external commands, as they come through the command file.
+- `snapshot`: the engine's state as plain values, to keep over a
+  restart, and putting it back.
+- `retention`: reading the `retention.dat` of the reference version into
+  a snapshot.
 
 ## What it is tested against
 
-- `tests/scenarios.rs` plays the 51 scenarios of `runs/scenarios` and
+- `tests/scenarios.rs` plays the 58 scenarios of `runs/scenarios` and
   compares log lines and plugin calls with the reference's recordings.
   [`../../runs/README.md`](../../runs/README.md) says what is compared,
   how closely, and where checkd does something else on purpose.
@@ -44,9 +51,12 @@ Each module's header comment gives the rules it follows.
 
 ## Not in it yet
 
-Notifications, downtimes, acknowledgements, passive results, external
-commands and saved state are phase 3. Of what belongs to checks and
-state, these are not done: a limit on checks running at once, freshness
+Passive results and the external commands Thruk sends beyond those for
+notifications, acknowledgements, downtimes and comments are phase 4.
+Custom notifications, triggered downtimes and global notification
+handlers are written but not compared with the reference. Notification
+dependencies are not done. Of what belongs to checks and state, these
+are not done: a limit on checks running at once, freshness
 checks, obsessing, performance data handling, environment macros,
 aggressive host checking, predictive dependency checks, service parents
 and `use_timezone`.

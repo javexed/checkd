@@ -1,0 +1,222 @@
+11 flex 0
+11 flexok 0
+11 a 0
+11 e 0
+12 d-ond 0
+1009 fixed 0
+2008 past 0
+2008 e-one 0
+3008 inside 0
+3008 cancel 0
+3008 d 0
+3008 before 2
+3008 two 0
+3010 a 0
+4011 n-ann-d t=DOWNTIMESTART|s=UP|st=HARD|a=1|n=0|hn=0|esc=0|rcp=ann|au=ann|co=host downtime|id=7d8b638f-15df-4b7b-9f66-382de7211f12|dt=0|ack=/|o=d is 0 at second 3
+4012 flex 0
+4012 d-ond 0
+4012 flexok 0
+4012 before 2
+4015 a 0
+5009 fixed 0
+5010 e 0
+5015 before 2
+5017 n-ann-a-before t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=e66d6c05-1591-4c61-8df2-6d3ab9e95697|dt=0|hdt=0|ack=/|o=before is 2 at second 5
+5018 a 0
+6010 past 0
+6010 e-one 2
+6012 n-ann-e-one t=PROBLEM|s=CRITICAL|st=HARD|a=1|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=ebab69f6-2b40-4f94-8073-e5b58e5e4b26|dt=0|hdt=0|ack=/|o=e-one is 2 at second 6
+6012 e 0
+7008 two 0
+7008 cancel 0
+7008 inside 0
+8004 n-ann-a-inside t=DOWNTIMESTART|s=OK|st=HARD|a=1|n=0|sn=0|hn=0|esc=0|rcp=ann|au=ann|co=problem and recovery inside|id=b1e4d8ba-3892-4f09-b41d-458e28fe2095|dt=0|hdt=0|ack=/|o=inside is 0 at second 7
+8004 n-ann-a-fixed t=DOWNTIMESTART|s=OK|st=HARD|a=1|n=0|sn=0|hn=0|esc=0|rcp=ann|au=ann|co=fixed downtime|id=47eda564-a485-4561-99db-1551b103b3c9|dt=0|hdt=0|ack=/|o=fixed is 0 at second 5
+8004 n-ann-a-before t=DOWNTIMESTART|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=ann|co=problem came first|id=15816927-8c30-4141-82a6-c73fa61f9d5e|dt=0|hdt=0|ack=/|o=before is 2 at second 5
+8006 n-ann-a-cancel t=DOWNTIMESTART|s=OK|st=HARD|a=1|n=0|sn=0|hn=0|esc=0|rcp=ann|au=ann|co=to be cancelled|id=18a38951-9bc7-4737-b4cf-d63c47ce2738|dt=0|hdt=0|ack=/|o=cancel is 0 at second 7
+8007 d 2
+8007 n-ann-a-two t=DOWNTIMESTART|s=OK|st=HARD|a=1|n=0|sn=0|hn=0|esc=0|rcp=ann|au=ann|co=first of two|id=3e750f29-c23b-4ebd-b03f-81af7427ac6b|dt=0|hdt=0|ack=/|o=two is 0 at second 7
+8011 flexok 0
+8011 flex 0
+8011 d-ond 2
+8014 d 2
+9010 fixed 0
+9015 before 2
+10010 e-one 2
+10010 past 0
+10012 n-ann-e-one t=PROBLEM|s=CRITICAL|st=HARD|a=1|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=aa942e53-576f-4fd1-bd4f-32667b8069c7|dt=0|hdt=0|ack=/|o=e-one is 2 at second 10
+10017 d 2
+11011 inside 0
+11011 two 0
+11011 cancel 0
+11012 e 2
+12012 flexok 0
+12012 flex 2
+12012 d-ond 2
+12015 a 0
+13011 fixed 2
+13014 a 0
+13015 before 2
+13015 flex 2
+13015 e 2
+13018 a 0
+14010 e-one 2
+14010 past 2
+14012 fixed 2
+14013 a 0
+14018 flex 2
+14020 n-ann-a-flex t=DOWNTIMESTART|s=CRITICAL|st=HARD|a=3|n=0|sn=0|hn=0|esc=0|rcp=ann|au=ann|co=flexible|id=f95f0a63-0fe9-4b90-96d1-bcdfc9b9837c|dt=0|hdt=0|ack=/|o=flex is 2 at second 14
+14020 a 0
+15011 two 2
+15011 cancel 2
+15011 inside 2
+15013 past 2
+15014 a 0
+15015 fixed 2
+15015 d 2
+15018 e 2
+15019 a 0
+15021 n-ann-e t=PROBLEM|s=DOWN|st=HARD|a=3|n=1|hn=1|esc=0|rcp=ann|au=|co=|id=870b8b7a-a89f-473c-97a4-4a3dbd1e3bb2|dt=0|ack=/|o=e is 2 at second 15
+16013 two 2
+16013 d-ond 2
+16014 flexok 0
+16014 inside 0
+16014 cancel 2
+16015 past 2
+16016 a 0
+16017 n-ann-a-past t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=693add43-ac96-41a9-b4f5-a759980c7622|dt=0|hdt=0|ack=/|o=past is 2 at second 16
+17017 two 2
+17017 cancel 2
+17017 before 2
+17020 a 0
+18010 e-one 2
+18017 flex 0
+19016 fixed 2
+20004 n-ann-a-cancel t=DOWNTIMECANCELLED|s=CRITICAL|st=HARD|a=3|n=0|sn=0|hn=0|esc=0|rcp=ann|au=|co=|id=514e16ab-5e3c-467e-ab62-77adb2f3b2a4|dt=0|hdt=0|ack=/|o=cancel is 2 at second 17
+20013 inside 0
+20013 flexok 0
+20013 d-ond 2
+20014 d 2
+20015 past 2
+20016 e 2
+20016 n-ann-a-past t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=4a9da135-e1bb-49a8-873c-f4b59b84dbb6|dt=0|hdt=0|ack=/|o=past is 2 at second 20
+20019 n-ann-e t=PROBLEM|s=DOWN|st=HARD|a=1|n=2|hn=2|esc=0|rcp=ann|au=|co=|id=9184dbc1-7d3b-4c19-a92a-7b032d2092c3|dt=0|ack=/|o=e is 2 at second 20
+21007 n-ann-a-flexok t=DOWNTIMEEND|s=OK|st=HARD|a=1|n=0|sn=0|hn=0|esc=0|rcp=ann|au=ann|co=flexible never starts|id=ffb903a9-084d-4a72-91ce-d526e048b57f|dt=0|hdt=0|ack=/|o=flexok is 0 at second 20
+21016 before 2
+21016 cancel 2
+21016 two 2
+21018 n-ann-a-cancel t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=8bef3342-f93d-4f35-bbe2-fa37ea3d79da|dt=0|hdt=0|ack=/|o=cancel is 2 at second 21
+22004 n-ann-e t=DOWNTIMESTART|s=DOWN|st=HARD|a=1|n=2|hn=2|esc=0|rcp=ann|au=ann|co=started in the past|id=bbd0617a-5a2e-4751-b12c-2e6001b6b8ca|dt=0|ack=/|o=e is 2 at second 20
+22009 e-one 2
+22016 flex 0
+23017 fixed 2
+24005 n-ann-a-fixed t=DOWNTIMEEND|s=CRITICAL|st=HARD|a=3|n=0|sn=0|hn=0|esc=0|rcp=ann|au=ann|co=fixed downtime|id=987f1a0a-aa29-4882-b451-67c2201398c7|dt=0|hdt=0|ack=/|o=fixed is 2 at second 23
+24006 n-ann-a-before t=DOWNTIMEEND|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=ann|co=problem came first|id=8b025a74-ef5d-47f3-b29c-743744efc346|dt=0|hdt=0|ack=/|o=before is 2 at second 21
+24006 n-ann-a-inside t=DOWNTIMEEND|s=OK|st=HARD|a=1|n=0|sn=0|hn=0|esc=0|rcp=ann|au=ann|co=problem and recovery inside|id=0d32c411-ca25-4662-8592-1e8186d8590b|dt=0|hdt=0|ack=/|o=inside is 0 at second 20
+24013 inside 0
+24013 flexok 0
+24013 d-ond 2
+24015 past 2
+24016 n-ann-a-past t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=3|sn=3|hn=0|esc=0|rcp=ann|au=|co=|id=5d268921-711a-4bed-89ad-1004f4366be1|dt=0|hdt=0|ack=/|o=past is 2 at second 24
+24020 n-ann-a-flex t=DOWNTIMEEND|s=OK|st=HARD|a=1|n=0|sn=0|hn=0|esc=0|rcp=ann|au=ann|co=flexible|id=4b022ea9-03a1-45f8-948b-911eb2c52f3d|dt=0|hdt=0|ack=/|o=flex is 0 at second 22
+25014 d 2
+25016 e 2
+25016 two 2
+25016 cancel 2
+25016 before 2
+25018 n-ann-a-before t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=0827666f-b17f-4989-a318-148bb6d5f556|dt=0|hdt=0|ack=/|o=before is 2 at second 25
+25018 n-ann-a-cancel t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=2dfc9f88-e4bb-4583-9a33-e6787b05a124|dt=0|hdt=0|ack=/|o=cancel is 2 at second 25
+26011 n-ann-d t=DOWNTIMEEND|s=DOWN|st=HARD|a=1|n=0|hn=0|esc=0|rcp=ann|au=ann|co=host downtime|id=d2f34574-cebd-4120-945c-dcd6fb453f1e|dt=0|ack=/|o=d is 2 at second 25
+26011 e-one 2
+26015 flex 0
+27018 fixed 2
+27021 n-ann-a-fixed t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=3b842d45-3e68-42f4-a1b9-b8b1328eb2df|dt=0|hdt=0|ack=/|o=fixed is 2 at second 27
+28011 n-ann-a-two t=DOWNTIMEEND|s=CRITICAL|st=HARD|a=3|n=0|sn=0|hn=0|esc=0|rcp=ann|au=bob|co=second of two|id=bb510e12-65a6-46de-8aec-d3923603ce21|dt=0|hdt=0|ack=/|o=two is 2 at second 25
+28013 d-ond 2
+28013 inside 0
+28013 flexok 0
+28015 past 2
+28015 n-ann-d t=PROBLEM|s=DOWN|st=HARD|a=1|n=1|hn=1|esc=0|rcp=ann|au=|co=|id=b37f442e-6d40-439b-bd7d-f31f540d616b|dt=0|ack=/|o=d is 2 at second 25
+28017 n-ann-a-past t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=4|sn=4|hn=0|esc=0|rcp=ann|au=|co=|id=4983a3dc-215c-4f7f-9f68-b5f65233185c|dt=0|hdt=0|ack=/|o=past is 2 at second 28
+29017 before 2
+29017 two 2
+29017 cancel 2
+29019 n-ann-a-two t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=2a9ce517-554f-4ece-bb64-f5f779262a4d|dt=0|hdt=0|ack=/|o=two is 2 at second 29
+29019 n-ann-a-before t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=3|sn=3|hn=0|esc=0|rcp=ann|au=|co=|id=fbe4c33c-ae94-4e23-8da0-8e3ce6e71aa9|dt=0|hdt=0|ack=/|o=before is 2 at second 29
+29020 n-ann-a-cancel t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=3|sn=3|hn=0|esc=0|rcp=ann|au=|co=|id=655cce7c-6b1c-4ba6-906c-91c17deb1db7|dt=0|hdt=0|ack=/|o=cancel is 2 at second 29
+30010 e-one 2
+30014 d 2
+30014 e 2
+30015 flex 2
+30017 a 0
+31018 flex 2
+31018 fixed 2
+31021 n-ann-a-fixed t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=1182ef1b-f402-4025-aff0-8ecc2314741d|dt=0|hdt=0|ack=/|o=fixed is 2 at second 31
+31021 a 0
+32015 d-ond 2
+32015 inside 0
+32015 flexok 0
+32015 past 2
+32017 n-ann-d t=PROBLEM|s=DOWN|st=HARD|a=1|n=2|hn=2|esc=0|rcp=ann|au=|co=|id=c06f1245-9e20-4c0f-86b9-c9bb8b9d4ca7|dt=0|ack=/|o=d is 2 at second 30
+32017 n-ann-a-past t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=5|sn=5|hn=0|esc=0|rcp=ann|au=|co=|id=005b2aa4-32d9-44df-b438-199e34da1419|dt=0|hdt=0|ack=/|o=past is 2 at second 32
+32019 flex 2
+32022 n-ann-a-flex t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=9e65294a-0eec-4f01-b95f-c2da1e455fda|dt=0|hdt=0|ack=/|o=flex is 2 at second 32
+32022 a 0
+33018 cancel 2
+33018 before 2
+33018 two 2
+33020 n-ann-a-cancel t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=4|sn=4|hn=0|esc=0|rcp=ann|au=|co=|id=de0070b1-f5be-45e9-8549-965993594712|dt=0|hdt=0|ack=/|o=cancel is 2 at second 33
+33020 n-ann-a-before t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=4|sn=4|hn=0|esc=0|rcp=ann|au=|co=|id=159a3c7c-43f8-4b85-999d-f8673bdeb504|dt=0|hdt=0|ack=/|o=before is 2 at second 33
+33020 n-ann-a-two t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=018cec93-f5ea-43f4-9e79-5b3e7be0a901|dt=0|hdt=0|ack=/|o=two is 2 at second 33
+34004 n-ann-e t=DOWNTIMEEND|s=DOWN|st=HARD|a=1|n=2|hn=2|esc=0|rcp=ann|au=ann|co=started in the past|id=a5cf72da-9e63-49c7-bc9e-22b79bf87cd9|dt=0|ack=/|o=e is 2 at second 30
+34010 e-one 2
+34012 n-ann-e t=PROBLEM|s=DOWN|st=HARD|a=1|n=3|hn=3|esc=0|rcp=ann|au=|co=|id=70a43825-f1de-44cb-b38a-0505c27649d8|dt=0|ack=/|o=e is 2 at second 30
+35013 d 2
+35014 e 2
+35018 fixed 2
+35020 n-ann-a-fixed t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=3|sn=3|hn=0|esc=0|rcp=ann|au=|co=|id=0c69d4cb-b553-4234-8439-ed97563f2557|dt=0|hdt=0|ack=/|o=fixed is 2 at second 35
+36016 d-ond 2
+36016 flexok 0
+36016 past 2
+36016 inside 0
+36018 n-ann-d t=PROBLEM|s=DOWN|st=HARD|a=1|n=3|hn=3|esc=0|rcp=ann|au=|co=|id=7db28b29-f828-4f54-a1db-fb1bcc4ec4ff|dt=0|ack=/|o=d is 2 at second 35
+36018 n-ann-a-past t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=6|sn=6|hn=0|esc=0|rcp=ann|au=|co=|id=7894fc5b-7a08-4325-af0f-e270bcedef6b|dt=0|hdt=0|ack=/|o=past is 2 at second 36
+36019 flex 2
+36022 n-ann-a-flex t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=f908b34c-90b3-485d-ad1a-73f11e9da257|dt=0|hdt=0|ack=/|o=flex is 2 at second 36
+37019 two 2
+37019 cancel 2
+37019 before 2
+37021 n-ann-a-cancel t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=5|sn=5|hn=0|esc=0|rcp=ann|au=|co=|id=1274f6d0-4623-417c-a009-db77c1db93dd|dt=0|hdt=0|ack=/|o=cancel is 2 at second 37
+37021 n-ann-a-before t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=5|sn=5|hn=0|esc=0|rcp=ann|au=|co=|id=db98d9d7-9f42-4cd4-9e39-8bf84ae9b7bc|dt=0|hdt=0|ack=/|o=before is 2 at second 37
+37021 n-ann-a-two t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=3|sn=3|hn=0|esc=0|rcp=ann|au=|co=|id=437d58f8-951a-49c9-b661-4a2ce373d6b2|dt=0|hdt=0|ack=/|o=two is 2 at second 37
+38010 e-one 2
+38012 n-ann-e t=PROBLEM|s=DOWN|st=HARD|a=1|n=4|hn=4|esc=0|rcp=ann|au=|co=|id=2ea1982c-8e49-4ccc-8faa-10a42e2baac9|dt=0|ack=/|o=e is 2 at second 35
+39018 fixed 2
+39020 n-ann-a-fixed t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=4|sn=4|hn=0|esc=0|rcp=ann|au=|co=|id=7ed32bea-e187-49e4-917a-19edb10c0c08|dt=0|hdt=0|ack=/|o=fixed is 2 at second 39
+40014 d 0
+40014 flexok 0
+40015 past 0
+40015 d-ond 0
+40015 e 0
+40015 inside 0
+40016 n-ann-d t=RECOVERY|s=UP|st=HARD|a=1|n=4|hn=4|esc=0|rcp=ann|au=|co=|id=2fd1e3fe-7772-4211-acc3-776f53e98847|dt=0|ack=/|o=d is 0 at second 40
+40017 n-ann-a-past t=RECOVERY|s=OK|st=HARD|a=3|n=7|sn=7|hn=0|esc=0|rcp=ann|au=|co=|id=1c2a3700-ae81-4c78-b84b-6848f437b1ee|dt=0|hdt=0|ack=/|o=past is 0 at second 40
+40017 n-ann-e t=RECOVERY|s=UP|st=HARD|a=1|n=5|hn=5|esc=0|rcp=ann|au=|co=|id=00426d9d-c196-468a-a710-b81713d0ca35|dt=0|ack=/|o=e is 0 at second 40
+40019 flex 2
+40021 n-ann-a-flex t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=3|sn=3|hn=0|esc=0|rcp=ann|au=|co=|id=38b3abf9-461f-46b6-828b-f8744528db67|dt=0|hdt=0|ack=/|o=flex is 2 at second 40
+41020 two 0
+41020 cancel 0
+41020 before 0
+41022 n-ann-a-two t=RECOVERY|s=OK|st=HARD|a=3|n=4|sn=4|hn=0|esc=0|rcp=ann|au=|co=|id=0f5ee04e-ccaf-4b03-bf07-e297309e613c|dt=0|hdt=0|ack=/|o=two is 0 at second 41
+41022 n-ann-a-before t=RECOVERY|s=OK|st=HARD|a=3|n=6|sn=6|hn=0|esc=0|rcp=ann|au=|co=|id=08d56ab6-abfe-44ed-82a2-7f7a4933dcd5|dt=0|hdt=0|ack=/|o=before is 0 at second 41
+41022 n-ann-a-cancel t=RECOVERY|s=OK|st=HARD|a=3|n=6|sn=6|hn=0|esc=0|rcp=ann|au=|co=|id=f1c64328-b6b5-4b4b-964a-6dfce59454d9|dt=0|hdt=0|ack=/|o=cancel is 0 at second 41
+42012 e-one 0
+42014 n-ann-e-one t=RECOVERY|s=OK|st=HARD|a=1|n=3|sn=3|hn=0|esc=0|rcp=ann|au=|co=|id=6b4008e1-8c1a-469a-a63f-99ff038b5658|dt=0|hdt=0|ack=/|o=e-one is 0 at second 42
+43018 fixed 0
+43020 n-ann-a-fixed t=RECOVERY|s=OK|st=HARD|a=3|n=5|sn=5|hn=0|esc=0|rcp=ann|au=|co=|id=b7716ce3-ee8b-4560-9fb7-b64e85d85c3a|dt=0|hdt=0|ack=/|o=fixed is 0 at second 43
+44016 flexok 0
+44016 inside 0
+44016 d-ond 0
+44016 past 0
+44018 flex 2
+44020 n-ann-a-flex t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=4|sn=4|hn=0|esc=0|rcp=ann|au=|co=|id=1cf93c48-e452-444e-8948-8669c375fa40|dt=0|hdt=0|ack=/|o=flex is 2 at second 44

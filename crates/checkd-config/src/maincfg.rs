@@ -204,7 +204,7 @@ impl MainConfig {
 pub struct PathMap(pub Vec<(PathBuf, PathBuf)>);
 
 impl PathMap {
-    fn apply(&self, path: &Path) -> PathBuf {
+    pub fn apply(&self, path: &Path) -> PathBuf {
         for (from, to) in &self.0 {
             if let Ok(rest) = path.strip_prefix(from) {
                 return to.join(rest);

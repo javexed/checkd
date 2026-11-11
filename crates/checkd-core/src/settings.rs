@@ -54,6 +54,12 @@ pub struct Settings {
     pub illegal_macro_output_chars: String,
     pub admin_email: String,
     pub admin_pager: String,
+    pub enable_notifications: bool,
+    pub log_notifications: bool,
+    /// Seconds a notification command may run.
+    pub notification_timeout: u32,
+    pub check_external_commands: bool,
+    pub log_external_commands: bool,
 }
 
 impl Default for Settings {
@@ -85,6 +91,11 @@ impl Default for Settings {
             illegal_macro_output_chars: String::new(),
             admin_email: String::new(),
             admin_pager: String::new(),
+            enable_notifications: true,
+            log_notifications: true,
+            notification_timeout: 30,
+            check_external_commands: true,
+            log_external_commands: true,
         }
     }
 }
@@ -158,6 +169,11 @@ impl Settings {
         s.illegal_macro_output_chars = text("illegal_macro_output_chars").unwrap_or_default();
         s.admin_email = text("admin_email").unwrap_or_default();
         s.admin_pager = text("admin_pager").unwrap_or_default();
+        s.enable_notifications = flag("enable_notifications", s.enable_notifications);
+        s.log_notifications = flag("log_notifications", s.log_notifications);
+        s.notification_timeout = num("notification_timeout", 30.0) as u32;
+        s.check_external_commands = flag("check_external_commands", s.check_external_commands);
+        s.log_external_commands = flag("log_external_commands", s.log_external_commands);
 
         let mut warnings = Vec::new();
         for (name, quiet) in NOT_YET {

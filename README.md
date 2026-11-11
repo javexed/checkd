@@ -23,20 +23,29 @@ gate in that state.
 
 `checkd run` runs the checks of a config and logs state changes: soft and
 hard states, checks of a host on demand, parents, execution dependencies,
-flap detection, event handlers, macros and timeperiods. On 51 scripted
-runs written for this project it is compared with recordings of Naemon
-Core 1.5.2 on the same configs, log line by log line and plugin call by
-plugin call. On a simulated clock 46 of them play the same as the
-recording; the other five need real programs and are left to the real
-run. Run for real, with the real plugins, 50 are compared and agree
-within the tolerances `runs/README.md` gives; one is not compared in
-real time.
+flap detection, event handlers, macros and timeperiods. It sends
+notifications, with escalations, and takes acknowledgements, downtimes
+and comments through its command file. On 58 scripted runs written for
+this project it is compared with recordings of Naemon Core 1.5.2 on the
+same configs, log line by log line and plugin call by plugin call,
+notifications and the macros of notification commands included. On a
+simulated clock 53 of them play the same as the recording; the other
+five need real programs and are left to the real run. Run for real, with
+the real plugins and the real command file, 57 are compared; in the
+last full run of all of them 52 agreed, four more after the comparison
+was taught the orders that real time leaves open (see `runs/README.md`),
+and one, `two-parents`, agreed when it was run again on its own.
 [runs/README.md](runs/README.md) says what is compared and how closely,
 what checkd is told beforehand to make the runs comparable, and the five
 places where checkd does something else than Naemon on purpose.
 
-It does not send notifications, take external commands or passive
-results, or keep state over a restart. Those are phase 3. A number of
+Its state is kept in SQLite or PostgreSQL and survives a kill: see
+[docs/store.md](docs/store.md). It reads the `retention.dat` of an
+existing Naemon once, when it starts on an empty store.
+
+It does not take passive results, or the external commands Thruk sends
+beyond those for notifications, acknowledgements, downtimes and
+comments, and there is no Livestatus yet. Those are phase 4. A number of
 settings that belong to checks are not acted on yet, and `checkd run`
 warns when a config sets one of them:
 [crates/checkd-core/README.md](crates/checkd-core/README.md). It has not
@@ -60,15 +69,24 @@ where the loader differs from Naemon on purpose.
 
     target/debug/checkd run /path/to/naemon.cfg
 
-`checkd run` loads the config and starts its check commands and event
-handlers on this machine, as the user it is run as, until it is stopped
-with Ctrl-C or SIGTERM. It writes the log to the config's `log_file`, or
-to standard output when there is none.
+`checkd run` loads the config and starts its check commands, event
+handlers and notification commands on this machine, as the user it is
+run as, until it is stopped with Ctrl-C or SIGTERM. It writes the log to
+the config's `log_file`, or to standard output when there is none. It
+reads external commands from the config's `command_file`, a named pipe
+it makes when it is not there.
 
     --log-file <file>      write the log there instead; - is standard output
     --for <seconds>        stop after this long
     --path-map <from>=<to> as for verify
+    --store <where>        sqlite:<file>, postgres:<connection> or none
+    --import-retention <file>
+                           a retention.dat to start from, see docs/store.md
     --otlp-endpoint <url>  see below
+
+    target/debug/checkd state sqlite:/path/to/checkd.sqlite
+
+prints what a store holds.
 
 Before running it on a config that was written for Naemon, run `checkd
 verify` and read the warnings of `checkd run` at its start: they name the
@@ -124,8 +142,11 @@ Phases, each with a gate that must pass before the next starts:
 
 ## Dependencies
 
-`regex` in the loader; `tokio` and `libc` in the daemon. The
-OpenTelemetry export is written by hand on top of those and adds none.
+`regex` in the loader; `tokio`, `libc` and `rusqlite` (with SQLite built
+in) in the daemon. The OpenTelemetry export is written by hand on top of
+those and adds none. The PostgreSQL store, behind the `postgres` feature,
+adds `tokio-postgres`, and `rustls`, `tokio-postgres-rustls` and
+`webpki-roots` for TLS.
 
 ## Licence
 

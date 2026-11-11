@@ -1,0 +1,133 @@
+13 d-late 0
+13 donly 0
+14 a 0
+1011 u 0
+2011 honce 0
+2012 d-s1 0
+3011 d-s0 2
+3012 d 0
+3013 n-ann-d-s0 t=PROBLEM|s=CRITICAL|st=HARD|a=1|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=a87f04f1-20a6-4326-8a5c-d8d31b8e3923|dt=0|hdt=0|ack=/|o=d-s0 is 2 at second 3
+3014 d 0
+4011 hdelay 0
+4011 hoff 0
+4012 d-late 0
+5012 donly 2
+5015 a 0
+6012 d-s1 2
+6012 u 2
+6015 d 2
+6017 u 2
+7012 d-s0 2
+7012 honce 2
+7014 donly 2
+7014 d-s1 2
+7016 d 2
+8013 d-late 2
+8016 d 2
+8018 n-bob-d t=PROBLEM|s=DOWN|st=HARD|a=3|n=1|hn=1|esc=0|rcp=bob,ann|au=|co=|id=86dd43de-65fe-43bb-94ac-51ec345b751f|dt=0|ack=/|o=d is 2 at second 8
+8018 n-ann-d t=PROBLEM|s=DOWN|st=HARD|a=3|n=1|hn=1|esc=0|rcp=bob,ann|au=|co=|id=86dd43de-65fe-43bb-94ac-51ec345b751f|dt=0|ack=/|o=d is 2 at second 8
+8019 u 2
+8022 n-cat-u t=PROBLEM|s=UNREACHABLE|st=HARD|a=3|n=1|hn=1|esc=0|rcp=cat,ann|au=|co=|id=c69fe991-00d3-42ea-8dd2-b2983e48ccbb|dt=0|ack=/|o=u is 2 at second 8
+8022 n-ann-u t=PROBLEM|s=UNREACHABLE|st=HARD|a=3|n=1|hn=1|esc=0|rcp=cat,ann|au=|co=|id=c69fe991-00d3-42ea-8dd2-b2983e48ccbb|dt=0|ack=/|o=u is 2 at second 8
+9014 hdelay 2
+9014 hoff 2
+9015 honce 2
+9015 donly 2
+9017 n-ann-donly t=PROBLEM|s=DOWN|st=HARD|a=3|n=1|hn=1|esc=0|rcp=ann|au=|co=|id=c211449a-1df8-46b5-a51c-102e3fae458d|dt=0|ack=/|o=donly is 2 at second 9
+11013 d-s0 2
+11014 d-s1 2
+11015 hdelay 2
+11016 hoff 2
+11016 honce 2
+11018 n-ann-honce t=PROBLEM|s=DOWN|st=HARD|a=3|n=1|hn=1|esc=0|rcp=ann|au=|co=|id=f29984cd-36e5-46cd-8f63-8950d32e7922|dt=0|ack=/|o=honce is 2 at second 11
+12014 d-late 2
+13017 d 2
+13018 hdelay 2
+13019 u 2
+13020 hoff 2
+14016 donly 2
+15013 d-s0 2
+15014 d-s1 2
+15016 n-ann-d t=PROBLEM|s=DOWN|st=HARD|a=1|n=2|hn=2|esc=0|rcp=bob,ann|au=|co=|id=292300a1-09ec-4620-bb1b-0e21551cdae6|dt=0|ack=/|o=d is 2 at second 13
+15016 n-bob-d t=PROBLEM|s=DOWN|st=HARD|a=1|n=2|hn=2|esc=0|rcp=bob,ann|au=|co=|id=292300a1-09ec-4620-bb1b-0e21551cdae6|dt=0|ack=/|o=d is 2 at second 13
+16015 d-late 2
+16017 honce 2
+18017 hdelay 2
+18017 d 2
+18017 hoff 2
+18019 u 2
+18022 n-ann-u t=PROBLEM|s=UNREACHABLE|st=HARD|a=1|n=2|hn=2|esc=0|rcp=cat,ann|au=|co=|id=62d22a83-4c16-4811-9594-e940cb7bc063|dt=0|ack=/|o=u is 2 at second 18
+18022 n-cat-u t=PROBLEM|s=UNREACHABLE|st=HARD|a=1|n=2|hn=2|esc=0|rcp=cat,ann|au=|co=|id=62d22a83-4c16-4811-9594-e940cb7bc063|dt=0|ack=/|o=u is 2 at second 18
+19013 d-s0 2
+19013 d-s1 2
+19015 donly 2
+20015 d-late 2
+21017 honce 2
+23013 d-s0 2
+23013 d-s1 2
+23015 n-ann-d t=PROBLEM|s=DOWN|st=HARD|a=1|n=3|hn=3|esc=0|rcp=bob,ann|au=|co=|id=a19cd8de-85bf-4dbd-9fbb-c968c76cefdd|dt=0|ack=/|o=d is 2 at second 18
+23015 n-bob-d t=PROBLEM|s=DOWN|st=HARD|a=1|n=3|hn=3|esc=0|rcp=bob,ann|au=|co=|id=a19cd8de-85bf-4dbd-9fbb-c968c76cefdd|dt=0|ack=/|o=d is 2 at second 18
+23017 hoff 2
+23017 hdelay 2
+23018 d 2
+23018 u 2
+23020 n-ann-hdelay t=PROBLEM|s=DOWN|st=HARD|a=1|n=1|hn=1|esc=0|rcp=ann|au=|co=|id=da2fca99-03d2-486a-89c4-f9e6f663425b|dt=0|ack=/|o=hdelay is 2 at second 23
+24016 donly 2
+24016 d-late 2
+26018 honce 2
+27014 d-s1 2
+27014 d-s0 2
+28017 d 2
+28017 d-late 2
+28018 hdelay 2
+28018 u 2
+28018 hoff 2
+28020 n-ann-hdelay t=PROBLEM|s=DOWN|st=HARD|a=1|n=2|hn=2|esc=0|rcp=ann|au=|co=|id=82352b95-5c21-4c6d-8d6b-d8aade7267d9|dt=0|ack=/|o=hdelay is 2 at second 28
+28020 n-ann-u t=PROBLEM|s=UNREACHABLE|st=HARD|a=1|n=3|hn=3|esc=0|rcp=cat,ann|au=|co=|id=7f5146b4-78a5-481f-8b63-0d5d709bd203|dt=0|ack=/|o=u is 2 at second 28
+28020 n-cat-u t=PROBLEM|s=UNREACHABLE|st=HARD|a=1|n=3|hn=3|esc=0|rcp=cat,ann|au=|co=|id=7f5146b4-78a5-481f-8b63-0d5d709bd203|dt=0|ack=/|o=u is 2 at second 28
+29017 donly 2
+31014 d-s0 0
+31014 d-s1 0
+31016 n-ann-d-s0 t=RECOVERY|s=OK|st=HARD|a=1|n=2|sn=2|hn=3|esc=0|rcp=ann|au=|co=|id=33f0d4cf-0cac-4da1-abfe-8e7162beedc2|dt=0|hdt=0|ack=/|o=d-s0 is 0 at second 31
+31017 d 0
+31018 honce 0
+31019 n-bob-d t=RECOVERY|s=UP|st=HARD|a=1|n=4|hn=4|esc=0|rcp=bob,ann|au=|co=|id=154a2784-2836-4168-a77e-a4dc3304cf99|dt=0|ack=/|o=d is 0 at second 31
+31019 n-ann-d t=RECOVERY|s=UP|st=HARD|a=1|n=4|hn=4|esc=0|rcp=bob,ann|au=|co=|id=154a2784-2836-4168-a77e-a4dc3304cf99|dt=0|ack=/|o=d is 0 at second 31
+31020 u 0
+31020 n-ann-honce t=RECOVERY|s=UP|st=HARD|a=1|n=2|hn=2|esc=0|rcp=ann|au=|co=|id=9f5acdf4-5166-4d6c-acf2-6f1d92bd78dc|dt=0|ack=/|o=honce is 0 at second 31
+31022 n-ann-u t=RECOVERY|s=UP|st=HARD|a=1|n=4|hn=4|esc=0|rcp=bob,ann|au=|co=|id=a3d01150-32af-4014-bf03-6b869f6f5cdc|dt=0|ack=/|o=u is 0 at second 31
+31022 n-bob-u t=RECOVERY|s=UP|st=HARD|a=1|n=4|hn=4|esc=0|rcp=bob,ann|au=|co=|id=a3d01150-32af-4014-bf03-6b869f6f5cdc|dt=0|ack=/|o=u is 0 at second 31
+32019 d-late 2
+33019 hoff 0
+33019 hdelay 2
+33021 d-late 2
+33022 n-ann-hdelay t=PROBLEM|s=DOWN|st=HARD|a=1|n=3|hn=3|esc=0|rcp=ann|au=|co=|id=f6d02b62-01ef-4e5e-8947-1fc1de809ac7|dt=0|ack=/|o=hdelay is 2 at second 33
+33023 d 0
+34018 donly 0
+34023 d-late 2
+34025 n-ann-d-late t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=5451dc1c-bf0b-4b51-aee1-837cce1c5f2f|dt=0|hdt=0|ack=/|o=d-late is 2 at second 34
+34025 d 0
+35014 d-s1 0
+35014 d-s0 0
+36019 honce 0
+36020 u 0
+38019 hdelay 2
+38019 hoff 0
+38021 n-ann-hdelay t=PROBLEM|s=DOWN|st=HARD|a=1|n=4|hn=4|esc=0|rcp=ann|au=|co=|id=20911766-4813-4975-a881-31a7e02b3acb|dt=0|ack=/|o=hdelay is 2 at second 38
+38022 d-late 2
+38024 n-ann-d-late t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=b7d627f8-256b-43d3-8f42-909c01a314d7|dt=0|hdt=0|ack=/|o=d-late is 2 at second 38
+39015 d-s1 0
+39016 d-s0 0
+39018 donly 0
+39025 d 0
+41018 honce 0
+41019 u 0
+42022 d-late 0
+42027 n-ann-d-late t=RECOVERY|s=OK|st=HARD|a=3|n=3|sn=3|hn=0|esc=0|rcp=ann|au=|co=|id=15e8f355-d770-41d0-abb6-acac42fb7711|dt=0|hdt=0|ack=/|o=d-late is 0 at second 42
+43017 d-s0 0
+43017 d-s1 0
+43019 hdelay 0
+43019 hoff 0
+43021 n-ann-hdelay t=RECOVERY|s=UP|st=HARD|a=1|n=5|hn=5|esc=0|rcp=ann|au=|co=|id=0e138cf5-b168-4e36-98c0-14b2fa1a5e6b|dt=0|ack=/|o=hdelay is 0 at second 43
+44019 donly 0
+44024 d 0

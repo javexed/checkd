@@ -23,6 +23,7 @@
 use checkd_config::model::Group;
 
 use crate::engine::{Engine, Ms, Obj, HOST_STATES, SERVICE_STATES};
+use crate::notify::{self, Notice};
 use crate::settings::DateFormat;
 use crate::timeperiod::civil;
 
@@ -34,6 +35,8 @@ struct Ctx<'a> {
     host: Option<usize>,
     service: Option<usize>,
     args: &'a [String],
+    /// The notification a command is run for.
+    notice: Option<&'a Notice>,
 }
 
 impl Engine {
@@ -52,6 +55,19 @@ impl Engine {
         Some(self.expand_in(line, self.ctx(obj, &args), now, 0))
     }
 
+    /// The command line of a notification command for one contact.
+    pub(crate) fn notice_line(&self, command: &str, obj: Obj, notice: &Notice, now: Ms) -> Option<String> {
+        let mut parts = split_args(command);
+        let name = parts.remove(0);
+        let line = &self.objects.commands.get(name.trim())?.line;
+        let mut ctx = self.ctx(obj, &[]);
+        ctx.notice = Some(notice);
+        let args: Vec<String> = parts.iter().map(|part| self.expand_in(part, ctx, now, 0)).collect();
+        let mut ctx = self.ctx(obj, &args);
+        ctx.notice = Some(notice);
+        Some(self.expand_in(line, ctx, now, 0))
+    }
+
     /// Fills in the macros of a text, as seen from a host or service.
     pub fn expand(&self, text: &str, obj: Obj, now: Ms) -> String {
         self.expand_in(text, self.ctx(obj, &[]), now, 0)
@@ -63,11 +79,13 @@ impl Engine {
                 host: Some(at),
                 service: None,
                 args,
+                notice: None,
             },
             Obj::Service(at) => Ctx {
                 host: Some(self.services[at].host),
                 service: Some(at),
                 args,
+                notice: None,
             },
         }
     }
@@ -112,6 +130,16 @@ impl Engine {
         let mut parts = name.split(':');
         let base = parts.next().unwrap_or("");
         let args: Vec<&str> = parts.collect();
+
+        if let (Some(notice), true) = (ctx.notice, args.is_empty()) {
+            let obj = match ctx.service {
+                Some(at) => Obj::Service(at),
+                None => Obj::Host(ctx.host?),
+            };
+            if let Some(value) = notify::notice_value(self, notice, obj, base) {
+                return Some(value);
+            }
+        }
 
         if let Some(var) = base.strip_prefix("_HOST") {
             let host = match args.as_slice() {
@@ -317,6 +345,7 @@ impl Engine {
                 host: Some(at),
                 service: None,
                 args: &[],
+                notice: None,
             };
             self.expand_in(&text, ctx, now, depth + 1)
         };
@@ -348,7 +377,11 @@ impl Engine {
             "HOSTEXECUTIONTIME" => format!("{:.3}", item.execution_time),
             "HOSTDURATION" => duration(self.since(item.last_state_change, now)),
             "HOSTDURATIONSEC" => self.since(item.last_state_change, now).to_string(),
-            "HOSTDOWNTIME" => "0".to_string(),
+            "HOSTDOWNTIME" => item.notice.downtime_depth.to_string(),
+            "HOSTACKAUTHOR" | "HOSTACKAUTHORNAME" | "HOSTACKAUTHORALIAS" => {
+                item.notice.ack.as_ref().map(|ack| ack.author.clone()).unwrap_or_default()
+            }
+            "HOSTACKCOMMENT" => item.notice.ack.as_ref().map(|ack| ack.comment.clone()).unwrap_or_default(),
             "HOSTPERCENTCHANGE" => format!("{:.2}", item.percent_change),
             "HOSTGROUPNAME" => entry.groups.first().cloned().unwrap_or_default(),
             "HOSTGROUPNAMES" => entry.groups.join(","),
@@ -365,8 +398,8 @@ impl Engine {
             "HOSTACTIONURL" => again(&item.cfg.action_url),
             "HOSTNOTESURL" => again(&item.cfg.notes_url),
             "HOSTNOTES" => again(&item.cfg.notes),
-            "HOSTNOTIFICATIONNUMBER" => "0".to_string(),
-            "HOSTNOTIFICATIONID" => String::new(),
+            "HOSTNOTIFICATIONNUMBER" => item.notice.number.to_string(),
+            "HOSTNOTIFICATIONID" => item.notice.id.clone(),
             "TOTALHOSTSERVICES" => count(None),
             // A service that has not been checked yet counts as OK here.
             "TOTALHOSTSERVICESOK" => count(Some(0)),
@@ -389,6 +422,7 @@ impl Engine {
                 host: Some(entry.host),
                 service: Some(at),
                 args: &[],
+                notice: None,
             };
             self.expand_in(&text, ctx, now, depth + 1)
         };
@@ -415,7 +449,11 @@ impl Engine {
             "SERVICEEXECUTIONTIME" => format!("{:.3}", item.execution_time),
             "SERVICEDURATION" => duration(self.since(item.last_state_change, now)),
             "SERVICEDURATIONSEC" => self.since(item.last_state_change, now).to_string(),
-            "SERVICEDOWNTIME" => "0".to_string(),
+            "SERVICEDOWNTIME" => item.notice.downtime_depth.to_string(),
+            "SERVICEACKAUTHOR" | "SERVICEACKAUTHORNAME" | "SERVICEACKAUTHORALIAS" => {
+                item.notice.ack.as_ref().map(|ack| ack.author.clone()).unwrap_or_default()
+            }
+            "SERVICEACKCOMMENT" => item.notice.ack.as_ref().map(|ack| ack.comment.clone()).unwrap_or_default(),
             "SERVICEPERCENTCHANGE" => format!("{:.2}", item.percent_change),
             "SERVICEGROUPNAME" => entry.groups.first().cloned().unwrap_or_default(),
             "SERVICEGROUPNAMES" => entry.groups.join(","),
@@ -433,8 +471,8 @@ impl Engine {
             "SERVICEACTIONURL" => again(&item.cfg.action_url),
             "SERVICENOTESURL" => again(&item.cfg.notes_url),
             "SERVICENOTES" => again(&item.cfg.notes),
-            "SERVICENOTIFICATIONNUMBER" => "0".to_string(),
-            "SERVICENOTIFICATIONID" => String::new(),
+            "SERVICENOTIFICATIONNUMBER" => item.notice.number.to_string(),
+            "SERVICENOTIFICATIONID" => item.notice.id.clone(),
             _ => return None,
         })
     }
@@ -491,9 +529,16 @@ impl Engine {
             }
             "LONGDATETIME" => self.clock(second).long,
             // What notifications fill in. Empty outside one.
-            "NOTIFICATIONTYPE" | "SERVICEACKAUTHOR" | "HOSTACKAUTHOR" => String::new(),
+            "NOTIFICATIONTYPE" => String::new(),
             _ => return self.paths.get(name).cloned(),
         })
+    }
+
+    /// A moment as `$SHORTDATETIME$` writes it.
+    pub(crate) fn short_datetime(&self, second: i64) -> String {
+        let clock = self.clock(second);
+        let between = if self.settings.date_format == DateFormat::StrictIso8601 { "T" } else { " " };
+        format!("{}{between}{}", clock.date, clock.time)
     }
 
     /// Whole seconds since a moment. For an object that has not changed

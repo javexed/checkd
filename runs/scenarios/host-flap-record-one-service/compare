@@ -9,3 +9,5 @@ watch spy1 looks at another object as it changes
 # first. In real time the order is not the same from run to run; the play
 # on the simulated clock keeps the reference's order and compares the spy.
 ignore-real spy1 the order of two results a few milliseconds apart
+# The same order decides when the service's notification is tried.
+ignore-log-real a;s the order of two results a few milliseconds apart

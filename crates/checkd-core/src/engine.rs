@@ -43,13 +43,14 @@
 //! with attempt 1.
 
 use std::cmp::Reverse;
-use std::collections::{BTreeMap, BinaryHeap};
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap};
 
 use checkd_config::maincfg::MainConfig;
 use checkd_config::model::{Checkable, Objects, ServiceId};
 use checkd_config::values::Opts;
 
 use crate::flap::{self, History};
+use crate::notify::{self, Comment, ContactEntry, Downtime, Kind, NoticeState, Timer};
 use crate::output::{self, Output};
 use crate::settings::Settings;
 use crate::timeperiod::{Periods, Zone};
@@ -70,6 +71,7 @@ pub enum JobKind {
     ServiceCheck,
     HostHandler,
     ServiceHandler,
+    Notification,
 }
 
 /// A command for the driver to run.
@@ -116,8 +118,8 @@ pub enum Effect {
 #[derive(Clone, Debug)]
 pub struct Item {
     pub cfg: Checkable,
-    check_ms: Ms,
-    retry_ms: Ms,
+    pub(crate) check_ms: Ms,
+    pub(crate) retry_ms: Ms,
     /// Host: 0 up, 1 down, 2 unreachable. Service: 0 OK, 1 warning,
     /// 2 critical, 3 unknown.
     pub state: u8,
@@ -134,7 +136,7 @@ pub struct Item {
     pub next_check: Option<Ms>,
     generation: u64,
     pub running: bool,
-    history: History,
+    pub(crate) history: History,
     pub flapping: bool,
     pub percent_change: f64,
     pub last_state_change: Ms,
@@ -149,6 +151,7 @@ pub struct Item {
     pub last_event_id: u64,
     pub problem_id: String,
     pub last_problem_id: String,
+    pub notice: NoticeState,
 }
 
 impl Item {
@@ -186,6 +189,10 @@ impl Item {
             last_event_id: 0,
             problem_id: String::new(),
             last_problem_id: String::new(),
+            notice: NoticeState {
+                next: Some(0),
+                ..NoticeState::default()
+            },
             cfg: cfg.clone(),
         }
     }
@@ -268,6 +275,18 @@ pub struct Engine {
     pub(crate) user_macros: BTreeMap<u32, String>,
     /// The path macros: `MAINCONFIGFILE` and the like.
     pub(crate) paths: BTreeMap<&'static str, String>,
+    pub(crate) contacts: Vec<ContactEntry>,
+    pub(crate) contact_index: BTreeMap<String, usize>,
+    /// For each host and service: its escalations, by their place in the
+    /// configuration's lists.
+    pub(crate) host_escalations: Vec<Vec<usize>>,
+    pub(crate) service_escalations: Vec<Vec<usize>>,
+    pub(crate) comments: BTreeMap<u64, Comment>,
+    pub(crate) next_comment: u64,
+    pub(crate) downtimes: BTreeMap<u64, Downtime>,
+    pub(crate) next_downtime: u64,
+    pub(crate) timers: BTreeSet<(Ms, u64, Timer)>,
+    pub(crate) timer_seq: u64,
 }
 
 impl Engine {
@@ -423,8 +442,32 @@ impl Engine {
         paths.insert("HOSTPERFDATAFILE", path("host_perfdata_file"));
         paths.insert("SERVICEPERFDATAFILE", path("service_perfdata_file"));
 
+        let (contacts, contact_index) = notify::contacts_of(&objects);
+        let mut host_escalations: Vec<Vec<usize>> = hosts.iter().map(|_| Vec::new()).collect();
+        for (at, escalation) in objects.host_escalations.iter().enumerate() {
+            if let Some(&host) = host_index.get(&escalation.object) {
+                host_escalations[host].push(at);
+            }
+        }
+        let mut service_escalations: Vec<Vec<usize>> = services.iter().map(|_| Vec::new()).collect();
+        for (at, escalation) in objects.service_escalations.iter().enumerate() {
+            if let Some(&service) = service_index.get(&escalation.object) {
+                service_escalations[service].push(at);
+            }
+        }
+
         let engine = Engine {
             user_macros: main.user_macros.clone(),
+            contacts,
+            contact_index,
+            host_escalations,
+            service_escalations,
+            comments: BTreeMap::new(),
+            next_comment: 0,
+            downtimes: BTreeMap::new(),
+            next_downtime: 0,
+            timers: BTreeSet::new(),
+            timer_seq: 0,
             objects,
             settings,
             zone,
@@ -475,7 +518,7 @@ impl Engine {
         }
     }
 
-    fn item_mut(&mut self, obj: Obj) -> &mut Item {
+    pub(crate) fn item_mut(&mut self, obj: Obj) -> &mut Item {
         match obj {
             Obj::Host(at) => &mut self.hosts[at].item,
             Obj::Service(at) => &mut self.services[at].item,
@@ -565,12 +608,12 @@ impl Engine {
 
     /// The check that comes up next, and when.
     pub fn next_due(&mut self) -> Option<(Ms, Obj)> {
-        self.next_wakeup()?;
+        self.next_check_due()?;
         self.queue.peek().map(|&Reverse((at, _, _, obj, _))| (at, obj))
     }
 
-    /// When the engine next has something to do on its own, if ever.
-    pub fn next_wakeup(&mut self) -> Option<Ms> {
+    /// When the next check is due, if ever.
+    fn next_check_due(&mut self) -> Option<Ms> {
         while let Some(&Reverse((at, _, _, obj, generation))) = self.queue.peek() {
             if self.item(obj).generation == generation {
                 return Some(at);
@@ -580,18 +623,30 @@ impl Engine {
         None
     }
 
+    /// When the engine next has something to do on its own, if ever: a
+    /// check, or the start or end of a downtime.
+    pub fn next_wakeup(&mut self) -> Option<Ms> {
+        match (self.next_check_due(), self.next_timer()) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (a, b) => a.or(b),
+        }
+    }
+
     /// Does what is due at `now`.
     pub fn advance(&mut self, now: Ms, out: &mut Vec<Effect>) {
-        while let Some(&Reverse((at, _, _, obj, generation))) = self.queue.peek() {
-            if at > now {
-                break;
+        loop {
+            let check = self.next_check_due().filter(|&at| at <= now);
+            let timer = self.next_timer().filter(|&at| at <= now);
+            match (check, timer) {
+                (None, None) => break,
+                (Some(c), Some(t)) if t <= c => self.run_timers(t, out),
+                (None, Some(t)) => self.run_timers(t, out),
+                _ => {
+                    let Reverse((at, _, _, obj, _)) = self.queue.pop().unwrap();
+                    self.item_mut(obj).next_check = None;
+                    self.due(obj, at, now, out);
+                }
             }
-            self.queue.pop();
-            if self.item(obj).generation != generation {
-                continue;
-            }
-            self.item_mut(obj).next_check = None;
-            self.due(obj, at, now, out);
         }
     }
 
@@ -612,7 +667,7 @@ impl Engine {
         self.queue.push(Reverse((at, rank, asked, obj, generation)));
     }
 
-    fn periods(&self) -> Periods<'_> {
+    pub(crate) fn periods(&self) -> Periods<'_> {
         Periods::new(&self.objects.timeperiods, &*self.zone)
     }
 
@@ -669,6 +724,10 @@ impl Engine {
         let item = self.item_mut(obj);
         item.running = true;
         item.latency = (now - at).max(0) as f64 / 1000.0;
+        self.run(obj, kind, line, timeout, now, out);
+    }
+
+    pub(crate) fn run_job(&mut self, obj: Obj, kind: JobKind, line: String, timeout: Ms, now: Ms, out: &mut Vec<Effect>) {
         self.run(obj, kind, line, timeout, now, out);
     }
 
@@ -830,7 +889,18 @@ impl Engine {
         let log_retries = self.settings.log_service_retries;
 
         let item = &mut self.services[at].item;
+        // A problem that was made hard only by the host being down starts
+        // again as a soft one once the host is back up. The host is not
+        // asked about at that result.
+        let mut restarted = false;
+        if item.notice.forced && host_up && new != 0 && item.state != 0 {
+            item.hard = false;
+            item.attempt = 0;
+            item.notice.forced = false;
+            restarted = true;
+        }
         let (was, was_hard, attempt) = (item.state, item.hard, item.attempt);
+        let hard_before = item.last_hard_state;
         let max = item.max();
         let first = !item.checked;
         let new_text = first || item.output.short != output.short || item.output.long != output.long;
@@ -858,7 +928,7 @@ impl Engine {
             }
             ask_host = !host_up;
         } else {
-            ask_host = new != was || (was != 0 && !was_hard);
+            ask_host = new != was || (was != 0 && !was_hard && !restarted);
             if was == 0 {
                 step = true;
                 item.attempt = 1;
@@ -874,6 +944,13 @@ impl Engine {
             }
         }
         item.state = new;
+        // Gone hard only because the host is not up.
+        if new != was || new == 0 {
+            item.notice.forced = false;
+        }
+        if info && item.attempt < max {
+            item.notice.forced = true;
+        }
 
         if new != was {
             item.last_state_change = now;
@@ -899,7 +976,11 @@ impl Engine {
             )));
         }
         let item = &self.services[at].item;
-        if (step || stalked) && (item.hard || log_retries) {
+        // A soft problem that turns hard in the state it was last hard in
+        // is not a change of hard state, and the reference writes no
+        // alert for it.
+        let same_hard = item.hard && !was_hard && was != 0 && hard_before == new;
+        if (step || stalked) && (item.hard || log_retries) && !same_hard {
             let line = format!("{}{}", self.state_line("SERVICE ALERT", obj), item.output.short);
             out.push(Effect::Log(line));
         }
@@ -907,7 +988,11 @@ impl Engine {
         // A result that leaves the service in a soft problem state does
         // not go into the flap history.
         if !item.soft_problem() {
-            self.record_flap(obj, out);
+            self.record_flap(obj, now, out);
+        }
+        let changed = new != was || self.services[at].item.hard != was_hard;
+        if step || self.services[at].item.hard {
+            self.after_result(obj, was, changed, now, out);
         }
         if step {
             self.handlers(obj, now, out);
@@ -919,7 +1004,7 @@ impl Engine {
         }
 
         // Every service result adds the host's state to the host's history.
-        self.record_flap(Obj::Host(host), out);
+        self.record_flap(Obj::Host(host), now, out);
         if ask_host {
             self.check_host_now(host, now, true);
         }
@@ -986,8 +1071,10 @@ impl Engine {
             step = true;
             item.attempt = (attempt + 1).min(max);
             item.hard = item.attempt >= max;
-        } else if new != was {
-            step = true;
+        } else {
+            // A host that stays in a hard problem is at attempt 1 from its
+            // next result on.
+            step = new != was;
             item.attempt = 1;
         }
         item.state = new;
@@ -1019,7 +1106,11 @@ impl Engine {
         if step {
             self.handlers(obj, now, out);
         }
-        self.record_flap(obj, out);
+        // A host's notification is tried before its flapping is looked
+        // at; a service's after.
+        let changed = new != was || self.hosts[at].item.hard != was_hard;
+        self.after_result(obj, was, changed, now, out);
+        self.record_flap(obj, now, out);
         let item = &mut self.hosts[at].item;
         if item.state == 0 {
             item.hard = true;
@@ -1058,6 +1149,10 @@ impl Engine {
         }
     }
 
+    pub(crate) fn uuid_pub(&mut self) -> String {
+        self.uuid()
+    }
+
     fn uuid(&mut self) -> String {
         let mut next = || {
             self.random ^= self.random << 13;
@@ -1090,7 +1185,7 @@ impl Engine {
 
     /// Adds the object's state to its flap history and says so in the log
     /// when flapping starts or stops.
-    fn record_flap(&mut self, obj: Obj, out: &mut Vec<Effect>) {
+    fn record_flap(&mut self, obj: Obj, now: Ms, out: &mut Vec<Effect>) {
         let on = self.settings.enable_flap_detection;
         let (global_low, global_high, letters, label, what): (f64, f64, &[char], &str, &str) = match obj {
             Obj::Host(_) => (
@@ -1120,6 +1215,7 @@ impl Engine {
         let low = if item.cfg.low_flap_threshold > 0.0 { item.cfg.low_flap_threshold } else { global_low };
         let high = if item.cfg.high_flap_threshold > 0.0 { item.cfg.high_flap_threshold } else { global_high };
         let change = flap::judge(item.flapping, percent, low, high);
+        let started = matches!(change, flap::Change::Started);
         let text = match change {
             flap::Change::None => return,
             flap::Change::Started => {
@@ -1134,6 +1230,8 @@ impl Engine {
             }
         };
         out.push(Effect::Log(format!("{label}: {};{text}", self.log_name(obj))));
+        let kind = if started { Kind::FlappingStart } else { Kind::FlappingStop };
+        self.notify(obj, kind, "", "", now, out);
     }
 
     /// Runs the event handlers for the state the object is in now: the

@@ -396,6 +396,9 @@ struct Expected {
     start_ns: i64,
     lines: Vec<Line>,
     calls: Vec<Call>,
+    /// The external commands sent during the run: milliseconds after the
+    /// start, and the command without its time.
+    commands: Vec<(Ms, String)>,
     /// The second in which the reference was told to stop.
     stopped: i64,
 }
@@ -439,10 +442,18 @@ fn read_run(dir: &Path) -> Option<Expected> {
             what: parts.next().unwrap_or("").to_string(),
         });
     }
+    let commands = read("commands")
+        .lines()
+        .filter_map(|line| {
+            let (at, text) = line.split_once(' ')?;
+            Some((at.parse().ok()?, text.to_string()))
+        })
+        .collect();
     Some(Expected {
         start_ns,
         lines,
         calls,
+        commands,
         stopped,
     })
 }
@@ -459,7 +470,23 @@ fn about(text: &str) -> Option<String> {
         | "SERVICE FLAPPING ALERT"
         | "SERVICE EVENT HANDLER"
         | "GLOBAL SERVICE EVENT HANDLER"
-        | "SERVICE INFO" => Some(fields(2)),
+        | "SERVICE INFO"
+        | "SERVICE DOWNTIME ALERT" => Some(fields(2)),
+        "HOST DOWNTIME ALERT" => Some(fields(1)),
+        // Each contact's notifications are compared on their own: the
+        // reference writes the lines of one notification to several
+        // contacts in an order that is not the same every time.
+        "SERVICE NOTIFICATION" => Some(format!("notice {}", fields(3))),
+        "HOST NOTIFICATION" => Some(format!("notice {}", fields(2))),
+        "SERVICE NOTIFICATION SUPPRESSED" => Some(format!("quiet {}", fields(2))),
+        "HOST NOTIFICATION SUPPRESSED" => Some(format!("quiet {}", fields(1))),
+        "SERVICE CONTACT NOTIFICATION SUPPRESSED" => Some(format!("quiet-to {}", fields(3))),
+        "HOST CONTACT NOTIFICATION SUPPRESSED" => Some(format!("quiet-to {}", fields(2))),
+        "EXTERNAL COMMAND" | "External command error" => Some("commands".to_string()),
+        "Error" if rest.starts_with("External command failed") => Some("commands".to_string()),
+        "Warning" if rest.starts_with("External command parse error") => {
+            Some("commands".to_string())
+        }
         "Warning" if rest.starts_with("Return code of ") => {
             let quoted: Vec<&str> = rest.split('\'').collect();
             if rest.contains("for check of service '") {
@@ -472,14 +499,45 @@ fn about(text: &str) -> Option<String> {
     }
 }
 
-fn by_object(lines: &[Line], ignore: &BTreeSet<String>) -> BTreeMap<String, Vec<Line>> {
+/// The host or service a key of `about` is about: without the kind of
+/// line before it, and without the contact.
+fn object_of(key: &str) -> &str {
+    if let Some(rest) = key.strip_prefix("quiet ") {
+        return rest;
+    }
+    for prefix in ["notice ", "quiet-to "] {
+        if let Some(rest) = key.strip_prefix(prefix) {
+            return rest.split_once(';').map_or(rest, |(_, object)| object);
+        }
+    }
+    key
+}
+
+/// The log lines by what they are about. With `by_contact`, the lines
+/// saying a contact was not sent a notification are kept by contact and
+/// kind of object only, with the object left out of their text: a contact
+/// gets one such line for a reason, about whichever object comes first,
+/// and in real time which comes first among several due at one moment
+/// differs from run to run.
+fn by_object(lines: &[Line], ignore: &BTreeSet<String>, by_contact: bool) -> BTreeMap<String, Vec<Line>> {
     let mut map: BTreeMap<String, Vec<Line>> = BTreeMap::new();
     for line in lines {
-        if let Some(object) = about(&line.text) {
-            if !ignore.contains(&object) {
-                map.entry(object).or_default().push(line.clone());
+        let Some(object) = about(&line.text) else { continue };
+        if ignore.contains(&object) || ignore.contains(object_of(&object)) {
+            continue;
+        }
+        let mut line = line.clone();
+        let mut key = object.clone();
+        if by_contact {
+            if let Some(rest) = object.strip_prefix("quiet-to ") {
+                let contact = rest.split(';').next().unwrap_or(rest);
+                let (label, text) = line.text.split_once(": ").unwrap_or(("", &line.text));
+                let reason = text.rsplit(';').next().unwrap_or("");
+                key = format!("quiet-to {contact} {label}");
+                line.text = format!("{label}: {contact};*;{reason}");
             }
         }
+        map.entry(key).or_default().push(line);
     }
     map
 }
@@ -644,7 +702,12 @@ fn play(dir: &Path, expected: &Expected) -> Result<Played, String> {
         *n += 1;
     }
     let mut made: BTreeMap<String, usize> = BTreeMap::new();
-
+    // The external commands, at the moments the reference was sent them.
+    let mut commands: VecDeque<(Ms, String)> = expected
+        .commands
+        .iter()
+        .map(|(at, text)| (start + at, text.clone()))
+        .collect();
     let mut lines = Vec::new();
     let mut waiting: BinaryHeap<Reverse<(Ms, usize, u64)>> = BinaryHeap::new();
     let mut results: BTreeMap<u64, JobResult> = BTreeMap::new();
@@ -698,16 +761,18 @@ fn play(dir: &Path, expected: &Expected) -> Result<Played, String> {
             }
         };
         let done = waiting.peek().map(|Reverse((at, _, _))| *at);
-        let next = match (wake, done) {
-            (Some(a), Some(b)) => a.min(b),
-            (Some(a), None) | (None, Some(a)) => a,
-            (None, None) => break,
-        };
+        let timer = engine.next_wakeup();
+        let command = commands.front().map(|(at, _)| *at);
+        let next = [wake, done, timer, command].into_iter().flatten().min();
+        let Some(next) = next else { break };
         if next > end {
             break;
         }
         now = next.max(now);
-        if done == Some(next) {
+        if command == Some(next) {
+            let (_, text) = commands.pop_front().unwrap();
+            engine.command(&format!("[{}] {text}", now.div_euclid(1000)), now, &mut effects);
+        } else if done == Some(next) {
             let Reverse((_, _, id)) = waiting.pop().unwrap();
             let result = results.remove(&id).unwrap();
             engine.job_done(now, id, result, &mut effects);
@@ -842,8 +907,8 @@ fn differences(compare: &Compare, expected: &Expected, played: &Played, verbose:
     let rel_a = rel_to(played.start);
     let end = played.end - played.start;
 
-    let want = by_object(&expected.lines, &compare.ignore_log);
-    let have = by_object(&played.lines, &compare.ignore_log);
+    let want = by_object(&expected.lines, &compare.ignore_log, compare.real_run);
+    let have = by_object(&played.lines, &compare.ignore_log, compare.real_run);
     let objects: BTreeSet<&String> = want.keys().chain(have.keys()).collect();
     let none = Vec::new();
     for object in objects {

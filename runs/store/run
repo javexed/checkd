@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# Shows that checkd's state survives a kill, on both stores.
+#
+#   runs/store [sqlite|postgres]...
+#
+# For each store, checkd runs on runs/store/case for 15 seconds, takes the
+# commands in case/commands, and is killed with SIGKILL. It is then started
+# again on the same store for 35 seconds. The script looks at what the
+# store held after the kill and at what the second run did:
+#
+# - the acknowledgement, the downtime, the comment and the switched-off
+#   notifications are in the store after the kill;
+# - the second run reads them, sends nothing for the acknowledged problem
+#   or the service whose notifications are off, ends the downtime at its
+#   time, and counts notifications on from where the first run was.
+#
+# Everything runs in the oracle image without a network. For PostgreSQL a
+# server runs in a second container, also without a network, and checkd's
+# container joins it. The server is the PostgreSQL project's image, pinned
+# below. What the runs left stays in runs/store-work/<store>.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(cd "$here/../.." && pwd)
+work=$root/runs/store-work
+postgres_image='postgres@sha256:e5d2edd28b1f8d40a0a6c0c9cdc545b19b56a0d5d88f94bc11a97d970d4700d0'
+
+core=$(sed -n 's/^ARG NAEMON_CORE_VERSION=//p' "$root/oracle/Dockerfile")
+inputs=$(cat "$root/oracle/Dockerfile" "$root/oracle/entry.sh" | sha256sum | cut -c1-12)
+image="checkd-oracle:naemon-${core}-${inputs}"
+docker image inspect "$image" >/dev/null 2>&1 \
+    || { echo "no oracle image; run oracle/run on any case first" >&2; exit 2; }
+
+stores=("$@")
+[ ${#stores[@]} -gt 0 ] || stores=(sqlite postgres)
+
+cd "$root"
+CARGO_TARGET_DIR=$root/target/pg cargo build --quiet -p checkd --features postgres
+checkd=$root/target/pg/debug/checkd
+
+failed=0
+for kind in "${stores[@]}"; do
+    out=$work/$kind
+    rm -rf "$out"
+    mkdir -p "$out"
+    network=(--network none)
+    env=()
+    server=
+    case $kind in
+        sqlite) spec=sqlite:/out/checkd.sqlite ;;
+        postgres)
+            server=$(docker run -d --rm --network none \
+                -e POSTGRES_USER=checkd -e POSTGRES_PASSWORD=checkd-test -e POSTGRES_DB=checkd \
+                "$postgres_image")
+            for _ in $(seq 60); do
+                docker exec "$server" pg_isready -h 127.0.0.1 -U checkd >/dev/null 2>&1 && break
+                sleep 1
+            done
+            network=(--network "container:$server")
+            env=(-e PGPASSWORD=checkd-test)
+            spec='postgres:host=127.0.0.1 user=checkd dbname=checkd sslmode=disable'
+            ;;
+        *) echo "unknown store $kind" >&2; exit 2 ;;
+    esac
+    docker run --rm "${network[@]}" "${env[@]}" --user "$(id -u):$(id -g)" \
+        -v "$here/case:/in:ro" -v "$root/runs/lib:/shared:ro" -v "$checkd:/checkd:ro" \
+        -v "$here/entry.sh:/store-entry:ro" -v "$out:/out" \
+        --entrypoint sh "$image" /store-entry "$spec" || true
+    [ -n "$server" ] && docker stop "$server" >/dev/null
+
+    problems=()
+    want() { grep -q -- "$2" "$out/$1" || problems+=("$1 has no '$2'"); }
+    never() { ! grep -q -- "$2" "$out/$1" || problems+=("$1 has '$2'"); }
+    want state-1 'object a;acked CRITICAL HARD .* ack=ann:kept over a kill:sticky'
+    want state-1 'object a;quiet CRITICAL HARD .* notifications=off'
+    want state-1 'comment .* a;counted type=1 persistent=1 ann: a comment that persists'
+    want state-1 'downtime .* a;down .* fixed active=1 ann: over the kill'
+    want log-2 'Read the state of 6 hosts and services'
+    want log-2 'SERVICE DOWNTIME ALERT: a;down;STOPPED'
+    never log-2 'SERVICE NOTIFICATION: ann;a;acked;CRITICAL'
+    never log-2 'SERVICE NOTIFICATION: ann;a;quiet'
+    # Nothing about a;down until its downtime is over.
+    sed '/SERVICE DOWNTIME ALERT: a;down;STOPPED/,$d' "$out/log-2" > "$out/log-2-in-downtime"
+    never log-2-in-downtime 'SERVICE NOTIFICATION: ann;a;down;CRITICAL'
+    want state-2 'comment .* a;counted type=1 persistent=1 ann: a comment that persists'
+    # The numbers of the notifications about a;counted go on over the kill.
+    numbers=$(grep ' n-ann-a-counted ' "$out/trace" | sed 's/.*|n=\([0-9]*\)|.*/\1/' | tr '\n' ' ')
+    if ! printf '%s\n' $numbers | awk 'NR > 1 && $1 != prev + 1 { bad = 1 } { prev = $1 } END { exit bad || NR < 4 }'; then
+        problems+=("the notification numbers of a;counted are '$numbers'")
+    fi
+    if [ ${#problems[@]} -eq 0 ]; then
+        echo "$kind: the state survived the kill (notification numbers $numbers)"
+    else
+        echo "$kind:"
+        printf '  %s\n' "${problems[@]}"
+        failed=1
+    fi
+done
+exit $failed

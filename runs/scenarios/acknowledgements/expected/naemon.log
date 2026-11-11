@@ -1,0 +1,131 @@
+[1794420913] Naemon 1.5.2 starting... (PID=22)
+[1794420913] Local time is Wed Nov 11 18:15:13 UTC 2026
+[1794420913] LOG VERSION: 2.0
+[1794420913] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794420913] nerd: Channel hostchecks registered successfully
+[1794420913] nerd: Channel servicechecks registered successfully
+[1794420913] nerd: Fully initialized and ready to rock!
+[1794420913] Successfully launched command file worker with pid 25
+[1794420913] Reading all config object data
+[1794420913] Loading neb modules
+[1794420913] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794420913] Naemon successfully initialized (PID=22)
+[1794420918] HOST ALERT: d2;DOWN;SOFT;1;d2 is 2 at second 5
+[1794420919] SERVICE ALERT: a;st2;WARNING;SOFT;1;st2 is 1 at second 6
+[1794420920] SERVICE ALERT: a;unack;CRITICAL;SOFT;1;unack is 2 at second 7
+[1794420920] SERVICE ALERT: a;st1;WARNING;SOFT;1;st1 is 1 at second 7
+[1794420920] SERVICE ALERT: a;basic;CRITICAL;SOFT;1;basic is 2 at second 7
+[1794420920] SERVICE ALERT: a;nonotify;CRITICAL;SOFT;1;nonotify is 2 at second 7
+[1794420920] SERVICE ALERT: a;st2;WARNING;SOFT;2;st2 is 1 at second 7
+[1794420920] HOST ALERT: d2;DOWN;SOFT;2;d2 is 2 at second 7
+[1794420921] HOST ALERT: d;DOWN;SOFT;1;d is 2 at second 8
+[1794420921] SERVICE ALERT: a;st0;WARNING;SOFT;1;st0 is 1 at second 8
+[1794420921] SERVICE ALERT: a;nonotify;CRITICAL;SOFT;2;nonotify is 2 at second 8
+[1794420921] SERVICE ALERT: a;unack;CRITICAL;SOFT;2;unack is 2 at second 8
+[1794420921] SERVICE ALERT: a;st1;WARNING;SOFT;2;st1 is 1 at second 8
+[1794420921] SERVICE ALERT: a;st2;WARNING;HARD;3;st2 is 1 at second 8
+[1794420921] SERVICE NOTIFICATION: ann;a;st2;WARNING;n-svc;st2 is 1 at second 8
+[1794420921] SERVICE ALERT: a;basic;CRITICAL;SOFT;2;basic is 2 at second 8
+[1794420922] SERVICE ALERT: a;st0;WARNING;SOFT;2;st0 is 1 at second 9
+[1794420922] HOST ALERT: d2;DOWN;HARD;3;d2 is 2 at second 9
+[1794420922] HOST NOTIFICATION: ann;d2;DOWN;n-host;d2 is 2 at second 9
+[1794420922] SERVICE ALERT: a;unack;CRITICAL;HARD;3;unack is 2 at second 9
+[1794420922] SERVICE NOTIFICATION: ann;a;unack;CRITICAL;n-svc;unack is 2 at second 9
+[1794420922] SERVICE ALERT: a;nonotify;CRITICAL;HARD;3;nonotify is 2 at second 9
+[1794420922] SERVICE NOTIFICATION: ann;a;nonotify;CRITICAL;n-svc;nonotify is 2 at second 9
+[1794420922] SERVICE ALERT: a;st1;WARNING;HARD;3;st1 is 1 at second 9
+[1794420922] SERVICE NOTIFICATION: ann;a;st1;WARNING;n-svc;st1 is 1 at second 9
+[1794420922] SERVICE ALERT: a;basic;CRITICAL;HARD;3;basic is 2 at second 9
+[1794420922] SERVICE NOTIFICATION: ann;a;basic;CRITICAL;n-svc;basic is 2 at second 9
+[1794420922] SERVICE NOTIFICATION: bob;a;basic;CRITICAL;n-svc;basic is 2 at second 9
+[1794420923] HOST ALERT: d;DOWN;SOFT;2;d is 2 at second 10
+[1794420923] SERVICE ALERT: a;st0;WARNING;HARD;3;st0 is 1 at second 10
+[1794420923] SERVICE NOTIFICATION: ann;a;st0;WARNING;n-svc;st0 is 1 at second 10
+[1794420925] EXTERNAL COMMAND: ACKNOWLEDGE_SVC_PROBLEM;a;basic;1;1;1;ann;looking at it
+[1794420925] SERVICE NOTIFICATION: ann;a;basic;ACKNOWLEDGEMENT (CRITICAL);n-svc;basic is 2 at second 9;ann;looking at it
+[1794420925] SERVICE NOTIFICATION: bob;a;basic;ACKNOWLEDGEMENT (CRITICAL);n-svc;basic is 2 at second 9;ann;looking at it
+[1794420925] EXTERNAL COMMAND: ACKNOWLEDGE_SVC_PROBLEM;a;st0;0;1;0;ann;sticky zero
+[1794420925] SERVICE NOTIFICATION: ann;a;st0;ACKNOWLEDGEMENT (WARNING);n-svc;st0 is 1 at second 10;ann;sticky zero
+[1794420925] EXTERNAL COMMAND: ACKNOWLEDGE_SVC_PROBLEM;a;st1;1;1;0;ann;sticky one
+[1794420925] SERVICE NOTIFICATION: ann;a;st1;ACKNOWLEDGEMENT (WARNING);n-svc;st1 is 1 at second 9;ann;sticky one
+[1794420925] EXTERNAL COMMAND: ACKNOWLEDGE_SVC_PROBLEM;a;st2;2;1;0;ann;sticky two
+[1794420925] SERVICE NOTIFICATION: ann;a;st2;ACKNOWLEDGEMENT (WARNING);n-svc;st2 is 1 at second 8;ann;sticky two
+[1794420925] EXTERNAL COMMAND: ACKNOWLEDGE_SVC_PROBLEM;a;okk;1;1;1;ann;nothing wrong
+[1794420925] EXTERNAL COMMAND: ACKNOWLEDGE_SVC_PROBLEM;a;softack;1;1;1;ann;still soft
+[1794420925] EXTERNAL COMMAND: ACKNOWLEDGE_SVC_PROBLEM;a;unack;2;1;1;ann;to be removed
+[1794420925] SERVICE NOTIFICATION: ann;a;unack;ACKNOWLEDGEMENT (CRITICAL);n-svc;unack is 2 at second 9;ann;to be removed
+[1794420925] EXTERNAL COMMAND: ACKNOWLEDGE_SVC_PROBLEM;a;nonotify;2;0;1;bob;quiet
+[1794420925] SERVICE ALERT: a;softack;CRITICAL;SOFT;1;softack is 2 at second 12
+[1794420925] HOST ALERT: d;DOWN;HARD;3;d is 2 at second 12
+[1794420925] HOST NOTIFICATION: ann;d;DOWN;n-host;d is 2 at second 12
+[1794420925] HOST NOTIFICATION: bob;d;DOWN;n-host;d is 2 at second 12
+[1794420925] SERVICE NOTIFICATION SUPPRESSED: a;st2;Notification for problem blocked because it has already been acknowledged.
+[1794420926] Warning: External command parse error [1794420926] ACKNOWLEDGE_SVC_PROBLEM;a;nosuch;1;1;1;ann;no such service (Failed validation of service as type service (argument 0))
+[1794420926] External command error: Failed validation of service as type service (argument 0)
+[1794420926] Warning: External command parse error [1794420926] ACKNOWLEDGE_SVC_PROBLEM;nosuch;basic;1;1;1;ann;no such host (Failed validation of service as type service (argument 0))
+[1794420926] External command error: Failed validation of service as type service (argument 0)
+[1794420926] SERVICE NOTIFICATION SUPPRESSED: a;unack;Notification for problem blocked because it has already been acknowledged.
+[1794420926] SERVICE NOTIFICATION SUPPRESSED: a;nonotify;Notification for problem blocked because it has already been acknowledged.
+[1794420926] SERVICE NOTIFICATION SUPPRESSED: a;st1;Notification for problem blocked because it has already been acknowledged.
+[1794420926] SERVICE NOTIFICATION SUPPRESSED: a;basic;Notification for problem blocked because it has already been acknowledged.
+[1794420927] EXTERNAL COMMAND: ACKNOWLEDGE_HOST_PROBLEM;d;2;1;0;bob;host ack
+[1794420927] HOST NOTIFICATION: ann;d;ACKNOWLEDGEMENT (DOWN);n-host;d is 2 at second 12;bob;host ack
+[1794420927] HOST NOTIFICATION: bob;d;ACKNOWLEDGEMENT (DOWN);n-host;d is 2 at second 12;bob;host ack
+[1794420927] EXTERNAL COMMAND: ACKNOWLEDGE_HOST_PROBLEM;d2;1;1;1;ann;host ack two
+[1794420927] HOST NOTIFICATION: ann;d2;ACKNOWLEDGEMENT (DOWN);n-host;d2 is 2 at second 9;ann;host ack two
+[1794420927] HOST NOTIFICATION SUPPRESSED: d2;Notification for problem blocked because it has already been acknowledged.
+[1794420927] SERVICE NOTIFICATION SUPPRESSED: a;st0;Notification for problem blocked because it has already been acknowledged.
+[1794420928] EXTERNAL COMMAND: ACKNOWLEDGE_SVC_PROBLEM;a;basic;1;1;1;bob;a second time
+[1794420928] SERVICE NOTIFICATION: ann;a;basic;ACKNOWLEDGEMENT (CRITICAL);n-svc;basic is 2 at second 13;bob;a second time
+[1794420928] SERVICE NOTIFICATION: bob;a;basic;ACKNOWLEDGEMENT (CRITICAL);n-svc;basic is 2 at second 13;bob;a second time
+[1794420928] SERVICE ALERT: a;softack;CRITICAL;SOFT;2;softack is 2 at second 15
+[1794420930] HOST NOTIFICATION SUPPRESSED: d;Notification for problem blocked because it has already been acknowledged.
+[1794420931] SERVICE ALERT: a;softack;CRITICAL;SOFT;3;softack is 2 at second 18
+[1794420933] SERVICE ALERT: a;st2;CRITICAL;HARD;3;st2 is 2 at second 20
+[1794420934] SERVICE ALERT: a;st1;CRITICAL;HARD;3;st1 is 2 at second 21
+[1794420934] SERVICE ALERT: a;softack;CRITICAL;SOFT;4;softack is 2 at second 21
+[1794420935] EXTERNAL COMMAND: REMOVE_SVC_ACKNOWLEDGEMENT;a;unack
+[1794420935] EXTERNAL COMMAND: REMOVE_HOST_ACKNOWLEDGEMENT;d2
+[1794420935] SERVICE ALERT: a;st0;CRITICAL;HARD;3;st0 is 2 at second 22
+[1794420935] SERVICE NOTIFICATION: ann;a;st0;CRITICAL;n-svc;st0 is 2 at second 22
+[1794420936] EXTERNAL COMMAND: REMOVE_SVC_ACKNOWLEDGEMENT;a;okk
+[1794420937] Warning: External command parse error [1794420937] NO_SUCH_COMMAND;a;b (Unknown command 'NO_SUCH_COMMAND')
+[1794420937] External command error: Unknown command 'NO_SUCH_COMMAND'
+[1794420937] Warning: External command parse error [1794420937] ACKNOWLEDGE_SVC_PROBLEM;a;basic (Missing argument: expected 6 arguments, found 1)
+[1794420937] External command error: Missing argument: expected 6 arguments, found 1
+[1794420937] HOST NOTIFICATION: ann;d2;DOWN;n-host;d2 is 2 at second 24
+[1794420937] SERVICE ALERT: a;softack;CRITICAL;SOFT;5;softack is 2 at second 24
+[1794420938] SERVICE NOTIFICATION: ann;a;unack;CRITICAL;n-svc;unack is 2 at second 25
+[1794420939] SERVICE NOTIFICATION: ann;a;st0;CRITICAL;n-svc;st0 is 2 at second 26
+[1794420940] SERVICE ALERT: a;softack;CRITICAL;SOFT;6;softack is 2 at second 27
+[1794420942] SERVICE NOTIFICATION: ann;a;unack;CRITICAL;n-svc;unack is 2 at second 29
+[1794420942] HOST NOTIFICATION: ann;d2;DOWN;n-host;d2 is 2 at second 29
+[1794420943] SERVICE NOTIFICATION: ann;a;st0;CRITICAL;n-svc;st0 is 2 at second 30
+[1794420943] SERVICE ALERT: a;softack;OK;SOFT;7;softack is 0 at second 30
+[1794420946] SERVICE ALERT: a;nonotify;OK;HARD;3;nonotify is 0 at second 33
+[1794420946] SERVICE NOTIFICATION: ann;a;nonotify;OK;n-svc;nonotify is 0 at second 33
+[1794420946] SERVICE NOTIFICATION: ann;a;unack;CRITICAL;n-svc;unack is 2 at second 33
+[1794420946] SERVICE ALERT: a;basic;OK;HARD;3;basic is 0 at second 33
+[1794420946] SERVICE NOTIFICATION: ann;a;basic;OK;n-svc;basic is 0 at second 33
+[1794420946] SERVICE NOTIFICATION: bob;a;basic;OK;n-svc;basic is 0 at second 33
+[1794420947] HOST NOTIFICATION: ann;d2;DOWN;n-host;d2 is 2 at second 34
+[1794420947] SERVICE NOTIFICATION: ann;a;st0;CRITICAL;n-svc;st0 is 2 at second 34
+[1794420949] SERVICE ALERT: a;st2;OK;HARD;3;st2 is 0 at second 36
+[1794420949] SERVICE NOTIFICATION: ann;a;st2;OK;n-svc;st2 is 0 at second 36
+[1794420950] SERVICE NOTIFICATION: ann;a;unack;CRITICAL;n-svc;unack is 2 at second 37
+[1794420950] SERVICE ALERT: a;st1;OK;HARD;3;st1 is 0 at second 37
+[1794420950] SERVICE NOTIFICATION: ann;a;st1;OK;n-svc;st1 is 0 at second 37
+[1794420951] SERVICE ALERT: a;st0;OK;HARD;3;st0 is 0 at second 38
+[1794420951] SERVICE NOTIFICATION: ann;a;st0;OK;n-svc;st0 is 0 at second 38
+[1794420952] HOST NOTIFICATION: ann;d2;DOWN;n-host;d2 is 2 at second 39
+[1794420954] SERVICE ALERT: a;unack;OK;HARD;3;unack is 0 at second 41
+[1794420954] SERVICE NOTIFICATION: ann;a;unack;OK;n-svc;unack is 0 at second 41
+[1794420955] HOST ALERT: d;UP;HARD;1;d is 0 at second 42
+[1794420955] HOST NOTIFICATION: ann;d;UP;n-host;d is 0 at second 42
+[1794420955] HOST NOTIFICATION: bob;d;UP;n-host;d is 0 at second 42
+[1794420957] HOST ALERT: d2;UP;HARD;1;d2 is 0 at second 44
+[1794420957] HOST NOTIFICATION: ann;d2;UP;n-host;d2 is 0 at second 44
+[1794420958] Caught 'Terminated', shutting down...
+[1794420958] Retention data successfully saved.
+[1794420958] Successfully shutdown... (PID=22)
+[1794420958] Event broker module 'NERD' deinitialized successfully.

@@ -1,0 +1,18 @@
+12 ACKNOWLEDGE_SVC_PROBLEM;a;basic;1;1;1;ann;looking at it
+12 ACKNOWLEDGE_SVC_PROBLEM;a;st0;0;1;0;ann;sticky zero
+12 ACKNOWLEDGE_SVC_PROBLEM;a;st1;1;1;0;ann;sticky one
+12 ACKNOWLEDGE_SVC_PROBLEM;a;st2;2;1;0;ann;sticky two
+12 ACKNOWLEDGE_SVC_PROBLEM;a;okk;1;1;1;ann;nothing wrong
+12 ACKNOWLEDGE_SVC_PROBLEM;a;softack;1;1;1;ann;still soft
+12 ACKNOWLEDGE_SVC_PROBLEM;a;unack;2;1;1;ann;to be removed
+12 ACKNOWLEDGE_SVC_PROBLEM;a;nonotify;2;0;1;bob;quiet
+13 ACKNOWLEDGE_SVC_PROBLEM;a;nosuch;1;1;1;ann;no such service
+13 ACKNOWLEDGE_SVC_PROBLEM;nosuch;basic;1;1;1;ann;no such host
+14 ACKNOWLEDGE_HOST_PROBLEM;d;2;1;0;bob;host ack
+14 ACKNOWLEDGE_HOST_PROBLEM;d2;1;1;1;ann;host ack two
+15 ACKNOWLEDGE_SVC_PROBLEM;a;basic;1;1;1;bob;a second time
+22 REMOVE_SVC_ACKNOWLEDGEMENT;a;unack
+22 REMOVE_HOST_ACKNOWLEDGEMENT;d2
+23 REMOVE_SVC_ACKNOWLEDGEMENT;a;okk
+24 NO_SUCH_COMMAND;a;b
+24 ACKNOWLEDGE_SVC_PROBLEM;a;basic

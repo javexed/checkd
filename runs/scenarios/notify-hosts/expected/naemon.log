@@ -1,0 +1,95 @@
+[1794420913] Naemon 1.5.2 starting... (PID=20)
+[1794420913] Local time is Wed Nov 11 18:15:13 UTC 2026
+[1794420913] LOG VERSION: 2.0
+[1794420913] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794420913] nerd: Channel hostchecks registered successfully
+[1794420913] nerd: Channel servicechecks registered successfully
+[1794420913] nerd: Fully initialized and ready to rock!
+[1794420913] Successfully launched command file worker with pid 21
+[1794420913] Reading all config object data
+[1794420913] Loading neb modules
+[1794420913] Warning: Service 'late' on host 'd'  has a notification interval less than its check interval!  Notifications are only re-sent after checks are made, so the effective notification interval will be that of the check interval.
+[1794420913] Warning: Service 's0' on host 'd'  has a notification interval less than its check interval!  Notifications are only re-sent after checks are made, so the effective notification interval will be that of the check interval.
+[1794420913] Warning: Service 's1' on host 'd'  has a notification interval less than its check interval!  Notifications are only re-sent after checks are made, so the effective notification interval will be that of the check interval.
+[1794420913] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794420913] Naemon successfully initialized (PID=20)
+[1794420916] SERVICE ALERT: d;s0;CRITICAL;HARD;1;d-s0 is 2 at second 3
+[1794420916] SERVICE NOTIFICATION: ann;d;s0;CRITICAL;n-svc;d-s0 is 2 at second 3
+[1794420918] HOST ALERT: donly;DOWN;SOFT;1;donly is 2 at second 5
+[1794420919] SERVICE ALERT: d;s1;CRITICAL;SOFT;1;d-s1 is 2 at second 6
+[1794420919] HOST ALERT: u;DOWN;SOFT;1;u is 2 at second 6
+[1794420919] HOST ALERT: d;DOWN;SOFT;1;d is 2 at second 6
+[1794420919] HOST ALERT: u;UNREACHABLE;SOFT;2;u is 2 at second 6
+[1794420920] HOST NOTIFICATION SUPPRESSED: d;Notifications blocked for object in a soft state.
+[1794420920] SERVICE NOTIFICATION SUPPRESSED: d;s0;Notification blocked for service because its associated host is either down or unreachable.
+[1794420920] HOST ALERT: honce;DOWN;SOFT;1;honce is 2 at second 7
+[1794420920] HOST ALERT: donly;DOWN;SOFT;2;donly is 2 at second 7
+[1794420920] SERVICE INFO: d;s1; Service switch to hard down state due to host down.
+[1794420920] SERVICE ALERT: d;s1;CRITICAL;HARD;2;d-s1 is 2 at second 7
+[1794420920] HOST ALERT: d;DOWN;SOFT;2;d is 2 at second 7
+[1794420921] SERVICE INFO: d;late; Service switch to hard down state due to host down.
+[1794420921] SERVICE ALERT: d;late;CRITICAL;HARD;1;d-late is 2 at second 8
+[1794420921] HOST ALERT: d;DOWN;HARD;3;d is 2 at second 8
+[1794420921] HOST CONTACT NOTIFICATION SUPPRESSED: cat;d;Notifications disabled for current object state.
+[1794420921] HOST NOTIFICATION: ann;d;DOWN;n-host;d is 2 at second 8
+[1794420921] HOST NOTIFICATION: bob;d;DOWN;n-host;d is 2 at second 8
+[1794420921] HOST ALERT: u;UNREACHABLE;HARD;3;u is 2 at second 8
+[1794420921] HOST CONTACT NOTIFICATION SUPPRESSED: bob;u;Notifications disabled for current object state.
+[1794420921] HOST NOTIFICATION: ann;u;UNREACHABLE;n-host;u is 2 at second 8
+[1794420921] HOST NOTIFICATION: cat;u;UNREACHABLE;n-host;u is 2 at second 8
+[1794420922] HOST ALERT: hdelay;DOWN;SOFT;1;hdelay is 2 at second 9
+[1794420922] HOST ALERT: hoff;DOWN;SOFT;1;hoff is 2 at second 9
+[1794420922] HOST ALERT: honce;DOWN;SOFT;2;honce is 2 at second 9
+[1794420922] HOST ALERT: donly;DOWN;HARD;3;donly is 2 at second 9
+[1794420922] HOST NOTIFICATION: ann;donly;DOWN;n-host;donly is 2 at second 9
+[1794420924] HOST NOTIFICATION SUPPRESSED: d;Re-notification blocked for this problem because not enough time has passed since last notification.
+[1794420924] HOST ALERT: hdelay;DOWN;SOFT;2;hdelay is 2 at second 11
+[1794420924] HOST ALERT: hoff;DOWN;SOFT;2;hoff is 2 at second 11
+[1794420924] HOST ALERT: honce;DOWN;HARD;3;honce is 2 at second 11
+[1794420924] HOST NOTIFICATION: ann;honce;DOWN;n-host;honce is 2 at second 11
+[1794420926] HOST ALERT: hdelay;DOWN;HARD;3;hdelay is 2 at second 13
+[1794420926] HOST NOTIFICATION SUPPRESSED: hdelay;Notification blocked because first_notification_delay is configured and not enough time has elapsed since the object changed to a non-UP/non-OK state (or since program start).
+[1794420926] HOST NOTIFICATION SUPPRESSED: u;Re-notification blocked for this problem because not enough time has passed since last notification.
+[1794420926] HOST ALERT: hoff;DOWN;HARD;3;hoff is 2 at second 13
+[1794420926] HOST NOTIFICATION SUPPRESSED: hoff;Notifications are disabled for this object by its configuration.
+[1794420927] HOST NOTIFICATION SUPPRESSED: donly;Re-notification blocked for this problem.
+[1794420928] HOST NOTIFICATION: ann;d;DOWN;n-host;d is 2 at second 13
+[1794420928] HOST NOTIFICATION: bob;d;DOWN;n-host;d is 2 at second 13
+[1794420929] HOST NOTIFICATION SUPPRESSED: honce;Re-notification blocked for this problem.
+[1794420931] HOST NOTIFICATION: ann;u;UNREACHABLE;n-host;u is 2 at second 18
+[1794420931] HOST NOTIFICATION: cat;u;UNREACHABLE;n-host;u is 2 at second 18
+[1794420936] HOST NOTIFICATION: ann;d;DOWN;n-host;d is 2 at second 18
+[1794420936] HOST NOTIFICATION: bob;d;DOWN;n-host;d is 2 at second 18
+[1794420936] HOST NOTIFICATION: ann;hdelay;DOWN;n-host;hdelay is 2 at second 23
+[1794420941] HOST NOTIFICATION: ann;hdelay;DOWN;n-host;hdelay is 2 at second 28
+[1794420941] HOST NOTIFICATION: ann;u;UNREACHABLE;n-host;u is 2 at second 28
+[1794420941] HOST NOTIFICATION: cat;u;UNREACHABLE;n-host;u is 2 at second 28
+[1794420944] SERVICE ALERT: d;s0;OK;HARD;1;d-s0 is 0 at second 31
+[1794420944] SERVICE NOTIFICATION: ann;d;s0;OK;n-svc;d-s0 is 0 at second 31
+[1794420944] SERVICE ALERT: d;s1;OK;HARD;2;d-s1 is 0 at second 31
+[1794420944] SERVICE NOTIFICATION SUPPRESSED: d;s1;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794420944] HOST ALERT: d;UP;HARD;1;d is 0 at second 31
+[1794420944] HOST NOTIFICATION: ann;d;UP;n-host;d is 0 at second 31
+[1794420944] HOST NOTIFICATION: bob;d;UP;n-host;d is 0 at second 31
+[1794420944] HOST ALERT: honce;UP;HARD;1;honce is 0 at second 31
+[1794420944] HOST NOTIFICATION: ann;honce;UP;n-host;honce is 0 at second 31
+[1794420944] HOST ALERT: u;UP;HARD;1;u is 0 at second 31
+[1794420944] HOST NOTIFICATION: ann;u;UP;n-host;u is 0 at second 31
+[1794420944] HOST NOTIFICATION: bob;u;UP;n-host;u is 0 at second 31
+[1794420945] SERVICE ALERT: d;late;CRITICAL;SOFT;1;d-late is 2 at second 32
+[1794420946] HOST ALERT: hoff;UP;HARD;1;hoff is 0 at second 33
+[1794420946] HOST NOTIFICATION: ann;hdelay;DOWN;n-host;hdelay is 2 at second 33
+[1794420946] SERVICE ALERT: d;late;CRITICAL;SOFT;2;d-late is 2 at second 33
+[1794420947] HOST ALERT: donly;UP;HARD;1;donly is 0 at second 34
+[1794420947] HOST NOTIFICATION SUPPRESSED: donly;Notifications disabled for current object state.
+[1794420947] SERVICE NOTIFICATION: ann;d;late;CRITICAL;n-svc;d-late is 2 at second 34
+[1794420951] HOST NOTIFICATION: ann;hdelay;DOWN;n-host;hdelay is 2 at second 38
+[1794420951] SERVICE NOTIFICATION: ann;d;late;CRITICAL;n-svc;d-late is 2 at second 38
+[1794420955] SERVICE ALERT: d;late;OK;HARD;3;d-late is 0 at second 42
+[1794420955] SERVICE NOTIFICATION: ann;d;late;OK;n-svc;d-late is 0 at second 42
+[1794420956] HOST ALERT: hdelay;UP;HARD;1;hdelay is 0 at second 43
+[1794420956] HOST NOTIFICATION: ann;hdelay;UP;n-host;hdelay is 0 at second 43
+[1794420958] Caught 'Terminated', shutting down...
+[1794420958] Retention data successfully saved.
+[1794420958] Successfully shutdown... (PID=20)
+[1794420958] Event broker module 'NERD' deinitialized successfully.

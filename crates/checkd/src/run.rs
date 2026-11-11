@@ -2,8 +2,13 @@
 //!
 //! The engine decides what is checked when and what a result means. This
 //! file does what the engine cannot: it keeps the time, starts the
-//! commands the engine asks for, stops the ones that run too long, and
-//! writes the log.
+//! commands the engine asks for, stops the ones that run too long, writes
+//! the log, and reads the command file.
+//!
+//! The command file is a named pipe at the configuration's
+//! `command_file`, made at the start when it is not there. A thread reads
+//! it line by line. It keeps the pipe open for writing too, so that the
+//! pipe does not end when the last program that wrote to it lets go.
 
 use std::collections::BTreeMap;
 use std::ffi::CStr;
@@ -26,6 +31,7 @@ use tokio::signal::unix::{SignalKind, signal};
 use tokio::sync::mpsc;
 
 use crate::otel::{self, Telemetry};
+use crate::store::{Sqlite, Store};
 
 /// How much of what a command prints is kept, on each of standard output
 /// and standard error. The rest is read and dropped, so that the command
@@ -52,9 +58,19 @@ pub struct RunArgs {
     /// Where to send OpenTelemetry data instead of where the environment
     /// says.
     pub otlp_endpoint: Option<String>,
+    /// The command file, from the configuration. Filled in by `run`.
+    pub command_file: Option<PathBuf>,
+    /// Where the state is kept: `sqlite:<file>`, `postgres:<connection>`
+    /// or `none`. Without it, an SQLite file beside the configuration's
+    /// `state_retention_file`.
+    pub store: Option<String>,
+    /// A `retention.dat` to take the state from when the store is empty.
+    /// Without it, the configuration's `state_retention_file`, if there
+    /// is one.
+    pub import: Option<PathBuf>,
 }
 
-pub fn run(args: RunArgs) -> ExitCode {
+pub fn run(mut args: RunArgs) -> ExitCode {
     let loaded = load(
         &args.main,
         &Options {
@@ -72,6 +88,11 @@ pub fn run(args: RunArgs) -> ExitCode {
         return ExitCode::from(1);
     };
 
+    let commands_on = main.get("check_external_commands").is_none_or(|value| value.trim() != "0");
+    args.command_file = main
+        .get("command_file")
+        .filter(|path| commands_on && !path.trim().is_empty())
+        .map(|path| args.path_map.apply(Path::new(path.trim())));
     let log_path = args
         .log_file
         .clone()
@@ -90,9 +111,42 @@ pub fn run(args: RunArgs) -> ExitCode {
     if let Some(at) = args.start_at {
         AHEAD.store(at - now(), Ordering::Relaxed);
     }
+    let retention = main
+        .get("state_retention_file")
+        .filter(|path| !path.trim().is_empty())
+        .map(|path| args.path_map.apply(Path::new(path.trim())));
+    let keep_state = main.get("retain_state_information").is_none_or(|v| v.trim() != "0");
     let (mut engine, warnings) = Engine::new(objects, &main, Box::new(Local), now());
     for warning in &warnings {
         eprintln!("warning: {warning}");
+    }
+    let spec = match (&args.store, &retention, keep_state) {
+        (Some(spec), _, _) => spec.clone(),
+        (None, Some(file), true) => {
+            let dir = file.parent().unwrap_or(Path::new("."));
+            format!("sqlite:{}", dir.join("checkd.sqlite").display())
+        }
+        _ => "none".to_string(),
+    };
+    let mut store = match open_store(&spec) {
+        Ok(store) => store,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(2);
+        }
+    };
+    if let Some(store) = store.as_mut() {
+        match restore(&mut engine, store, args.import.as_deref().or(retention.as_deref())) {
+            Ok(lines) => {
+                for line in lines {
+                    log.line(&line);
+                }
+            }
+            Err(message) => {
+                eprintln!("{message}");
+                return ExitCode::from(2);
+            }
+        }
     }
     let runtime = match tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -104,7 +158,7 @@ pub fn run(args: RunArgs) -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    match runtime.block_on(serve(&mut engine, &mut log, &args)) {
+    match runtime.block_on(serve(&mut engine, &mut log, &args, store.as_mut())) {
         Ok(()) => ExitCode::SUCCESS,
         Err(message) => {
             eprintln!("{message}");
@@ -114,7 +168,12 @@ pub fn run(args: RunArgs) -> ExitCode {
 }
 
 /// Runs the engine until a signal says stop or the time is up.
-async fn serve(engine: &mut Engine, log: &mut Log, args: &RunArgs) -> Result<(), String> {
+async fn serve(
+    engine: &mut Engine,
+    log: &mut Log,
+    args: &RunArgs,
+    mut store: Option<&mut Store>,
+) -> Result<(), String> {
     let seconds = args.seconds;
     let signals = |kind| signal(kind).map_err(|err| format!("cannot wait for signals: {err}"));
     let mut terminate = signals(SignalKind::terminate())?;
@@ -133,6 +192,10 @@ async fn serve(engine: &mut Engine, log: &mut Log, args: &RunArgs) -> Result<(),
     }
 
     let (done, mut results) = mpsc::unbounded_channel::<(u64, JobResult)>();
+    let (lines, mut commands) = mpsc::unbounded_channel::<String>();
+    if let Some(path) = &args.command_file {
+        command_file(path, lines)?;
+    }
     // The process group of every command that is running.
     let mut running: BTreeMap<u64, i32> = BTreeMap::new();
     let mut effects = Vec::new();
@@ -148,25 +211,49 @@ async fn serve(engine: &mut Engine, log: &mut Log, args: &RunArgs) -> Result<(),
         env!("CARGO_PKG_VERSION")
     ));
 
+    // Log lines not yet in the store, and when the store is next written
+    // anyway.
+    let mut unsaved: Vec<(i64, String)> = Vec::new();
+    let mut store_failing = false;
+    let mut next_save = now() + SAVE_EVERY;
+    if let Some(store) = store.as_deref_mut() {
+        save(engine, store, &mut unsaved, log, &mut store_failing);
+    }
+
     let why = loop {
-        for effect in effects.drain(..) {
+        let batch: Vec<Effect> = effects.drain(..).collect();
+        let mut jobs = Vec::new();
+        for effect in batch {
             match effect {
-                Effect::Log(line) => log.line(&line),
-                Effect::Run(job) => {
-                    let id = job.id;
-                    if otel::BUILT_IN {
-                        let latency = match job.kind {
-                            JobKind::HostCheck | JobKind::ServiceCheck => {
-                                engine.item(job.obj).latency
-                            }
-                            JobKind::HostHandler | JobKind::ServiceHandler => 0.0,
-                        };
-                        telemetry.job_started(&job, &engine.log_name(job.obj), latency);
-                    }
-                    if let Some(group) = start(job, done.clone()) {
-                        running.insert(id, group);
+                Effect::Log(line) => {
+                    log.line(&line);
+                    if store.is_some() {
+                        unsaved.push((now().div_euclid(1000), line));
                     }
                 }
+                Effect::Run(job) => jobs.push(job),
+            }
+        }
+        // What happened is on record before anything it asks for is run.
+        // A store that fails is tried again on the timer only, so that it
+        // does not hold up every event.
+        if !unsaved.is_empty() && !store_failing {
+            if let Some(store) = store.as_deref_mut() {
+                save(engine, store, &mut unsaved, log, &mut store_failing);
+                next_save = now() + SAVE_EVERY;
+            }
+        }
+        for job in jobs {
+            let id = job.id;
+            if otel::BUILT_IN {
+                let latency = match job.kind {
+                    JobKind::HostCheck | JobKind::ServiceCheck => engine.item(job.obj).latency,
+                    JobKind::HostHandler | JobKind::ServiceHandler | JobKind::Notification => 0.0,
+                };
+                telemetry.job_started(&job, &engine.log_name(job.obj), latency);
+            }
+            if let Some(group) = start(job, done.clone()) {
+                running.insert(id, group);
             }
         }
         let wait = match engine.next_wakeup() {
@@ -174,7 +261,14 @@ async fn serve(engine: &mut Engine, log: &mut Log, args: &RunArgs) -> Result<(),
             None => Duration::from_secs(3600),
         };
         let flush = telemetry.next_flush();
+        let save_in = Duration::from_millis((next_save - now()).max(0) as u64);
         tokio::select! {
+            _ = tokio::time::sleep(save_in), if store.is_some() => {
+                if let Some(store) = store.as_deref_mut() {
+                    save(engine, store, &mut unsaved, log, &mut store_failing);
+                }
+                next_save = now() + SAVE_EVERY;
+            }
             _ = tokio::time::sleep(wait) => engine.advance(now(), &mut effects),
             Some((id, result)) = results.recv() => {
                 running.remove(&id);
@@ -183,6 +277,7 @@ async fn serve(engine: &mut Engine, log: &mut Log, args: &RunArgs) -> Result<(),
                 engine.job_done(now(), id, result, &mut effects);
                 telemetry.job_done(id, &outcome, read);
             }
+            Some(line) = commands.recv() => engine.command(&line, now(), &mut effects),
             _ = tokio::time::sleep(flush.unwrap_or_default()), if flush.is_some() => telemetry.flush(),
             _ = terminate.recv() => break "Caught SIGTERM",
             _ = interrupt.recv() => break "Caught SIGINT",
@@ -194,8 +289,214 @@ async fn serve(engine: &mut Engine, log: &mut Log, args: &RunArgs) -> Result<(),
     for group in running.values() {
         stop_group(*group);
     }
+    if let Some(store) = store.as_deref_mut() {
+        save(engine, store, &mut unsaved, log, &mut store_failing);
+        if !store_failing {
+            log.line(&format!("State saved to {}", store.describe()));
+        }
+    }
     telemetry.shutdown().await;
     log.line(&format!("Successfully shutdown... (PID={pid})"));
+    Ok(())
+}
+
+/// How often the state is written when nothing in the log calls for it.
+const SAVE_EVERY: Ms = 5000;
+
+/// Opens the store a `--store` value names.
+fn open_store(spec: &str) -> Result<Option<Store>, String> {
+    if spec == "none" {
+        return Ok(None);
+    }
+    if let Some(path) = spec.strip_prefix("sqlite:") {
+        return Store::new(Box::new(Sqlite::open(path)?)).map(Some);
+    }
+    if let Some(conninfo) = spec.strip_prefix("postgres:") {
+        return crate::postgres::open(conninfo).map(Some);
+    }
+    Err(format!("--store: '{spec}' is not sqlite:<file>, postgres:<connection> or none"))
+}
+
+/// `checkd state`: prints what a store holds, one line per thing.
+pub fn show_state(spec: &str) -> ExitCode {
+    let mut store = match open_store(spec) {
+        Ok(Some(store)) => store,
+        Ok(None) => {
+            eprintln!("state needs a store, not none");
+            return ExitCode::from(2);
+        }
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(2);
+        }
+    };
+    let snapshot = match store.load() {
+        Ok(Some(snapshot)) => snapshot,
+        Ok(None) => {
+            println!("{}: no state saved yet", store.describe());
+            return ExitCode::SUCCESS;
+        }
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(2);
+        }
+    };
+    println!("notifications {}", if snapshot.notifications_enabled { "on" } else { "off" });
+    for o in &snapshot.objects {
+        let name = match &o.service {
+            Some(service) => format!("{};{service}", o.host),
+            None => o.host.clone(),
+        };
+        let state = checkd_core::notify::state_name(
+            if o.service.is_some() {
+                checkd_core::engine::Obj::Service(0)
+            } else {
+                checkd_core::engine::Obj::Host(0)
+            },
+            o.state,
+        );
+        let mut line = format!(
+            "object {name} {state} {} attempt={} notified={} notifications={}",
+            if o.hard { "HARD" } else { "SOFT" },
+            o.attempt,
+            o.notification_number,
+            if o.notifications_enabled { "on" } else { "off" },
+        );
+        if let Some(ack) = &o.ack {
+            line.push_str(&format!(
+                " ack={}:{}{}",
+                ack.author,
+                ack.comment,
+                if ack.sticky { ":sticky" } else { "" }
+            ));
+        }
+        println!("{line} output={}", o.output);
+    }
+    for c in &snapshot.comments {
+        let name = c.service.as_ref().map_or(c.host.clone(), |s| format!("{};{s}", c.host));
+        println!(
+            "comment {} {name} type={} persistent={} {}: {}",
+            c.id, c.entry_type, c.persistent as u8, c.author, c.text
+        );
+    }
+    for d in &snapshot.downtimes {
+        let name = d.service.as_ref().map_or(d.host.clone(), |s| format!("{};{s}", d.host));
+        println!(
+            "downtime {} {name} {}-{} {} active={} {}: {}",
+            d.id,
+            d.start,
+            d.end,
+            if d.fixed { "fixed" } else { "flexible" },
+            d.active as u8,
+            d.author,
+            d.comment
+        );
+    }
+    ExitCode::SUCCESS
+}
+
+/// Puts the saved state back into the engine: from the store, or, when it
+/// holds none, from a retention file. The lines are for the log.
+fn restore(engine: &mut Engine, store: &mut Store, import: Option<&Path>) -> Result<Vec<String>, String> {
+    let mut lines = Vec::new();
+    let (snapshot, from) = match store.load()? {
+        Some(snapshot) => (snapshot, store.describe()),
+        None => match import.filter(|path| path.exists()) {
+            Some(path) => {
+                let text = std::fs::read_to_string(path)
+                    .map_err(|err| format!("cannot read {}: {err}", path.display()))?;
+                let (snapshot, notes) = checkd_core::retention::read(&text);
+                for note in notes {
+                    lines.push(format!("Retention file {}: {note}", path.display()));
+                }
+                (snapshot, format!("the retention file {}", path.display()))
+            }
+            None => return Ok(lines),
+        },
+    };
+    let dropped = engine.restore(&snapshot);
+    lines.push(format!(
+        "Read the state of {} hosts and services, {} comments and {} downtimes from {from}",
+        snapshot.objects.len() - dropped.min(snapshot.objects.len()),
+        snapshot.comments.len(),
+        snapshot.downtimes.len()
+    ));
+    if dropped > 0 {
+        lines.push(format!("{dropped} saved entries name objects that are not in the configuration and were dropped"));
+    }
+    Ok(lines)
+}
+
+/// Writes the engine's state and the log lines not yet saved. A store that
+/// fails is said so in the log once, until it works again.
+fn save(engine: &Engine, store: &mut Store, unsaved: &mut Vec<(i64, String)>, log: &mut Log, failing: &mut bool) {
+    match store.write(&engine.snapshot(), unsaved, now().div_euclid(1000)) {
+        Ok(()) => {
+            if *failing {
+                log.line(&format!("The store {} can be written again", store.describe()));
+            }
+            *failing = false;
+            unsaved.clear();
+        }
+        Err(message) => {
+            if !*failing {
+                log.line(&format!("Warning: the store cannot be written: {message}"));
+            }
+            *failing = true;
+            // Lines wait for the next try, up to a limit.
+            if unsaved.len() > 100_000 {
+                let extra = unsaved.len() - 100_000;
+                unsaved.drain(..extra);
+            }
+        }
+    }
+}
+
+/// Makes the command file if it is not there, and starts the thread that
+/// reads it.
+fn command_file(path: &Path, lines: mpsc::UnboundedSender<String>) -> Result<(), String> {
+    use std::io::BufRead;
+    use std::os::unix::ffi::OsStrExt;
+    use std::os::unix::fs::FileTypeExt;
+
+    match std::fs::metadata(path) {
+        Ok(meta) if meta.file_type().is_fifo() => {}
+        Ok(_) => {
+            return Err(format!(
+                "the command file {} is there and is not a named pipe",
+                path.display()
+            ));
+        }
+        Err(_) => {
+            let name = std::ffi::CString::new(path.as_os_str().as_bytes())
+                .map_err(|_| format!("bad command file name {}", path.display()))?;
+            // SAFETY: a plain system call with a string that lives
+            // through it.
+            if unsafe { libc::mkfifo(name.as_ptr(), 0o660) } != 0 {
+                return Err(format!(
+                    "cannot make the command file {}: {}",
+                    path.display(),
+                    std::io::Error::last_os_error()
+                ));
+            }
+        }
+    }
+    // Read and write: the pipe then never sees its last writer go.
+    let pipe = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)
+        .map_err(|err| format!("cannot open the command file {}: {err}", path.display()))?;
+    std::thread::spawn(move || {
+        let reader = std::io::BufReader::new(pipe);
+        for line in reader.split(b'\n') {
+            let Ok(line) = line else { return };
+            let line = String::from_utf8_lossy(&line).into_owned();
+            if !line.trim().is_empty() && lines.send(line).is_err() {
+                return;
+            }
+        }
+    });
     Ok(())
 }
 

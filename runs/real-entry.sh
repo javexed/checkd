@@ -43,11 +43,38 @@ read -r start_at < /plan/start
 
 cd /
 date +%s%N > /case/state/start
+
+# The external commands the reference was sent, at the same milliseconds
+# after the start, with checkd's time in front.
+feed() {
+    start=$(cat /case/state/start)
+    while read -r at text; do
+        now=$(date +%s%N)
+        wait=$(( at - (now - start) / 1000000 ))
+        if [ "$wait" -gt 0 ]; then
+            sleep "$(printf '%d.%03d' $((wait / 1000)) $((wait % 1000)))"
+        fi
+        tries=0
+        while [ ! -p "$work/naemon.cmd" ] && [ "$tries" -lt 50 ]; do
+            sleep 0.1
+            tries=$((tries + 1))
+        done
+        now=$(date +%s%N)
+        stamp=$(( (start_at + (now - start) / 1000000) / 1000 ))
+        printf '[%d] %s\n' "$stamp" "$text" > "$work/naemon.cmd"
+    done < /in/expected/commands
+}
+feeder=
+if [ -f /in/expected/commands ]; then
+    feed &
+    feeder=$!
+fi
 set +e
 # CHECKD_OPTIONS: further options, for runs/otel.
 # shellcheck disable=SC2086
 timeout -s TERM "$seconds" /checkd run --start-at "$start_at" \
     --first-checks /plan/firsts ${CHECKD_OPTIONS:-} /case/naemon.cfg > /out/stdout.txt 2>&1
+[ -n "$feeder" ] && kill "$feeder" 2>/dev/null
 set -e
 
 [ -f "$work/naemon.log" ] && cp "$work/naemon.log" /out/naemon.log

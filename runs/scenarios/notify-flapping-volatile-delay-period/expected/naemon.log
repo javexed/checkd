@@ -1,0 +1,99 @@
+[1794421189] Naemon 1.5.2 starting... (PID=16)
+[1794421189] Local time is Wed Nov 11 18:19:49 UTC 2026
+[1794421189] LOG VERSION: 2.0
+[1794421189] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794421189] nerd: Channel hostchecks registered successfully
+[1794421189] nerd: Channel servicechecks registered successfully
+[1794421189] nerd: Fully initialized and ready to rock!
+[1794421189] Successfully launched command file worker with pid 17
+[1794421189] Reading all config object data
+[1794421189] Loading neb modules
+[1794421189] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794421189] Naemon successfully initialized (PID=16)
+[1794421191] SERVICE ALERT: a;flap;CRITICAL;HARD;1;flap call 2 gives 2
+[1794421191] SERVICE NOTIFICATION: ann;a;flap;CRITICAL;n-svc;flap call 2 gives 2
+[1794421192] SERVICE ALERT: a;even;CRITICAL;HARD;1;even is 2 at second 3
+[1794421192] SERVICE NOTIFICATION SUPPRESSED: a;even;Notification blocked by timeperiod; notifications should not be sent out at this time.
+[1794421192] SERVICE ALERT: a;even0;CRITICAL;HARD;1;even0 is 2 at second 3
+[1794421192] SERVICE NOTIFICATION SUPPRESSED: a;even0;Notification blocked by timeperiod; notifications should not be sent out at this time.
+[1794421193] SERVICE ALERT: a;flap;OK;HARD;1;flap call 3 gives 0
+[1794421193] SERVICE NOTIFICATION: ann;a;flap;OK;n-svc;flap call 3 gives 0
+[1794421194] SERVICE ALERT: a;vol;CRITICAL;HARD;1;vol call 2 gives 2
+[1794421194] SERVICE NOTIFICATION: ann;a;vol;CRITICAL;n-svc;vol call 2 gives 2
+[1794421194] SERVICE ALERT: a;dly;CRITICAL;SOFT;1;dly is 2 at second 5
+[1794421195] SERVICE ALERT: hc;inherit;CRITICAL;HARD;1;hc-inherit is 2 at second 6
+[1794421195] SERVICE NOTIFICATION: bob;hc;inherit;CRITICAL;n-svc;hc-inherit is 2 at second 6
+[1794421195] SERVICE ALERT: a;flap;CRITICAL;HARD;1;flap call 4 gives 2
+[1794421195] SERVICE NOTIFICATION: ann;a;flap;CRITICAL;n-svc;flap call 4 gives 2
+[1794421197] SERVICE ALERT: a;flap;OK;HARD;1;flap call 5 gives 0
+[1794421197] SERVICE NOTIFICATION: ann;a;flap;OK;n-svc;flap call 5 gives 0
+[1794421197] SERVICE ALERT: a;vol;CRITICAL;HARD;1;vol call 3 gives 2
+[1794421197] SERVICE NOTIFICATION: ann;a;vol;CRITICAL;n-svc;vol call 3 gives 2
+[1794421197] SERVICE ALERT: a;dly;CRITICAL;SOFT;2;dly is 2 at second 8
+[1794421199] SERVICE ALERT: a;flap;CRITICAL;HARD;1;flap call 6 gives 2
+[1794421199] SERVICE FLAPPING ALERT: a;flap;STARTED; Service appears to have started flapping (24.2% change >= 20.0% threshold)
+[1794421199] SERVICE NOTIFICATION: ann;a;flap;FLAPPINGSTART (CRITICAL);n-svc;flap call 6 gives 2;;
+[1794421199] SERVICE NOTIFICATION SUPPRESSED: a;flap;Notification blocked because the object is currently flapping.
+[1794421199] SERVICE NOTIFICATION SUPPRESSED: hc;inherit;Re-notification blocked for this problem.
+[1794421200] SERVICE ALERT: a;vol;WARNING;HARD;1;vol call 4 gives 1
+[1794421200] SERVICE NOTIFICATION: ann;a;vol;WARNING;n-svc;vol call 4 gives 1
+[1794421200] SERVICE ALERT: a;dly;CRITICAL;HARD;3;dly is 2 at second 11
+[1794421200] SERVICE NOTIFICATION SUPPRESSED: a;dly;Notification blocked because first_notification_delay is configured and not enough time has elapsed since the object changed to a non-UP/non-OK state (or since program start).
+[1794421201] SERVICE ALERT: a;flap;OK;HARD;1;flap call 7 gives 0
+[1794421201] SERVICE NOTIFICATION SUPPRESSED: a;flap;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794421201] SERVICE NOTIFICATION: ann;a;even;CRITICAL;n-svc;even is 2 at second 12
+[1794421201] SERVICE NOTIFICATION: ann;a;even0;CRITICAL;n-svc;even0 is 2 at second 12
+[1794421203] SERVICE ALERT: a;vol;CRITICAL;HARD;1;vol call 5 gives 2
+[1794421203] SERVICE NOTIFICATION: ann;a;vol;CRITICAL;n-svc;vol call 5 gives 2
+[1794421203] SERVICE ALERT: a;flap;CRITICAL;HARD;1;flap call 8 gives 2
+[1794421203] SERVICE NOTIFICATION SUPPRESSED: a;flap;Notification blocked because the object is currently flapping.
+[1794421204] SERVICE NOTIFICATION SUPPRESSED: a;even;Re-notification blocked for this problem because not enough time has passed since last notification.
+[1794421204] SERVICE NOTIFICATION SUPPRESSED: a;even0;Re-notification blocked for this problem.
+[1794421205] SERVICE ALERT: a;flap;OK;HARD;1;flap call 9 gives 0
+[1794421205] SERVICE NOTIFICATION SUPPRESSED: a;flap;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794421206] SERVICE ALERT: a;vol;OK;HARD;1;vol call 6 gives 0
+[1794421206] SERVICE NOTIFICATION: ann;a;vol;OK;n-svc;vol call 6 gives 0
+[1794421207] SERVICE ALERT: a;flap;CRITICAL;HARD;1;flap call 10 gives 2
+[1794421207] SERVICE NOTIFICATION SUPPRESSED: a;flap;Notification blocked because the object is currently flapping.
+[1794421207] SERVICE NOTIFICATION: ann;a;even;CRITICAL;n-svc;even is 2 at second 18
+[1794421208] SERVICE NOTIFICATION: ann;a;dly;CRITICAL;n-svc;dly is 2 at second 19
+[1794421209] SERVICE ALERT: a;flap;OK;HARD;1;flap call 11 gives 0
+[1794421209] SERVICE NOTIFICATION SUPPRESSED: a;flap;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794421210] SERVICE NOTIFICATION SUPPRESSED: a;dly;Re-notification blocked for this problem because not enough time has passed since last notification.
+[1794421211] SERVICE ALERT: a;flap;CRITICAL;HARD;1;flap call 12 gives 2
+[1794421211] SERVICE NOTIFICATION SUPPRESSED: a;flap;Notification blocked because the object is currently flapping.
+[1794421213] SERVICE ALERT: a;flap;OK;HARD;1;flap call 13 gives 0
+[1794421213] SERVICE NOTIFICATION SUPPRESSED: a;flap;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794421213] SERVICE NOTIFICATION: ann;a;even;CRITICAL;n-svc;even is 2 at second 24
+[1794421215] SERVICE ALERT: a;flap;CRITICAL;HARD;1;flap call 14 gives 2
+[1794421215] SERVICE NOTIFICATION SUPPRESSED: a;flap;Notification blocked because the object is currently flapping.
+[1794421217] SERVICE ALERT: a;flap;OK;HARD;1;flap call 15 gives 0
+[1794421217] SERVICE NOTIFICATION SUPPRESSED: a;flap;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794421219] SERVICE ALERT: hc;inherit;OK;HARD;1;hc-inherit is 0 at second 30
+[1794421219] SERVICE NOTIFICATION: bob;hc;inherit;OK;n-svc;hc-inherit is 0 at second 30
+[1794421219] SERVICE ALERT: a;flap;CRITICAL;HARD;1;flap call 16 gives 2
+[1794421219] SERVICE NOTIFICATION SUPPRESSED: a;flap;Notification blocked because the object is currently flapping.
+[1794421219] SERVICE NOTIFICATION: ann;a;even;CRITICAL;n-svc;even is 2 at second 30
+[1794421221] SERVICE ALERT: a;flap;OK;HARD;1;flap call 17 gives 0
+[1794421221] SERVICE NOTIFICATION SUPPRESSED: a;flap;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794421225] SERVICE NOTIFICATION: ann;a;even;CRITICAL;n-svc;even is 2 at second 36
+[1794421231] SERVICE NOTIFICATION: ann;a;even;CRITICAL;n-svc;even is 2 at second 42
+[1794421237] SERVICE NOTIFICATION: ann;a;even;CRITICAL;n-svc;even is 2 at second 48
+[1794421238] SERVICE NOTIFICATION: ann;a;dly;CRITICAL;n-svc;dly is 2 at second 49
+[1794421243] SERVICE NOTIFICATION: ann;a;even;CRITICAL;n-svc;even is 2 at second 54
+[1794421249] Auto-save of retention data completed successfully.
+[1794421249] SERVICE NOTIFICATION: ann;a;even;CRITICAL;n-svc;even is 2 at second 60
+[1794421250] SERVICE ALERT: a;dly;OK;HARD;3;dly is 0 at second 61
+[1794421250] SERVICE NOTIFICATION: ann;a;dly;OK;n-svc;dly is 0 at second 61
+[1794421255] SERVICE NOTIFICATION: ann;a;even;CRITICAL;n-svc;even is 2 at second 66
+[1794421257] SERVICE FLAPPING ALERT: a;flap;STOPPED; Service appears to have stopped flapping (7.9% change < 10.0% threshold)
+[1794421257] SERVICE NOTIFICATION: ann;a;flap;FLAPPINGSTOP (OK);n-svc;flap call 35 gives 0;;
+[1794421261] SERVICE NOTIFICATION SUPPRESSED: a;even;Notification blocked by timeperiod; notifications should not be sent out at this time.
+[1794421261] SERVICE NOTIFICATION SUPPRESSED: a;even0;Notification blocked by timeperiod; notifications should not be sent out at this time.
+[1794421309] Auto-save of retention data completed successfully.
+[1794421309] SERVICE ALERT: a;even;OK;HARD;1;even is 0 at second 120
+[1794421309] SERVICE ALERT: a;even0;OK;HARD;1;even0 is 0 at second 120
+[1794421339] Caught 'Terminated', shutting down...
+[1794421339] Retention data successfully saved.
+[1794421339] Successfully shutdown... (PID=16)
+[1794421339] Event broker module 'NERD' deinitialized successfully.

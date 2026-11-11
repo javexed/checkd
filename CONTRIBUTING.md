@@ -30,6 +30,14 @@ nothing in this repo may be derived from their source.
   in `runs/scenarios/<name>/expected`. Where checkd does something else on
   purpose, the scenario's `compare` file says so and why.
 
+- The same for the reference's state file, `retention.dat`: its block
+  kinds and keys were read off files the reference wrote at the end of
+  runs on configs written for this project. The import reads that
+  format; no Naemon code that writes or reads it was looked at.
+- Test tools that are pulled as images (the OpenTelemetry collector,
+  PostgreSQL) are pinned by digest in the script that uses them, run
+  without a network, and are no part of checkd.
+
 By contributing you confirm that your change was not written from the GPL
 source.
 

@@ -553,6 +553,7 @@ fn kind_name(kind: JobKind) -> &'static str {
         JobKind::ServiceCheck => "service_check",
         JobKind::HostHandler => "host_event_handler",
         JobKind::ServiceHandler => "service_event_handler",
+        JobKind::Notification => "notification",
     }
 }
 

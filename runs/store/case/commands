@@ -1,0 +1,6 @@
+# Seconds after the first start, and the command. {+N} is that start
+# plus N seconds.
+5 ACKNOWLEDGE_SVC_PROBLEM;a;acked;2;1;1;ann;kept over a kill
+5 SCHEDULE_SVC_DOWNTIME;a;down;{+5};{+40};1;0;0;ann;over the kill
+5 ADD_SVC_COMMENT;a;counted;1;ann;a comment that persists
+5 DISABLE_SVC_NOTIFICATIONS;a;quiet

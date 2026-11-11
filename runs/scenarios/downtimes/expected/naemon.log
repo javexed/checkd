@@ -1,0 +1,167 @@
+[1794420913] Naemon 1.5.2 starting... (PID=22)
+[1794420913] Local time is Wed Nov 11 18:15:13 UTC 2026
+[1794420913] LOG VERSION: 2.0
+[1794420913] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794420913] nerd: Channel hostchecks registered successfully
+[1794420913] nerd: Channel servicechecks registered successfully
+[1794420913] nerd: Fully initialized and ready to rock!
+[1794420913] Successfully launched command file worker with pid 26
+[1794420913] Reading all config object data
+[1794420913] Loading neb modules
+[1794420913] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794420913] Naemon successfully initialized (PID=22)
+[1794420915] EXTERNAL COMMAND: SCHEDULE_SVC_DOWNTIME;a;fixed;1794420921;1794420937;1;0;0;ann;fixed downtime
+[1794420915] EXTERNAL COMMAND: SCHEDULE_SVC_DOWNTIME;a;before;1794420921;1794420937;1;0;0;ann;problem came first
+[1794420915] EXTERNAL COMMAND: SCHEDULE_SVC_DOWNTIME;a;inside;1794420921;1794420937;1;0;0;ann;problem and recovery inside
+[1794420915] EXTERNAL COMMAND: SCHEDULE_SVC_DOWNTIME;a;flex;1794420917;1794420963;0;0;10;ann;flexible
+[1794420915] EXTERNAL COMMAND: SCHEDULE_SVC_DOWNTIME;a;flexok;1794420917;1794420933;0;0;10;ann;flexible never starts
+[1794420915] EXTERNAL COMMAND: SCHEDULE_SVC_DOWNTIME;a;cancel;1794420921;1794420963;1;0;0;ann;to be cancelled
+[1794420915] EXTERNAL COMMAND: SCHEDULE_SVC_DOWNTIME;a;two;1794420921;1794420931;1;0;0;ann;first of two
+[1794420915] EXTERNAL COMMAND: SCHEDULE_SVC_DOWNTIME;a;two;1794420927;1794420941;1;0;0;bob;second of two
+[1794420915] EXTERNAL COMMAND: SCHEDULE_HOST_DOWNTIME;d;1794420917;1794420939;1;0;0;ann;host downtime
+[1794420916] EXTERNAL COMMAND: SCHEDULE_SVC_DOWNTIME;a;past;1794420914;1794420915;1;0;0;ann;already over
+[1794420916] Error: External command failed -> SCHEDULE_SVC_DOWNTIME;a;past;1794420914;1794420915;1;0;0;ann;already over
+[1794420916] EXTERNAL COMMAND: SCHEDULE_SVC_DOWNTIME;a;past;1794420943;1794420933;1;0;0;ann;ends before it starts
+[1794420916] Error: External command failed -> SCHEDULE_SVC_DOWNTIME;a;past;1794420943;1794420933;1;0;0;ann;ends before it starts
+[1794420916] Warning: External command parse error [1794420916] SCHEDULE_SVC_DOWNTIME;a;nosuch;1794420921;1794420937;1;0;0;ann;no such service (Failed validation of service as type service (argument 0))
+[1794420916] External command error: Failed validation of service as type service (argument 0)
+[1794420916] SERVICE ALERT: a;before;CRITICAL;SOFT;1;before is 2 at second 3
+[1794420917] HOST DOWNTIME ALERT: d;STARTED; Host has entered a period of scheduled downtime
+[1794420917] HOST NOTIFICATION: ann;d;DOWNTIMESTART (UP);n-host;d is 0 at second 3;ann;host downtime
+[1794420917] SERVICE ALERT: a;before;CRITICAL;SOFT;2;before is 2 at second 4
+[1794420918] SERVICE ALERT: a;before;CRITICAL;HARD;3;before is 2 at second 5
+[1794420918] SERVICE NOTIFICATION: ann;a;before;CRITICAL;n-svc;before is 2 at second 5
+[1794420919] SERVICE ALERT: e;one;CRITICAL;HARD;1;e-one is 2 at second 6
+[1794420919] SERVICE NOTIFICATION: ann;e;one;CRITICAL;n-svc;e-one is 2 at second 6
+[1794420921] SERVICE DOWNTIME ALERT: a;fixed;STARTED; Service has entered a period of scheduled downtime
+[1794420921] SERVICE NOTIFICATION: ann;a;fixed;DOWNTIMESTART (OK);n-svc;fixed is 0 at second 5;ann;fixed downtime
+[1794420921] SERVICE DOWNTIME ALERT: a;before;STARTED; Service has entered a period of scheduled downtime
+[1794420921] SERVICE NOTIFICATION: ann;a;before;DOWNTIMESTART (CRITICAL);n-svc;before is 2 at second 5;ann;problem came first
+[1794420921] SERVICE DOWNTIME ALERT: a;inside;STARTED; Service has entered a period of scheduled downtime
+[1794420921] SERVICE NOTIFICATION: ann;a;inside;DOWNTIMESTART (OK);n-svc;inside is 0 at second 7;ann;problem and recovery inside
+[1794420921] SERVICE DOWNTIME ALERT: a;cancel;STARTED; Service has entered a period of scheduled downtime
+[1794420921] SERVICE NOTIFICATION: ann;a;cancel;DOWNTIMESTART (OK);n-svc;cancel is 0 at second 7;ann;to be cancelled
+[1794420921] SERVICE DOWNTIME ALERT: a;two;STARTED; Service has entered a period of scheduled downtime
+[1794420921] SERVICE NOTIFICATION: ann;a;two;DOWNTIMESTART (OK);n-svc;two is 0 at second 7;ann;first of two
+[1794420921] HOST ALERT: d;DOWN;SOFT;1;d is 2 at second 8
+[1794420921] SERVICE INFO: d;ond; Service switch to hard down state due to host down.
+[1794420921] SERVICE ALERT: d;ond;CRITICAL;HARD;1;d-ond is 2 at second 8
+[1794420921] HOST ALERT: d;DOWN;SOFT;2;d is 2 at second 8
+[1794420922] SERVICE NOTIFICATION SUPPRESSED: a;before;Notification blocked for object currently in a scheduled downtime.
+[1794420923] SERVICE NOTIFICATION: ann;e;one;CRITICAL;n-svc;e-one is 2 at second 10
+[1794420923] HOST ALERT: d;DOWN;HARD;3;d is 2 at second 10
+[1794420923] HOST NOTIFICATION SUPPRESSED: d;Notification blocked for object currently in a scheduled downtime.
+[1794420924] HOST ALERT: e;DOWN;SOFT;1;e is 2 at second 11
+[1794420925] SERVICE ALERT: a;flex;CRITICAL;SOFT;1;flex is 2 at second 12
+[1794420926] SERVICE ALERT: a;fixed;CRITICAL;SOFT;1;fixed is 2 at second 13
+[1794420926] SERVICE ALERT: a;flex;CRITICAL;SOFT;2;flex is 2 at second 13
+[1794420926] HOST ALERT: e;DOWN;SOFT;2;e is 2 at second 13
+[1794420927] HOST NOTIFICATION SUPPRESSED: e;Notifications blocked for object in a soft state.
+[1794420927] SERVICE NOTIFICATION SUPPRESSED: e;one;Notification blocked for service because its associated host is either down or unreachable.
+[1794420927] SERVICE ALERT: a;past;CRITICAL;SOFT;1;past is 2 at second 14
+[1794420927] SERVICE ALERT: a;fixed;CRITICAL;SOFT;2;fixed is 2 at second 14
+[1794420927] SERVICE ALERT: a;flex;CRITICAL;HARD;3;flex is 2 at second 14
+[1794420927] SERVICE DOWNTIME ALERT: a;flex;STARTED; Service has entered a period of scheduled downtime
+[1794420927] SERVICE NOTIFICATION: ann;a;flex;DOWNTIMESTART (CRITICAL);n-svc;flex is 2 at second 14;ann;flexible
+[1794420928] SERVICE ALERT: a;two;CRITICAL;SOFT;1;two is 2 at second 15
+[1794420928] SERVICE ALERT: a;cancel;CRITICAL;SOFT;1;cancel is 2 at second 15
+[1794420928] SERVICE ALERT: a;inside;CRITICAL;SOFT;1;inside is 2 at second 15
+[1794420928] SERVICE ALERT: a;past;CRITICAL;SOFT;2;past is 2 at second 15
+[1794420928] SERVICE ALERT: a;fixed;CRITICAL;HARD;3;fixed is 2 at second 15
+[1794420928] SERVICE NOTIFICATION SUPPRESSED: a;fixed;Notification blocked for object currently in a scheduled downtime.
+[1794420928] HOST ALERT: e;DOWN;HARD;3;e is 2 at second 15
+[1794420928] HOST NOTIFICATION: ann;e;DOWN;n-host;e is 2 at second 15
+[1794420929] SERVICE ALERT: a;two;CRITICAL;SOFT;2;two is 2 at second 16
+[1794420929] SERVICE ALERT: a;inside;OK;SOFT;2;inside is 0 at second 16
+[1794420929] SERVICE ALERT: a;cancel;CRITICAL;SOFT;2;cancel is 2 at second 16
+[1794420929] SERVICE ALERT: a;past;CRITICAL;HARD;3;past is 2 at second 16
+[1794420929] SERVICE NOTIFICATION: ann;a;past;CRITICAL;n-svc;past is 2 at second 16
+[1794420930] SERVICE ALERT: a;two;CRITICAL;HARD;3;two is 2 at second 17
+[1794420930] SERVICE NOTIFICATION SUPPRESSED: a;two;Notification blocked for object currently in a scheduled downtime.
+[1794420930] SERVICE ALERT: a;cancel;CRITICAL;HARD;3;cancel is 2 at second 17
+[1794420930] SERVICE NOTIFICATION SUPPRESSED: a;cancel;Notification blocked for object currently in a scheduled downtime.
+[1794420931] HOST NOTIFICATION SUPPRESSED: e;Re-notification blocked for this problem because not enough time has passed since last notification.
+[1794420931] SERVICE ALERT: a;flex;OK;HARD;3;flex is 0 at second 18
+[1794420931] SERVICE NOTIFICATION SUPPRESSED: a;flex;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794420933] EXTERNAL COMMAND: DEL_SVC_DOWNTIME;6
+[1794420933] SERVICE DOWNTIME ALERT: a;cancel;CANCELLED; Scheduled downtime for service has been cancelled.
+[1794420933] SERVICE NOTIFICATION: ann;a;cancel;DOWNTIMECANCELLED (CRITICAL);n-svc;cancel is 2 at second 17;;
+[1794420933] SERVICE NOTIFICATION: ann;a;past;CRITICAL;n-svc;past is 2 at second 20
+[1794420933] HOST NOTIFICATION: ann;e;DOWN;n-host;e is 2 at second 20
+[1794420934] EXTERNAL COMMAND: DEL_SVC_DOWNTIME;99
+[1794420934] Error: External command failed -> DEL_SVC_DOWNTIME;99
+[1794420934] SERVICE NOTIFICATION: ann;a;flexok;DOWNTIMEEND (OK);n-svc;flexok is 0 at second 20;ann;flexible never starts
+[1794420934] SERVICE NOTIFICATION: ann;a;cancel;CRITICAL;n-svc;cancel is 2 at second 21
+[1794420935] EXTERNAL COMMAND: SCHEDULE_HOST_DOWNTIME;e;1794420931;1794420947;1;0;0;ann;started in the past
+[1794420935] HOST DOWNTIME ALERT: e;STARTED; Host has entered a period of scheduled downtime
+[1794420935] HOST NOTIFICATION: ann;e;DOWNTIMESTART (DOWN);n-host;e is 2 at second 20;ann;started in the past
+[1794420935] HOST NOTIFICATION SUPPRESSED: e;Notification blocked for object currently in a scheduled downtime.
+[1794420937] SERVICE DOWNTIME ALERT: a;fixed;STOPPED; Service has exited from a period of scheduled downtime
+[1794420937] SERVICE NOTIFICATION: ann;a;fixed;DOWNTIMEEND (CRITICAL);n-svc;fixed is 2 at second 23;ann;fixed downtime
+[1794420937] SERVICE DOWNTIME ALERT: a;before;STOPPED; Service has exited from a period of scheduled downtime
+[1794420937] SERVICE NOTIFICATION: ann;a;before;DOWNTIMEEND (CRITICAL);n-svc;before is 2 at second 21;ann;problem came first
+[1794420937] SERVICE DOWNTIME ALERT: a;inside;STOPPED; Service has exited from a period of scheduled downtime
+[1794420937] SERVICE NOTIFICATION: ann;a;inside;DOWNTIMEEND (OK);n-svc;inside is 0 at second 20;ann;problem and recovery inside
+[1794420937] SERVICE NOTIFICATION: ann;a;past;CRITICAL;n-svc;past is 2 at second 24
+[1794420937] SERVICE DOWNTIME ALERT: a;flex;STOPPED; Service has exited from a period of scheduled downtime
+[1794420937] SERVICE NOTIFICATION: ann;a;flex;DOWNTIMEEND (OK);n-svc;flex is 0 at second 22;ann;flexible
+[1794420938] SERVICE NOTIFICATION: ann;a;before;CRITICAL;n-svc;before is 2 at second 25
+[1794420938] SERVICE NOTIFICATION: ann;a;cancel;CRITICAL;n-svc;cancel is 2 at second 25
+[1794420939] HOST DOWNTIME ALERT: d;STOPPED; Host has exited from a period of scheduled downtime
+[1794420939] HOST NOTIFICATION: ann;d;DOWNTIMEEND (DOWN);n-host;d is 2 at second 25;ann;host downtime
+[1794420940] SERVICE NOTIFICATION: ann;a;fixed;CRITICAL;n-svc;fixed is 2 at second 27
+[1794420941] SERVICE DOWNTIME ALERT: a;two;STOPPED; Service has exited from a period of scheduled downtime
+[1794420941] SERVICE NOTIFICATION: ann;a;two;DOWNTIMEEND (CRITICAL);n-svc;two is 2 at second 25;bob;second of two
+[1794420941] HOST NOTIFICATION: ann;d;DOWN;n-host;d is 2 at second 25
+[1794420941] SERVICE NOTIFICATION: ann;a;past;CRITICAL;n-svc;past is 2 at second 28
+[1794420942] SERVICE NOTIFICATION: ann;a;before;CRITICAL;n-svc;before is 2 at second 29
+[1794420942] SERVICE NOTIFICATION: ann;a;two;CRITICAL;n-svc;two is 2 at second 29
+[1794420942] SERVICE NOTIFICATION: ann;a;cancel;CRITICAL;n-svc;cancel is 2 at second 29
+[1794420943] HOST NOTIFICATION SUPPRESSED: d;Re-notification blocked for this problem because not enough time has passed since last notification.
+[1794420943] SERVICE ALERT: a;flex;CRITICAL;SOFT;1;flex is 2 at second 30
+[1794420944] SERVICE ALERT: a;flex;CRITICAL;SOFT;2;flex is 2 at second 31
+[1794420944] SERVICE NOTIFICATION: ann;a;fixed;CRITICAL;n-svc;fixed is 2 at second 31
+[1794420945] HOST NOTIFICATION: ann;d;DOWN;n-host;d is 2 at second 30
+[1794420945] SERVICE NOTIFICATION: ann;a;past;CRITICAL;n-svc;past is 2 at second 32
+[1794420945] SERVICE ALERT: a;flex;CRITICAL;HARD;3;flex is 2 at second 32
+[1794420945] SERVICE NOTIFICATION: ann;a;flex;CRITICAL;n-svc;flex is 2 at second 32
+[1794420946] SERVICE NOTIFICATION: ann;a;cancel;CRITICAL;n-svc;cancel is 2 at second 33
+[1794420946] SERVICE NOTIFICATION: ann;a;before;CRITICAL;n-svc;before is 2 at second 33
+[1794420946] SERVICE NOTIFICATION: ann;a;two;CRITICAL;n-svc;two is 2 at second 33
+[1794420947] HOST DOWNTIME ALERT: e;STOPPED; Host has exited from a period of scheduled downtime
+[1794420947] HOST NOTIFICATION: ann;e;DOWNTIMEEND (DOWN);n-host;e is 2 at second 30;ann;started in the past
+[1794420947] HOST NOTIFICATION: ann;e;DOWN;n-host;e is 2 at second 30
+[1794420948] HOST NOTIFICATION SUPPRESSED: e;Re-notification blocked for this problem because not enough time has passed since last notification.
+[1794420948] SERVICE NOTIFICATION: ann;a;fixed;CRITICAL;n-svc;fixed is 2 at second 35
+[1794420949] HOST NOTIFICATION: ann;d;DOWN;n-host;d is 2 at second 35
+[1794420949] SERVICE NOTIFICATION: ann;a;past;CRITICAL;n-svc;past is 2 at second 36
+[1794420949] SERVICE NOTIFICATION: ann;a;flex;CRITICAL;n-svc;flex is 2 at second 36
+[1794420950] SERVICE NOTIFICATION: ann;a;two;CRITICAL;n-svc;two is 2 at second 37
+[1794420950] SERVICE NOTIFICATION: ann;a;cancel;CRITICAL;n-svc;cancel is 2 at second 37
+[1794420950] SERVICE NOTIFICATION: ann;a;before;CRITICAL;n-svc;before is 2 at second 37
+[1794420951] HOST NOTIFICATION: ann;e;DOWN;n-host;e is 2 at second 35
+[1794420952] SERVICE NOTIFICATION: ann;a;fixed;CRITICAL;n-svc;fixed is 2 at second 39
+[1794420953] HOST ALERT: d;UP;HARD;1;d is 0 at second 40
+[1794420953] HOST NOTIFICATION: ann;d;UP;n-host;d is 0 at second 40
+[1794420953] SERVICE ALERT: a;past;OK;HARD;3;past is 0 at second 40
+[1794420953] SERVICE NOTIFICATION: ann;a;past;OK;n-svc;past is 0 at second 40
+[1794420953] SERVICE ALERT: d;ond;OK;HARD;1;d-ond is 0 at second 40
+[1794420953] SERVICE NOTIFICATION SUPPRESSED: d;ond;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794420953] HOST ALERT: e;UP;HARD;1;e is 0 at second 40
+[1794420953] HOST NOTIFICATION: ann;e;UP;n-host;e is 0 at second 40
+[1794420953] SERVICE NOTIFICATION: ann;a;flex;CRITICAL;n-svc;flex is 2 at second 40
+[1794420954] SERVICE ALERT: a;two;OK;HARD;3;two is 0 at second 41
+[1794420954] SERVICE NOTIFICATION: ann;a;two;OK;n-svc;two is 0 at second 41
+[1794420954] SERVICE ALERT: a;before;OK;HARD;3;before is 0 at second 41
+[1794420954] SERVICE NOTIFICATION: ann;a;before;OK;n-svc;before is 0 at second 41
+[1794420954] SERVICE ALERT: a;cancel;OK;HARD;3;cancel is 0 at second 41
+[1794420954] SERVICE NOTIFICATION: ann;a;cancel;OK;n-svc;cancel is 0 at second 41
+[1794420955] SERVICE ALERT: e;one;OK;HARD;1;e-one is 0 at second 42
+[1794420955] SERVICE NOTIFICATION: ann;e;one;OK;n-svc;e-one is 0 at second 42
+[1794420956] SERVICE ALERT: a;fixed;OK;HARD;3;fixed is 0 at second 43
+[1794420956] SERVICE NOTIFICATION: ann;a;fixed;OK;n-svc;fixed is 0 at second 43
+[1794420957] SERVICE NOTIFICATION: ann;a;flex;CRITICAL;n-svc;flex is 2 at second 44
+[1794420958] Caught 'Terminated', shutting down...
+[1794420958] Retention data successfully saved.
+[1794420958] Successfully shutdown... (PID=22)
+[1794420958] Event broker module 'NERD' deinitialized successfully.

@@ -1,0 +1,45 @@
+14 a 0
+1013 h1 0
+2013 h1-sb 2
+2013 h4 0
+2015 n-ann-h1-sb t=PROBLEM|s=CRITICAL|st=HARD|a=1|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=1ce97f21-6d50-4534-8b0b-9c184b4e41d5|dt=0|hdt=0|ack=/|o=h1-sb is 2 at second 2
+3013 h3 0
+4013 h3-sd 0
+4013 h4-se 0
+6014 h2-sc 0
+7013 h2 2
+7013 h1-sb 2
+7015 n-ann-h2 t=PROBLEM|s=DOWN|st=HARD|a=1|n=1|hn=1|esc=0|rcp=ann|au=|co=|id=44765826-16a0-48d3-8d4b-ac06227cc123|dt=0|ack=/|o=h2 is 2 at second 7
+11015 h3-sd 0
+11015 h4-se 0
+12014 h1-sb 2
+13014 h2-sc 2
+17015 h1-sb 2
+18016 h4-se 2
+18016 h3-sd 0
+20016 h2-sc 2
+20018 n-ann-h2 t=PROBLEM|s=DOWN|st=HARD|a=1|n=2|hn=2|esc=0|rcp=ann|au=|co=|id=647459a3-b310-44b4-9882-a2fe385a91e8|dt=0|ack=/|o=h2 is 2 at second 7
+22016 h1-sb 2
+25017 h3-sd 0
+25018 h4-se 2
+27017 h1-sb 2
+27017 h2-sc 2
+27019 n-ann-h2 t=PROBLEM|s=DOWN|st=HARD|a=1|n=3|hn=3|esc=0|rcp=ann|au=|co=|id=a139e4fe-1f74-447f-9a8e-2d4cb6a8f153|dt=0|ack=/|o=h2 is 2 at second 7
+32018 h1-sb 2
+32018 h3-sd 0
+32020 h4-se 2
+32020 n-ann-h1-sb t=PROBLEM|s=CRITICAL|st=HARD|a=1|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=ebe55df2-6df6-4582-9957-f87a7df2804c|dt=0|hdt=0|ack=/|o=h1-sb is 2 at second 32
+32022 n-ann-h4-se t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=3f239f68-9fa5-4b3e-a1a6-76eb1a902abb|dt=0|hdt=0|ack=/|o=h4-se is 2 at second 32
+34018 h2-sc 2
+34020 n-ann-h2 t=PROBLEM|s=DOWN|st=HARD|a=1|n=4|hn=4|esc=0|rcp=ann|au=|co=|id=033fd8d3-0f06-41c4-9005-0f383825aa51|dt=0|ack=/|o=h2 is 2 at second 7
+37019 h1-sb 2
+39019 h3-sd 0
+39020 h4-se 2
+41019 h2-sc 2
+41021 n-ann-h2 t=PROBLEM|s=DOWN|st=HARD|a=1|n=5|hn=5|esc=0|rcp=ann|au=|co=|id=9f6af894-a535-4648-85fb-c8726f02fc92|dt=0|ack=/|o=h2 is 2 at second 7
+42020 h1-sb 2
+46020 h4-se 2
+46020 h3-sd 0
+47021 h1-sb 2
+48020 h2-sc 2
+48022 n-ann-h2 t=PROBLEM|s=DOWN|st=HARD|a=1|n=6|hn=6|esc=0|rcp=ann|au=|co=|id=3246be15-4e11-4ab1-bd06-f48c34bb8b65|dt=0|ack=/|o=h2 is 2 at second 7

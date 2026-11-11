@@ -1,0 +1,135 @@
+[1794420913] Naemon 1.5.2 starting... (PID=20)
+[1794420913] Local time is Wed Nov 11 18:15:13 UTC 2026
+[1794420913] LOG VERSION: 2.0
+[1794420913] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794420913] nerd: Channel hostchecks registered successfully
+[1794420913] nerd: Channel servicechecks registered successfully
+[1794420913] nerd: Fully initialized and ready to rock!
+[1794420913] Successfully launched command file worker with pid 21
+[1794420913] Reading all config object data
+[1794420913] Loading neb modules
+[1794420913] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794420913] Naemon successfully initialized (PID=20)
+[1794420918] SERVICE ALERT: a;soft;CRITICAL;SOFT;1;soft is 2 at second 5
+[1794420918] SERVICE ALERT: a;evep;CRITICAL;SOFT;1;evep is 2 at second 5
+[1794420919] SERVICE ALERT: a;basic;CRITICAL;SOFT;1;basic is 2 at second 6
+[1794420919] SERVICE ALERT: a;opts-wr;CRITICAL;SOFT;1;opts-wr is 2 at second 6
+[1794420919] SERVICE ALERT: a;off;CRITICAL;SOFT;1;off is 2 at second 6
+[1794420919] SERVICE ALERT: a;evep;CRITICAL;SOFT;2;evep is 2 at second 6
+[1794420919] SERVICE ALERT: a;soft;OK;SOFT;2;soft is 0 at second 6
+[1794420920] SERVICE ALERT: a;delay;CRITICAL;SOFT;1;delay is 2 at second 7
+[1794420920] SERVICE ALERT: a;delay-short;CRITICAL;SOFT;1;delay-short is 2 at second 7
+[1794420920] SERVICE ALERT: a;once;CRITICAL;SOFT;1;once is 2 at second 7
+[1794420920] SERVICE ALERT: a;nointerval;CRITICAL;SOFT;1;nointerval is 2 at second 7
+[1794420920] SERVICE ALERT: a;basic;CRITICAL;SOFT;2;basic is 2 at second 7
+[1794420920] SERVICE ALERT: a;opts-wr;CRITICAL;SOFT;2;opts-wr is 2 at second 7
+[1794420920] SERVICE ALERT: a;off;CRITICAL;SOFT;2;off is 2 at second 7
+[1794420920] SERVICE ALERT: a;evep;CRITICAL;HARD;3;evep is 2 at second 7
+[1794420920] SERVICE CONTACT NOTIFICATION SUPPRESSED: eve;a;evep;Notification blocked by timeperiod; notifications should not be sent out at this time.
+[1794420920] SERVICE NOTIFICATION SUPPRESSED: a;evep;No notification sent, because no contacts were found for notification purposes.
+[1794420921] SERVICE ALERT: a;opts-c;WARNING;SOFT;1;opts-c is 1 at second 8
+[1794420921] SERVICE ALERT: a;nocontact;CRITICAL;SOFT;1;nocontact is 2 at second 8
+[1794420921] SERVICE ALERT: a;changes;WARNING;SOFT;1;changes is 1 at second 8
+[1794420921] SERVICE ALERT: a;grp;CRITICAL;SOFT;1;grp is 2 at second 8
+[1794420921] SERVICE ALERT: a;picky;WARNING;SOFT;1;picky is 1 at second 8
+[1794420921] SERVICE ALERT: a;delay-short;CRITICAL;SOFT;2;delay-short is 2 at second 8
+[1794420921] SERVICE ALERT: a;delay;CRITICAL;SOFT;2;delay is 2 at second 8
+[1794420921] SERVICE ALERT: a;opts-wr;CRITICAL;HARD;3;opts-wr is 2 at second 8
+[1794420921] SERVICE NOTIFICATION SUPPRESSED: a;opts-wr;Notifications disabled for current object state.
+[1794420921] SERVICE ALERT: a;nointerval;CRITICAL;SOFT;2;nointerval is 2 at second 8
+[1794420921] SERVICE ALERT: a;once;CRITICAL;SOFT;2;once is 2 at second 8
+[1794420921] SERVICE ALERT: a;off;CRITICAL;HARD;3;off is 2 at second 8
+[1794420921] SERVICE NOTIFICATION SUPPRESSED: a;off;Notifications are disabled for this object by its configuration.
+[1794420921] SERVICE ALERT: a;basic;CRITICAL;HARD;3;basic is 2 at second 8
+[1794420921] SERVICE CONTACT NOTIFICATION SUPPRESSED: zed;a;basic;Notifications disabled for current object state.
+[1794420921] SERVICE NOTIFICATION: ann;a;basic;CRITICAL;n-svc;basic is 2 at second 8
+[1794420921] SERVICE NOTIFICATION: bob;a;basic;CRITICAL;n-svc;basic is 2 at second 8
+[1794420922] SERVICE ALERT: a;opts-c;WARNING;SOFT;2;opts-c is 1 at second 9
+[1794420922] SERVICE ALERT: a;delay;CRITICAL;HARD;3;delay is 2 at second 9
+[1794420922] SERVICE NOTIFICATION SUPPRESSED: a;delay;Notification blocked because first_notification_delay is configured and not enough time has elapsed since the object changed to a non-UP/non-OK state (or since program start).
+[1794420922] SERVICE ALERT: a;grp;CRITICAL;SOFT;2;grp is 2 at second 9
+[1794420922] SERVICE ALERT: a;changes;WARNING;SOFT;2;changes is 1 at second 9
+[1794420922] SERVICE ALERT: a;picky;WARNING;SOFT;2;picky is 1 at second 9
+[1794420922] SERVICE ALERT: a;nocontact;CRITICAL;SOFT;2;nocontact is 2 at second 9
+[1794420922] SERVICE ALERT: a;once;CRITICAL;HARD;3;once is 2 at second 9
+[1794420922] SERVICE NOTIFICATION: ann;a;once;CRITICAL;n-svc;once is 2 at second 9
+[1794420922] SERVICE ALERT: a;nointerval;CRITICAL;HARD;3;nointerval is 2 at second 9
+[1794420922] SERVICE NOTIFICATION: ann;a;nointerval;CRITICAL;n-svc;nointerval is 2 at second 9
+[1794420922] SERVICE ALERT: a;delay-short;CRITICAL;HARD;3;delay-short is 2 at second 9
+[1794420922] SERVICE NOTIFICATION SUPPRESSED: a;delay-short;Notification blocked because first_notification_delay is configured and not enough time has elapsed since the object changed to a non-UP/non-OK state (or since program start).
+[1794420923] SERVICE ALERT: a;opts-c;WARNING;HARD;3;opts-c is 1 at second 10
+[1794420923] SERVICE NOTIFICATION SUPPRESSED: a;opts-c;Notifications disabled for current object state.
+[1794420923] SERVICE ALERT: a;grp;CRITICAL;HARD;3;grp is 2 at second 10
+[1794420923] SERVICE NOTIFICATION: bob;a;grp;CRITICAL;n-svc;grp is 2 at second 10
+[1794420923] SERVICE NOTIFICATION: ann;a;grp;CRITICAL;n-svc;grp is 2 at second 10
+[1794420923] SERVICE ALERT: a;changes;WARNING;HARD;3;changes is 1 at second 10
+[1794420923] SERVICE NOTIFICATION: ann;a;changes;WARNING;n-svc;changes is 1 at second 10
+[1794420923] SERVICE ALERT: a;nocontact;CRITICAL;HARD;3;nocontact is 2 at second 10
+[1794420923] SERVICE NOTIFICATION SUPPRESSED: a;nocontact;No notification sent, because no contacts were found for notification purposes.
+[1794420923] SERVICE ALERT: a;picky;WARNING;HARD;3;picky is 1 at second 10
+[1794420923] SERVICE CONTACT NOTIFICATION SUPPRESSED: bob;a;picky;Notifications disabled for current object state.
+[1794420923] SERVICE NOTIFICATION: ann;a;picky;WARNING;n-svc;picky is 1 at second 10
+[1794420923] SERVICE NOTIFICATION: cat;a;picky;WARNING;n-svc;picky is 1 at second 10
+[1794420925] SERVICE NOTIFICATION SUPPRESSED: a;basic;Re-notification blocked for this problem because not enough time has passed since last notification.
+[1794420926] SERVICE ALERT: a;delay-short;OK;HARD;3;delay-short is 0 at second 13
+[1794420926] SERVICE NOTIFICATION SUPPRESSED: a;delay-short;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794420926] SERVICE NOTIFICATION SUPPRESSED: a;nointerval;Re-notification blocked for this problem because not enough time has passed since last notification.
+[1794420926] SERVICE NOTIFICATION SUPPRESSED: a;once;Re-notification blocked for this problem.
+[1794420927] SERVICE NOTIFICATION: ann;a;picky;WARNING;n-svc;picky is 1 at second 14
+[1794420927] SERVICE NOTIFICATION: cat;a;picky;WARNING;n-svc;picky is 1 at second 14
+[1794420927] SERVICE ALERT: a;changes;CRITICAL;HARD;3;changes is 2 at second 14
+[1794420927] SERVICE NOTIFICATION: ann;a;changes;CRITICAL;n-svc;changes is 2 at second 14
+[1794420927] SERVICE NOTIFICATION SUPPRESSED: a;grp;Re-notification blocked for this problem.
+[1794420929] SERVICE NOTIFICATION: ann;a;basic;CRITICAL;n-svc;basic is 2 at second 16
+[1794420929] SERVICE NOTIFICATION: bob;a;basic;CRITICAL;n-svc;basic is 2 at second 16
+[1794420929] SERVICE ALERT: a;opts-wr;WARNING;HARD;3;opts-wr is 1 at second 16
+[1794420929] SERVICE NOTIFICATION: ann;a;opts-wr;WARNING;n-svc;opts-wr is 1 at second 16
+[1794420930] SERVICE NOTIFICATION: ann;a;delay;CRITICAL;n-svc;delay is 2 at second 17
+[1794420931] SERVICE ALERT: a;opts-c;CRITICAL;HARD;3;opts-c is 2 at second 18
+[1794420931] SERVICE NOTIFICATION: ann;a;opts-c;CRITICAL;n-svc;opts-c is 2 at second 18
+[1794420931] SERVICE NOTIFICATION SUPPRESSED: a;changes;Re-notification blocked for this problem because not enough time has passed since last notification.
+[1794420931] SERVICE ALERT: a;picky;CRITICAL;HARD;3;picky is 2 at second 18
+[1794420931] SERVICE CONTACT NOTIFICATION SUPPRESSED: cat;a;picky;Notifications disabled for current object state.
+[1794420931] SERVICE NOTIFICATION: ann;a;picky;CRITICAL;n-svc;picky is 2 at second 18
+[1794420931] SERVICE NOTIFICATION: bob;a;picky;CRITICAL;n-svc;picky is 2 at second 18
+[1794420933] SERVICE NOTIFICATION SUPPRESSED: a;opts-wr;Re-notification blocked for this problem.
+[1794420934] SERVICE NOTIFICATION SUPPRESSED: a;delay;Re-notification blocked for this problem because not enough time has passed since last notification.
+[1794420935] SERVICE NOTIFICATION SUPPRESSED: a;opts-c;Re-notification blocked for this problem.
+[1794420935] SERVICE ALERT: a;changes;UNKNOWN;HARD;3;changes is 3 at second 22
+[1794420935] SERVICE NOTIFICATION: ann;a;changes;UNKNOWN;n-svc;changes is 3 at second 22
+[1794420935] SERVICE NOTIFICATION: ann;a;picky;CRITICAL;n-svc;picky is 2 at second 22
+[1794420935] SERVICE NOTIFICATION: bob;a;picky;CRITICAL;n-svc;picky is 2 at second 22
+[1794420937] SERVICE NOTIFICATION: ann;a;basic;CRITICAL;n-svc;basic is 2 at second 24
+[1794420937] SERVICE NOTIFICATION: bob;a;basic;CRITICAL;n-svc;basic is 2 at second 24
+[1794420938] SERVICE NOTIFICATION: ann;a;delay;CRITICAL;n-svc;delay is 2 at second 25
+[1794420939] SERVICE ALERT: a;opts-c;WARNING;HARD;3;opts-c is 1 at second 26
+[1794420939] SERVICE NOTIFICATION SUPPRESSED: a;opts-c;Notifications disabled for current object state.
+[1794420939] SERVICE ALERT: a;picky;OK;HARD;3;picky is 0 at second 26
+[1794420939] SERVICE NOTIFICATION: ann;a;picky;OK;n-svc;picky is 0 at second 26
+[1794420939] SERVICE NOTIFICATION: bob;a;picky;OK;n-svc;picky is 0 at second 26
+[1794420939] SERVICE ALERT: a;changes;OK;HARD;3;changes is 0 at second 26
+[1794420939] SERVICE NOTIFICATION: ann;a;changes;OK;n-svc;changes is 0 at second 26
+[1794420941] SERVICE ALERT: a;opts-wr;OK;HARD;3;opts-wr is 0 at second 28
+[1794420941] SERVICE NOTIFICATION: ann;a;opts-wr;OK;n-svc;opts-wr is 0 at second 28
+[1794420943] SERVICE ALERT: a;grp;OK;HARD;3;grp is 0 at second 30
+[1794420943] SERVICE NOTIFICATION: bob;a;grp;OK;n-svc;grp is 0 at second 30
+[1794420943] SERVICE NOTIFICATION: ann;a;grp;OK;n-svc;grp is 0 at second 30
+[1794420943] SERVICE ALERT: a;nocontact;OK;HARD;3;nocontact is 0 at second 30
+[1794420943] SERVICE NOTIFICATION SUPPRESSED: a;nocontact;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794420944] SERVICE ALERT: a;evep;OK;HARD;3;evep is 0 at second 31
+[1794420944] SERVICE NOTIFICATION SUPPRESSED: a;evep;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794420945] SERVICE ALERT: a;basic;OK;HARD;3;basic is 0 at second 32
+[1794420945] SERVICE NOTIFICATION: ann;a;basic;OK;n-svc;basic is 0 at second 32
+[1794420945] SERVICE NOTIFICATION: bob;a;basic;OK;n-svc;basic is 0 at second 32
+[1794420945] SERVICE ALERT: a;off;OK;HARD;3;off is 0 at second 32
+[1794420946] SERVICE ALERT: a;once;OK;HARD;3;once is 0 at second 33
+[1794420946] SERVICE NOTIFICATION: ann;a;once;OK;n-svc;once is 0 at second 33
+[1794420946] SERVICE NOTIFICATION: ann;a;delay;CRITICAL;n-svc;delay is 2 at second 33
+[1794420951] SERVICE ALERT: a;opts-c;OK;HARD;3;opts-c is 0 at second 38
+[1794420954] SERVICE NOTIFICATION: ann;a;nointerval;CRITICAL;n-svc;nointerval is 2 at second 41
+[1794420954] SERVICE ALERT: a;delay;OK;HARD;3;delay is 0 at second 41
+[1794420954] SERVICE NOTIFICATION: ann;a;delay;OK;n-svc;delay is 0 at second 41
+[1794420958] Caught 'Terminated', shutting down...
+[1794420958] Retention data successfully saved.
+[1794420958] Successfully shutdown... (PID=20)
+[1794420958] Event broker module 'NERD' deinitialized successfully.

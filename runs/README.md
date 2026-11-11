@@ -1,13 +1,19 @@
 # Runs against the reference
 
 The phase 2 gate is "the same state-change log lines as Naemon on the
-scripted runs". This directory holds those runs and what compares them.
+scripted runs", and the phase 3 gate "the same notifications as Naemon on
+the scripted runs, and state survives a kill on both stores". This
+directory holds those runs and what compares them.
 
-- `scenarios/`: 51 small configs written for this project, each with a
-  recording of what the reference did on it.
+- `scenarios/`: 58 small configs written for this project, each with a
+  recording of what the reference did on it. Seven of them are about
+  notifications, acknowledgements and downtimes, and send the reference
+  external commands.
 - `lib/plugins/`: the scripted check plugins the configs call.
 - `real`, `real-entry.sh`: runs checkd itself on the scenarios.
 - `otel`: shows that an OpenTelemetry collector takes what checkd sends.
+- `store/`: kills checkd and starts it again, on SQLite and on
+  PostgreSQL, and looks at what it kept.
 - `timeperiods/`: timeperiods against the reference, see
   [timeperiods/README.md](timeperiods/README.md).
 
@@ -23,11 +29,17 @@ The reference is Naemon Core 1.5.2, as packaged, in the oracle image
         expected/trace                      every call of a scripted plugin
         expected/start                      when the run began, ns since 1970
         expected/oracle.version             the reference's version
+        commands                            external commands, where there are any
+        expected/commands                   the commands as they were sent
         compare                             what is not compared, and why
 
 `oracle/play <scenario> <out-dir> <seconds>` makes the recording: it
 starts the reference as a daemon on the config, stops it after the
-seconds given and copies out what it wrote. The recordings here were made
+seconds given and copies out what it wrote. A scenario's `commands` file
+has one external command to a line, `<second> <command>`, where `{+N}`
+stands for the start of the run plus N seconds. The commands are written
+to the reference's command file at their seconds, and
+`expected/commands` records, to the millisecond, when each went. The recordings here were made
 that way and copied in by hand. Nothing checks that a recording is still
 what the reference would do today; to see, record it again and compare.
 
@@ -66,7 +78,7 @@ result 2 ms after the check was started. The second form shows both
 sides in full.
 
 Five scenarios need real programs or a real shell and are not played
-here (`skip` in their `compare` file). The other 46 are.
+here (`skip` in their `compare` file). The other 53 are.
 
 ### In real time
 
@@ -75,7 +87,7 @@ here (`skip` in their `compare` file). The other 46 are.
 This runs the `checkd` binary on each scenario inside the oracle image,
 where the reference made its recordings: the same shell, the same paths,
 the same plugins. Nothing of the reference is run. Each run takes as long
-as the reference's did, eight at a time, about eleven minutes for all 51.
+as the reference's did, eight at a time, about thirteen minutes for all 58.
 What a run wrote stays in `runs/real-work/<scenario>`.
 
 One scenario is not compared here (`skip-real`): two results that depend
@@ -95,8 +107,26 @@ bounds. The whole text of the line must be the same, plugin output
 included. Lines of other kinds are not compared: the start and stop
 lines, and warnings about the config.
 
+Also compared, each in order: the notification lines of each contact
+about each host or service (the reference writes the lines of one
+notification to several contacts in an order that is not the same from
+run to run, so each contact's are compared on their own); the lines
+saying a notification was not sent, and why, per host or service and per
+contact; downtime alerts; and the lines about external commands, their
+errors included.
+
+In the real run, the lines saying a contact was not sent a notification
+are compared per contact and kind, without the object they name. A
+contact gets one such line for a reason, about whichever object comes
+first, and when several are due in one millisecond which comes first is
+not the same from run to run.
+
 **Plugin calls.** Per key, the calls in order, each with what the plugin
-was called with or returned.
+was called with or returned. Notification commands in the scenarios are
+the `args` plugin, so their calls show the macros a notification command
+gets: the type, the number, the recipients, whether it is escalated, the
+author and comment, the acknowledgement and the downtime depth. The id
+of a notification is random on both sides and is compared by its place.
 
 Both lists must have the same entries in the same order. Two entries
 that go together must be no more than 1.1 s apart, counted from the
@@ -128,6 +158,9 @@ by side, checkd is told when the reference first checked each object:
   recording began, since some scenarios depend on the time of day. Both
   options are for these tests only. Nothing is moved after the first
   check.
+- The external commands go to checkd at the milliseconds the reference
+  got them: on the simulated clock straight into the engine, in real time
+  through checkd's command file.
 
 This means the comparison does not test checkd's own spread of the first
 checks, and the play on the simulated clock does not test drift.
@@ -200,14 +233,23 @@ runs a config that depends on them.
    [timeperiods/README.md](timeperiods/README.md). checkd gives a warning
    at the start for a period that has one of them.
 
+The notification scenarios needed no such list: checkd sends what the
+reference sent, to the same contacts, with the same macros.
+
 Measured times (latency, execution time) are masked in the real run, and
 on the simulated clock they are what the test makes them.
 
 ## What the scenarios do not cover
 
-- Anything of phase 3 or later: notifications, downtimes,
-  acknowledgements, passive results, external commands, saved state.
-  The `$TOTAL...UNHANDLED$` macros depend on those and are not compared.
+- Phase 4 and later: passive results, the Livestatus commands, the
+  external commands that are not about notifications, acknowledgements,
+  downtimes and comments. The `$TOTAL...UNHANDLED$` macros are not
+  compared.
+- Of notifications: custom notifications, triggered downtimes, downtimes
+  of a host's children, comments' own commands, global notification
+  handlers, notification dependencies, an acknowledgement's notification
+  to a contact whose options leave the state out, and a restart of the
+  reference itself.
 - `max_concurrent_checks`, freshness checks, obsessing, performance data,
   environment macros, aggressive host checking, `use_timezone`,
   `host_down_disable_service_checks` and passive host check settings.
@@ -217,6 +259,55 @@ on the simulated clock they are what the test makes them.
 - Load. The largest scenario has a few dozen objects.
 - A config from a running installation. Every scenario was written to
   show one thing.
+
+## What the notification scenarios showed
+
+Some of what the reference does is in no document. checkd does it too,
+and the scenarios hold it to it:
+
+- A problem is notified again only at a check, once
+  `notification_interval` has passed, counted in whole seconds. A change
+  from one problem state to another is notified at once.
+- `first_notification_delay` counts from the change to the hard state.
+- A notification stopped by a notification period goes out at the first
+  check inside the period, not when the period opens.
+- A service that went hard only because its host was down, before its
+  own attempts were used up, is not notified, and starts again as a soft
+  problem when the host is back. While its host is down, a service that
+  stays in a hard problem has the host's notification tried first.
+- A host tries its notification before it looks at flapping; a service
+  after.
+- A recovery is sent during a downtime, and while the host is down.
+- The re-notification interval of an escalation is that of the
+  escalations that matched the notification just sent. A recovery goes
+  to the contacts of the last problem notification's number.
+- A line saying why a notification was not sent is written only when the
+  reason differs from the last one written for that object, or for that
+  contact, which keeps one for host and one for service notifications.
+- A downtime's comment is made when it is scheduled. A flexible downtime
+  that nothing set off still sends a DOWNTIMEEND at its end, a second
+  late.
+
+## Keeping state over a kill
+
+    runs/store/run [sqlite|postgres]...
+
+checkd runs on `store/case` for 15 seconds and gets the commands in
+`store/case/commands`: an acknowledgement, a downtime that lasts past the
+kill, a comment, and a service's notifications switched off. Then it is
+killed with SIGKILL and started again on the same store for 35 seconds.
+The script checks that all four were in the store after the kill, that
+the second run read them, sent nothing for the acknowledged problem or
+the switched-off service, ended the downtime at its time, and that the
+numbers of the notifications about one service go on without a gap over
+the kill.
+
+For PostgreSQL a server runs in a second container without a network,
+and checkd's container joins it. The server is the PostgreSQL project's
+image, `postgres:17-alpine`, pinned by digest in the script and pulled
+from Docker Hub the first time. It is a test tool and no part of checkd.
+
+Not tested yet: a database that goes away while checkd runs.
 
 ## The OpenTelemetry export
 

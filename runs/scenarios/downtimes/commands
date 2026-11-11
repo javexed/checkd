@@ -1,0 +1,15 @@
+2 SCHEDULE_SVC_DOWNTIME;a;fixed;{+8};{+24};1;0;0;ann;fixed downtime
+2 SCHEDULE_SVC_DOWNTIME;a;before;{+8};{+24};1;0;0;ann;problem came first
+2 SCHEDULE_SVC_DOWNTIME;a;inside;{+8};{+24};1;0;0;ann;problem and recovery inside
+2 SCHEDULE_SVC_DOWNTIME;a;flex;{+4};{+50};0;0;10;ann;flexible
+2 SCHEDULE_SVC_DOWNTIME;a;flexok;{+4};{+20};0;0;10;ann;flexible never starts
+2 SCHEDULE_SVC_DOWNTIME;a;cancel;{+8};{+50};1;0;0;ann;to be cancelled
+2 SCHEDULE_SVC_DOWNTIME;a;two;{+8};{+18};1;0;0;ann;first of two
+2 SCHEDULE_SVC_DOWNTIME;a;two;{+14};{+28};1;0;0;bob;second of two
+2 SCHEDULE_HOST_DOWNTIME;d;{+4};{+26};1;0;0;ann;host downtime
+3 SCHEDULE_SVC_DOWNTIME;a;past;{+1};{+2};1;0;0;ann;already over
+3 SCHEDULE_SVC_DOWNTIME;a;past;{+30};{+20};1;0;0;ann;ends before it starts
+3 SCHEDULE_SVC_DOWNTIME;a;nosuch;{+8};{+24};1;0;0;ann;no such service
+20 DEL_SVC_DOWNTIME;6
+21 DEL_SVC_DOWNTIME;99
+22 SCHEDULE_HOST_DOWNTIME;e;{+18};{+34};1;0;0;ann;started in the past

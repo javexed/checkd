@@ -12,7 +12,11 @@
 pub mod cmdline;
 pub mod engine;
 pub mod flap;
+pub mod commands;
 pub mod macros;
+pub mod notify;
 pub mod output;
+pub mod retention;
 pub mod settings;
+pub mod snapshot;
 pub mod timeperiod;

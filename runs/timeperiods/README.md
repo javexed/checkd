@@ -72,5 +72,9 @@ reading a config.
 - Time zones and summer time, as said above.
 - `day 1 / 5`, a single day of the month with a skip.
 - A span with `/ 1`.
+- Very long lines. A weekday line with 720 ranges, written for a probe,
+  made the reference stop while it read its configuration, with
+  `*** stack smashing detected ***` and a core dump. checkd was not tried
+  on it.
 - A span that begins on a day its month does not have.
 - `use_timezone` and a timezone of a single host.

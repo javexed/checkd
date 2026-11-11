@@ -1,0 +1,229 @@
+18 opts-c 0
+18 a 0
+18 changes 0
+19 nocontact 0
+19 picky 0
+18 grp 0
+1015 soft 0
+1015 evep 0
+2015 opts-wr 0
+2015 off 0
+2015 basic 0
+3015 delay-short 0
+3015 nointerval 0
+3015 once 0
+3015 delay 0
+4017 grp 0
+4017 picky 0
+4017 changes 0
+4017 nocontact 0
+4017 opts-c 0
+5015 soft 2
+5015 evep 2
+5017 a 0
+6016 opts-wr 2
+6016 basic 2
+6016 off 2
+6017 evep 2
+6017 soft 0
+6018 a 0
+7016 delay 2
+7017 delay-short 2
+7017 once 2
+7018 nointerval 2
+7020 basic 2
+7020 a 0
+7020 opts-wr 2
+7020 off 2
+7020 evep 2
+7022 a 0
+8018 opts-c 1
+8019 nocontact 2
+8019 changes 1
+8020 grp 2
+8020 picky 1
+8021 delay-short 2
+8021 delay 2
+8022 opts-wr 2
+8022 nointerval 2
+8023 a 0
+8023 once 2
+8023 off 2
+8024 basic 2
+8025 a 0
+8026 n-ann-a-basic t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=bob,ann|au=|co=|id=3f810a3e-bd1f-4ffa-8be0-5a6e5f0829b4|dt=0|hdt=0|ack=/|o=basic is 2 at second 8
+8026 n-bob-a-basic t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=bob,ann|au=|co=|id=3f810a3e-bd1f-4ffa-8be0-5a6e5f0829b4|dt=0|hdt=0|ack=/|o=basic is 2 at second 8
+9023 opts-c 1
+9025 delay 2
+9025 grp 2
+9025 changes 1
+9025 picky 1
+9025 nocontact 2
+9026 once 2
+9026 nointerval 2
+9025 delay-short 2
+9027 a 0
+9028 n-ann-a-once t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=52c6e15c-c941-458d-95f2-5c2b1767fd22|dt=0|hdt=0|ack=/|o=once is 2 at second 9
+9028 n-ann-a-nointerval t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=e00ee64d-ad09-4a4f-9724-e8afc2c0d0fa|dt=0|hdt=0|ack=/|o=nointerval is 2 at second 9
+10017 soft 0
+10026 opts-c 1
+10028 grp 2
+10028 changes 1
+10028 nocontact 2
+10028 picky 1
+10029 a 0
+10031 n-ann-a-grp t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann,bob|au=|co=|id=eda5e944-ee87-492a-bbd8-fd616fd82ce1|dt=0|hdt=0|ack=/|o=grp is 2 at second 10
+10031 n-ann-a-changes t=PROBLEM|s=WARNING|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=4d15f10c-f8fe-4efa-ae4e-1b857a00fb05|dt=0|hdt=0|ack=/|o=changes is 1 at second 10
+10031 n-ann-a-picky t=PROBLEM|s=WARNING|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=cat,ann|au=|co=|id=2a36045a-156b-49de-8c6c-93e02deb32a4|dt=0|hdt=0|ack=/|o=picky is 1 at second 10
+10031 n-bob-a-grp t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann,bob|au=|co=|id=eda5e944-ee87-492a-bbd8-fd616fd82ce1|dt=0|hdt=0|ack=/|o=grp is 2 at second 10
+10031 n-cat-a-picky t=PROBLEM|s=WARNING|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=cat,ann|au=|co=|id=2a36045a-156b-49de-8c6c-93e02deb32a4|dt=0|hdt=0|ack=/|o=picky is 1 at second 10
+11020 evep 2
+12023 off 2
+12023 basic 2
+12023 opts-wr 2
+13025 delay-short 0
+13025 delay 2
+13025 nointerval 2
+13025 once 2
+14018 soft 0
+14025 opts-c 1
+14027 nocontact 2
+14027 changes 2
+14027 picky 1
+14027 grp 2
+14030 n-cat-a-picky t=PROBLEM|s=WARNING|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=cat,ann|au=|co=|id=266023a2-3c1f-4072-a844-dc11d56428c9|dt=0|hdt=0|ack=/|o=picky is 1 at second 14
+14030 n-ann-a-picky t=PROBLEM|s=WARNING|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=cat,ann|au=|co=|id=266023a2-3c1f-4072-a844-dc11d56428c9|dt=0|hdt=0|ack=/|o=picky is 1 at second 14
+14030 n-ann-a-changes t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=acabae5f-3ed3-4b03-83cb-f19f57ce7165|dt=0|hdt=0|ack=/|o=changes is 2 at second 14
+14030 a 0
+15019 evep 2
+16023 basic 2
+16023 opts-wr 1
+16023 off 2
+16025 n-ann-a-basic t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=bob,ann|au=|co=|id=da7b3347-418b-45d7-ac12-755ff0976e7b|dt=0|hdt=0|ack=/|o=basic is 2 at second 16
+16025 n-bob-a-basic t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=bob,ann|au=|co=|id=da7b3347-418b-45d7-ac12-755ff0976e7b|dt=0|hdt=0|ack=/|o=basic is 2 at second 16
+16026 n-ann-a-opts-wr t=PROBLEM|s=WARNING|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=83af2a7d-8ee7-4b3d-b64e-09d95174ef83|dt=0|hdt=0|ack=/|o=opts-wr is 1 at second 16
+16026 a 0
+17026 once 2
+17026 delay-short 0
+17026 delay 2
+17026 nointerval 2
+17028 n-ann-a-delay t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=3ddcb07d-d386-48c8-b6c3-bc32678d7e5c|dt=0|hdt=0|ack=/|o=delay is 2 at second 17
+18019 soft 0
+18024 opts-c 2
+18026 n-ann-a-opts-c t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=e47b16d2-c511-48f6-92f7-7b7b904f8d6c|dt=0|hdt=0|ack=/|o=opts-c is 2 at second 18
+18027 grp 2
+18027 a 0
+18027 nocontact 2
+18027 changes 2
+18027 picky 2
+18030 n-bob-a-picky t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=3|sn=3|hn=0|esc=0|rcp=bob,ann|au=|co=|id=9df7e02a-d374-4f48-9d94-9b82309f92e2|dt=0|hdt=0|ack=/|o=picky is 2 at second 18
+18030 n-ann-a-picky t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=3|sn=3|hn=0|esc=0|rcp=bob,ann|au=|co=|id=9df7e02a-d374-4f48-9d94-9b82309f92e2|dt=0|hdt=0|ack=/|o=picky is 2 at second 18
+18030 a 0
+19020 evep 2
+20022 basic 2
+20022 off 2
+20022 opts-wr 1
+21026 once 2
+21026 delay-short 0
+21026 nointerval 2
+21027 delay 2
+22021 soft 0
+22024 opts-c 2
+22026 nocontact 2
+22026 grp 2
+22026 changes 3
+22026 picky 2
+22028 n-bob-a-picky t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=4|sn=4|hn=0|esc=0|rcp=bob,ann|au=|co=|id=f54443f9-0b21-4314-9525-e82c489722f7|dt=0|hdt=0|ack=/|o=picky is 2 at second 22
+22028 n-ann-a-picky t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=4|sn=4|hn=0|esc=0|rcp=bob,ann|au=|co=|id=f54443f9-0b21-4314-9525-e82c489722f7|dt=0|hdt=0|ack=/|o=picky is 2 at second 22
+22028 a 0
+22028 n-ann-a-changes t=PROBLEM|s=UNKNOWN|st=HARD|a=3|n=3|sn=3|hn=0|esc=0|rcp=ann|au=|co=|id=782339a0-12a3-41be-b2ac-d112b7292867|dt=0|hdt=0|ack=/|o=changes is 3 at second 22
+23022 evep 2
+24023 off 2
+24023 opts-wr 1
+24023 basic 2
+24026 n-ann-a-basic t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=3|sn=3|hn=0|esc=0|rcp=bob,ann|au=|co=|id=2c8a2c45-af6c-45e1-a702-e179e78b6599|dt=0|hdt=0|ack=/|o=basic is 2 at second 24
+24026 n-bob-a-basic t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=3|sn=3|hn=0|esc=0|rcp=bob,ann|au=|co=|id=2c8a2c45-af6c-45e1-a702-e179e78b6599|dt=0|hdt=0|ack=/|o=basic is 2 at second 24
+25025 nointerval 2
+25025 delay-short 0
+25025 delay 2
+25025 once 2
+25027 n-ann-a-delay t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=d0621c45-f9f2-4517-9c2d-86c95b6285ba|dt=0|hdt=0|ack=/|o=delay is 2 at second 25
+26021 soft 0
+26023 opts-c 1
+26026 nocontact 2
+26026 picky 0
+26026 grp 2
+26026 changes 0
+26026 a 0
+26028 n-bob-a-picky t=RECOVERY|s=OK|st=HARD|a=3|n=5|sn=5|hn=0|esc=0|rcp=bob,ann|au=|co=|id=cda63e92-0076-4e62-a146-bf07073de949|dt=0|hdt=0|ack=/|o=picky is 0 at second 26
+26028 n-ann-a-picky t=RECOVERY|s=OK|st=HARD|a=3|n=5|sn=5|hn=0|esc=0|rcp=bob,ann|au=|co=|id=cda63e92-0076-4e62-a146-bf07073de949|dt=0|hdt=0|ack=/|o=picky is 0 at second 26
+26028 n-ann-a-changes t=RECOVERY|s=OK|st=HARD|a=3|n=4|sn=4|hn=0|esc=0|rcp=ann|au=|co=|id=09766030-2eee-4421-8bf7-01910e16894f|dt=0|hdt=0|ack=/|o=changes is 0 at second 26
+27023 evep 2
+28024 basic 2
+28024 opts-wr 0
+28024 off 2
+28026 n-ann-a-opts-wr t=RECOVERY|s=OK|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=be6a53e0-bcf5-47d5-8090-692641cb51c9|dt=0|hdt=0|ack=/|o=opts-wr is 0 at second 28
+29026 delay-short 0
+29026 nointerval 2
+29026 once 2
+29026 delay 2
+30021 soft 0
+30024 opts-c 1
+30025 picky 0
+30025 grp 0
+30025 changes 0
+30025 nocontact 0
+30027 n-bob-a-grp t=RECOVERY|s=OK|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann,bob|au=|co=|id=41ebd545-9df9-4fa5-ab39-553923c74acb|dt=0|hdt=0|ack=/|o=grp is 0 at second 30
+30027 n-ann-a-grp t=RECOVERY|s=OK|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann,bob|au=|co=|id=41ebd545-9df9-4fa5-ab39-553923c74acb|dt=0|hdt=0|ack=/|o=grp is 0 at second 30
+31024 evep 0
+32025 opts-wr 0
+32025 off 0
+32025 basic 0
+32027 n-ann-a-basic t=RECOVERY|s=OK|st=HARD|a=3|n=4|sn=4|hn=0|esc=0|rcp=bob,ann|au=|co=|id=d7fb1e57-b7f6-4f83-b27d-35a56a5205be|dt=0|hdt=0|ack=/|o=basic is 0 at second 32
+32027 n-bob-a-basic t=RECOVERY|s=OK|st=HARD|a=3|n=4|sn=4|hn=0|esc=0|rcp=bob,ann|au=|co=|id=d7fb1e57-b7f6-4f83-b27d-35a56a5205be|dt=0|hdt=0|ack=/|o=basic is 0 at second 32
+33028 once 0
+33028 delay 2
+33028 delay-short 0
+33028 nointerval 2
+33030 n-ann-a-once t=RECOVERY|s=OK|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=6e700e25-f6f7-4f80-958a-a5df61c91d82|dt=0|hdt=0|ack=/|o=once is 0 at second 33
+33030 n-ann-a-delay t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=3|sn=3|hn=0|esc=0|rcp=ann|au=|co=|id=8a146837-cab9-4c7c-a9c7-3aa4a6a7b2f7|dt=0|hdt=0|ack=/|o=delay is 2 at second 33
+34022 soft 0
+34023 opts-c 1
+34024 changes 0
+34024 picky 0
+34025 grp 0
+34025 nocontact 0
+35023 evep 0
+36026 basic 0
+36026 off 0
+36026 opts-wr 0
+37029 once 0
+37029 nointerval 2
+37029 delay 2
+37029 delay-short 0
+38023 soft 0
+38024 opts-c 0
+38024 grp 0
+38025 picky 0
+38025 changes 0
+38025 nocontact 0
+39024 evep 0
+40025 opts-wr 0
+40025 off 0
+40026 basic 0
+41029 delay-short 0
+41029 once 0
+41029 nointerval 2
+41029 delay 0
+41031 n-ann-a-nointerval t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=e2ea305a-7557-4582-8442-10b481d1100e|dt=0|hdt=0|ack=/|o=nointerval is 2 at second 41
+41031 n-ann-a-delay t=RECOVERY|s=OK|st=HARD|a=3|n=4|sn=4|hn=0|esc=0|rcp=ann|au=|co=|id=f024db26-d2cc-4b46-916d-4e93374a5d33|dt=0|hdt=0|ack=/|o=delay is 0 at second 41
+42024 grp 0
+42024 soft 0
+42025 changes 0
+42026 nocontact 0
+42026 opts-c 0
+42030 picky 0
+43025 evep 0
+44027 basic 0
+44027 opts-wr 0
+44027 off 0

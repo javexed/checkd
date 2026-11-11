@@ -6,7 +6,9 @@ mod otel;
 #[cfg(not(feature = "otel"))]
 #[path = "otel_off.rs"]
 mod otel;
+mod postgres;
 mod run;
+mod store;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -17,14 +19,18 @@ use checkd_config::{Options, dump, load};
 const USAGE: &str = "\
 usage: checkd verify [options] <main-config-file>
        checkd run [options] <main-config-file>
+       checkd state <store>
 
 verify reads a Nagios or Naemon configuration and reports what is wrong
 with it. It exits 0 when the configuration can be used, 1 when it has
 errors, and 2 when checkd could not be run as asked.
 
-run runs the checks of a configuration and writes the state changes of
-its hosts and services to the log, until it gets SIGTERM or SIGINT. It
-does not send notifications yet.
+run runs the checks of a configuration, writes the state changes of its
+hosts and services to the log, sends notifications, takes external
+commands from the command file, and keeps its state in a store, until it
+gets SIGTERM or SIGINT.
+
+state prints what a store holds: sqlite:<file> or postgres:<connection>.
 
 options of verify:
   --dump <file>         write the resolved objects to <file>, in the layout
@@ -42,6 +48,16 @@ options of run:
   --for <seconds>       stop after this long
   --path-map <from>=<to>
                         as for verify
+  --store <where>       keep the state in sqlite:<file>, in
+                        postgres:<connection>, or nowhere: none. Without
+                        it, in checkd.sqlite beside the configuration's
+                        state_retention_file, unless
+                        retain_state_information is 0
+  --import-retention <file>
+                        when the store holds no state yet, take it from
+                        this retention.dat of Naemon or Nagios; without
+                        it, from the configuration's state_retention_file
+                        if there is one
   --otlp-endpoint <url> send metrics and traces about checkd itself to
                         the OpenTelemetry collector at this http:// URL,
                         as OTLP over HTTP; without it the URL in
@@ -67,6 +83,7 @@ struct Args {
 }
 
 enum Asked {
+    State(String),
     Verify(Args),
     Run(run::RunArgs),
 }
@@ -75,11 +92,14 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
     let (mut main, mut path_map) = (None, PathMap::default());
     let (mut log_file, mut seconds, mut first_checks, mut start_at) = (None, None, None, None);
     let mut otlp_endpoint = None;
+    let (mut store, mut import) = (None, None);
     while let Some(arg) = args.next() {
         let mut value = |what: &str| args.next().ok_or(format!("{arg} needs {what}"));
         match arg.as_str() {
             "--log-file" => log_file = Some(PathBuf::from(value("a file name")?)),
             "--otlp-endpoint" => otlp_endpoint = Some(value("a URL")?),
+            "--store" => store = Some(value("sqlite:<file>, postgres:<connection> or none")?),
+            "--import-retention" => import = Some(PathBuf::from(value("a file name")?)),
             "--first-checks" => first_checks = Some(PathBuf::from(value("a file name")?)),
             "--for" => {
                 let text = value("a number of seconds")?;
@@ -120,6 +140,9 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
         first_checks,
         start_at,
         otlp_endpoint,
+        command_file: None,
+        store,
+        import,
     })
 }
 
@@ -127,6 +150,12 @@ fn parse_args(mut args: impl Iterator<Item = String>) -> Result<Asked, String> {
     match args.next().as_deref() {
         Some("verify") => {}
         Some("run") => return parse_run(args).map(Asked::Run),
+        Some("state") => {
+            return match (args.next(), args.next()) {
+                (Some(spec), None) => Ok(Asked::State(spec)),
+                _ => Err(format!("state takes one store\n\n{USAGE}")),
+            };
+        }
         Some("--version") => return Err(format!("checkd {}", env!("CARGO_PKG_VERSION"))),
         Some(other) => return Err(format!("'{other}' is not a checkd command\n\n{USAGE}")),
         None => return Err(USAGE.to_string()),
@@ -170,6 +199,7 @@ fn main() -> ExitCode {
     let args = match parse_args(std::env::args().skip(1)) {
         Ok(Asked::Verify(args)) => args,
         Ok(Asked::Run(args)) => return run::run(args),
+        Ok(Asked::State(spec)) => return run::show_state(&spec),
         Err(message) => {
             eprintln!("{}", message.trim_end());
             return ExitCode::from(2);

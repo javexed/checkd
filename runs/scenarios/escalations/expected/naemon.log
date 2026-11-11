@@ -1,0 +1,98 @@
+[1794421189] Naemon 1.5.2 starting... (PID=15)
+[1794421189] Local time is Wed Nov 11 18:19:49 UTC 2026
+[1794421189] LOG VERSION: 2.0
+[1794421189] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794421189] nerd: Channel hostchecks registered successfully
+[1794421189] nerd: Channel servicechecks registered successfully
+[1794421189] nerd: Fully initialized and ready to rock!
+[1794421189] Successfully launched command file worker with pid 16
+[1794421189] Reading all config object data
+[1794421189] Loading neb modules
+[1794421189] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794421189] Naemon successfully initialized (PID=15)
+[1794421192] SERVICE ALERT: a;ea;CRITICAL;SOFT;1;ea is 2 at second 3
+[1794421192] SERVICE ALERT: a;ee;CRITICAL;SOFT;1;ee is 2 at second 3
+[1794421193] HOST ALERT: ha;DOWN;SOFT;1;ha is 2 at second 4
+[1794421193] SERVICE ALERT: a;ec;CRITICAL;SOFT;1;ec is 2 at second 4
+[1794421193] SERVICE ALERT: a;eb;CRITICAL;SOFT;1;eb is 2 at second 4
+[1794421193] SERVICE ALERT: a;ed;CRITICAL;SOFT;1;ed is 2 at second 4
+[1794421193] SERVICE ALERT: a;ea;CRITICAL;SOFT;2;ea is 2 at second 4
+[1794421193] SERVICE ALERT: a;ee;CRITICAL;SOFT;2;ee is 2 at second 4
+[1794421194] SERVICE ALERT: a;ec;CRITICAL;SOFT;2;ec is 2 at second 5
+[1794421194] SERVICE ALERT: a;eb;CRITICAL;SOFT;2;eb is 2 at second 5
+[1794421194] SERVICE ALERT: a;ed;CRITICAL;SOFT;2;ed is 2 at second 5
+[1794421194] HOST ALERT: ha;DOWN;SOFT;2;ha is 2 at second 5
+[1794421194] SERVICE ALERT: a;ea;CRITICAL;HARD;3;ea is 2 at second 5
+[1794421194] SERVICE NOTIFICATION: ann;a;ea;CRITICAL;n-svc;ea is 2 at second 5
+[1794421194] SERVICE ALERT: a;ee;CRITICAL;HARD;3;ee is 2 at second 5
+[1794421194] SERVICE NOTIFICATION: ann;a;ee;CRITICAL;n-svc;ee is 2 at second 5
+[1794421195] SERVICE ALERT: a;eb;CRITICAL;HARD;3;eb is 2 at second 6
+[1794421195] SERVICE NOTIFICATION: ann;a;eb;CRITICAL;n-svc;eb is 2 at second 6
+[1794421195] HOST ALERT: ha;DOWN;HARD;3;ha is 2 at second 6
+[1794421195] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 6
+[1794421195] SERVICE ALERT: a;ec;CRITICAL;HARD;3;ec is 2 at second 6
+[1794421195] SERVICE NOTIFICATION: ann;a;ec;CRITICAL;n-svc;ec is 2 at second 6
+[1794421195] SERVICE ALERT: a;ed;CRITICAL;HARD;3;ed is 2 at second 6
+[1794421195] SERVICE NOTIFICATION: ann;a;ed;CRITICAL;n-svc;ed is 2 at second 6
+[1794421196] SERVICE NOTIFICATION: bob;a;ee;CRITICAL;n-svc;ee is 2 at second 7
+[1794421196] SERVICE NOTIFICATION: bob;a;ea;CRITICAL;n-svc;ea is 2 at second 7
+[1794421197] SERVICE NOTIFICATION: bob;a;eb;CRITICAL;n-svc;eb is 2 at second 8
+[1794421197] HOST NOTIFICATION: bob;ha;DOWN;n-host;ha is 2 at second 8
+[1794421197] SERVICE NOTIFICATION: ann;a;ed;CRITICAL;n-svc;ed is 2 at second 8
+[1794421197] SERVICE NOTIFICATION: ann;a;ec;CRITICAL;n-svc;ec is 2 at second 8
+[1794421198] SERVICE NOTIFICATION: ann;a;ee;CRITICAL;n-svc;ee is 2 at second 9
+[1794421198] SERVICE NOTIFICATION SUPPRESSED: a;ea;Re-notification blocked for this problem because not enough time has passed since last notification.
+[1794421199] SERVICE NOTIFICATION: ann;a;ed;CRITICAL;n-svc;ed is 2 at second 10
+[1794421199] SERVICE NOTIFICATION SUPPRESSED: a;eb;Re-notification blocked for this problem.
+[1794421199] SERVICE NOTIFICATION: ann;a;ec;CRITICAL;n-svc;ec is 2 at second 10
+[1794421199] HOST NOTIFICATION: bob;ha;DOWN;n-host;ha is 2 at second 10
+[1794421200] SERVICE NOTIFICATION: bob;a;ea;CRITICAL;n-svc;ea is 2 at second 11
+[1794421200] SERVICE NOTIFICATION: ann;a;ee;CRITICAL;n-svc;ee is 2 at second 11
+[1794421201] SERVICE NOTIFICATION: ann;a;ed;CRITICAL;n-svc;ed is 2 at second 12
+[1794421201] SERVICE NOTIFICATION: ann;a;ec;CRITICAL;n-svc;ec is 2 at second 12
+[1794421201] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 12
+[1794421202] SERVICE NOTIFICATION: ann;a;ee;CRITICAL;n-svc;ee is 2 at second 13
+[1794421203] SERVICE NOTIFICATION: ann;a;ec;CRITICAL;n-svc;ec is 2 at second 14
+[1794421203] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 14
+[1794421203] SERVICE ALERT: a;ed;OK;HARD;3;ed is 0 at second 14
+[1794421203] SERVICE NOTIFICATION: ann;a;ed;OK;n-svc;ed is 0 at second 14
+[1794421204] SERVICE ALERT: a;ee;OK;HARD;3;ee is 0 at second 15
+[1794421204] SERVICE NOTIFICATION: ann;a;ee;OK;n-svc;ee is 0 at second 15
+[1794421204] SERVICE CONTACT NOTIFICATION SUPPRESSED: cat;a;ea;Notifications disabled for current object state.
+[1794421204] SERVICE NOTIFICATION: bob;a;ea;CRITICAL;n-svc;ea is 2 at second 15
+[1794421205] SERVICE ALERT: a;ec;WARNING;HARD;3;ec is 1 at second 16
+[1794421205] SERVICE CONTACT NOTIFICATION SUPPRESSED: bob;a;ec;Notifications disabled for current object state.
+[1794421205] SERVICE NOTIFICATION SUPPRESSED: a;ec;No notification sent, because no contacts were found for notification purposes.
+[1794421205] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 16
+[1794421207] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 18
+[1794421208] SERVICE NOTIFICATION SUPPRESSED: a;ea;No notification sent, because no contacts were found for notification purposes.
+[1794421209] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 20
+[1794421211] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 22
+[1794421213] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 24
+[1794421215] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 26
+[1794421215] SERVICE ALERT: a;ec;CRITICAL;HARD;3;ec is 2 at second 26
+[1794421215] SERVICE NOTIFICATION: ann;a;ec;CRITICAL;n-svc;ec is 2 at second 26
+[1794421217] SERVICE NOTIFICATION: ann;a;ec;CRITICAL;n-svc;ec is 2 at second 28
+[1794421217] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 28
+[1794421219] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 30
+[1794421219] SERVICE NOTIFICATION: ann;a;ec;CRITICAL;n-svc;ec is 2 at second 30
+[1794421221] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 32
+[1794421221] SERVICE NOTIFICATION: ann;a;ec;CRITICAL;n-svc;ec is 2 at second 32
+[1794421223] SERVICE NOTIFICATION: ann;a;ec;CRITICAL;n-svc;ec is 2 at second 34
+[1794421223] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 34
+[1794421225] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 36
+[1794421225] SERVICE NOTIFICATION: ann;a;ec;CRITICAL;n-svc;ec is 2 at second 36
+[1794421227] SERVICE NOTIFICATION: ann;a;ec;CRITICAL;n-svc;ec is 2 at second 38
+[1794421227] HOST NOTIFICATION: ann;ha;DOWN;n-host;ha is 2 at second 38
+[1794421229] HOST ALERT: ha;UP;HARD;1;ha is 0 at second 40
+[1794421229] HOST NOTIFICATION: ann;ha;UP;n-host;ha is 0 at second 40
+[1794421229] SERVICE ALERT: a;eb;OK;HARD;3;eb is 0 at second 40
+[1794421229] SERVICE NOTIFICATION: bob;a;eb;OK;n-svc;eb is 0 at second 40
+[1794421229] SERVICE ALERT: a;ec;OK;HARD;3;ec is 0 at second 40
+[1794421229] SERVICE NOTIFICATION: ann;a;ec;OK;n-svc;ec is 0 at second 40
+[1794421236] SERVICE ALERT: a;ea;OK;HARD;3;ea is 0 at second 47
+[1794421236] SERVICE NOTIFICATION: bob;a;ea;OK;n-svc;ea is 0 at second 47
+[1794421239] Caught 'Terminated', shutting down...
+[1794421239] Retention data successfully saved.
+[1794421239] Successfully shutdown... (PID=15)
+[1794421239] Event broker module 'NERD' deinitialized successfully.
