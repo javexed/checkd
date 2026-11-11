@@ -1,0 +1,204 @@
+#!/usr/bin/env bash
+# Remote workers, end to end.
+#
+#   runs/workers/run
+#
+# An engine and workers run in containers on an internal Docker network
+# that reaches nothing outside. The engine runs runs/workers/case with the
+# workers' file this script writes; certificates come from checkd
+# make-certs, tokens from /dev/urandom. Each check's output names the
+# machine that ran it (the plugin `where`).
+#
+#   w1  pools hostgroup_dmz and service
+#   w2  pools service and pool_x, with --restrict-path /case/plugins
+#   w3  a wrong token: refused
+#
+# Checked:
+#   1. routing: host groups kept local, host groups to their pool, a custom
+#      variable to its pool, the default service pool;
+#   2. a pool nobody serves gives UNKNOWN at once, naming the pool;
+#   3. a program outside --restrict-path is refused, as UNKNOWN;
+#   4. a worker with a wrong token is refused;
+#   5. /metrics shows the pools;
+#   6. the worker running the slow check is killed half way: the check is
+#      run again by the other worker of its pool.
+#
+# Everything stays in runs/workers-work.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(cd "$here/../.." && pwd)
+work=$root/runs/workers-work
+core=$(sed -n 's/^ARG NAEMON_CORE_VERSION=//p' "$root/oracle/Dockerfile")
+inputs=$(cat "$root/oracle/Dockerfile" "$root/oracle/entry.sh" | sha256sum | cut -c1-12)
+image="checkd-oracle:naemon-${core}-${inputs}"
+
+cd "$root"
+CARGO_TARGET_DIR=$root/target/workers cargo build --quiet -p checkd --features workers
+checkd=$root/target/workers/debug/checkd
+
+tag=checkd-workers-$$
+net=$tag-net
+rm -rf "$work"
+mkdir -p "$work/out" "$work/conf" "$work/w3"
+
+cleanup() {
+    docker rm -f "$tag-engine" "$tag-w1" "$tag-w2" "$tag-w3" >/dev/null 2>&1 || true
+    docker network rm "$net" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+"$checkd" make-certs "$work/conf" engine >/dev/null
+for w in w1 w2 w3; do
+    head -c 24 /dev/urandom | base64 | tr -d '=+/\n' > "$work/conf/$w.token"
+done
+# w3 knows a token, but not its own.
+head -c 24 /dev/urandom | base64 | tr -d '=+/\n' > "$work/w3/w3.token"
+cat > "$work/conf/workers.cfg" <<EOF
+listen=0.0.0.0:4730
+cert=engine.crt
+key=engine.key
+hostgroups=dmz,lab
+localhostgroups=core
+services=yes
+queue_custom_variable=_WORKER
+orphan_return=3
+max-age=30
+worker=w1 token=w1.token pools=hostgroup_dmz,service
+worker=w2 token=w2.token pools=service,pool_x
+worker=w3 token=w3.token pools=service
+EOF
+
+docker network create --internal "$net" >/dev/null
+docker run -d --name "$tag-engine" --hostname engine --network "$net" --network-alias engine \
+    --user "$(id -u):$(id -g)" \
+    -v "$here/case:/case:ro" -v "$work/conf:/conf:ro" -v "$checkd:/checkd:ro" -v "$work/out:/out" \
+    --entrypoint /checkd "$image" run --store none --http 127.0.0.1:6559 --workers /conf/workers.cfg \
+    --log-file /out/engine.log --for 300 /case/naemon.cfg >/dev/null
+
+worker() {
+    name=$1
+    token=$2
+    shift 2
+    docker run -d --name "$tag-$name" --hostname "$name" --network "$net" \
+        --user "$(id -u):$(id -g)" \
+        -v "$here/case/plugins:/case/plugins:ro" -v "$work/conf/ca.crt:/conf/ca.crt:ro" \
+        -v "$token:/conf/token:ro" -v "$checkd:/checkd:ro" -v "$work/out:/out" \
+        --entrypoint /checkd "$image" worker --engine engine:4730 --name "$name" \
+        --token-file /conf/token --ca /conf/ca.crt --max-jobs 4 "$@" >/dev/null
+}
+worker w1 "$work/conf/w1.token"
+worker w2 "$work/conf/w2.token" --restrict-path /case/plugins
+worker w3 "$work/w3/w3.token"
+
+failures=0
+ok() { echo "ok    $1"; }
+bad() { echo "FAIL  $1"; failures=$((failures + 1)); }
+api() {
+    docker exec "$tag-engine" curl -s "http://127.0.0.1:6559$1"
+}
+# Waits until a file has a line, at most some seconds.
+wait_for() {
+    for _ in $(seq "$3"); do
+        grep -q -- "$2" "$1" 2>/dev/null && return 0
+        sleep 1
+    done
+    return 1
+}
+
+wait_for "$work/out/engine.log" "Worker w2 joined" 30 || bad "w2 did not join"
+wait_for "$work/out/engine.log" "Worker w1 joined" 30 || bad "w1 did not join"
+# Two rounds of checks.
+sleep 14
+
+python3 -I - "$(api '/api/v1/hosts?columns=name,state,plugin_output')" \
+    "$(api '/api/v1/services?columns=host_name,description,state,plugin_output')" <<'PY' || failures=$((failures + 1))
+import json, sys
+hosts = {h["name"]: h for h in json.loads(sys.argv[1])}
+services = {(s["host_name"], s["description"]): s for s in json.loads(sys.argv[2])}
+want = [
+    (hosts["core1"], "ran on engine", "a host group kept local runs on the engine"),
+    (services[("core1", "ping")], "ran on engine", "so do its host's services"),
+    (hosts["dmz1"], "ran on w1", "a host group's pool: w1"),
+    (services[("dmz1", "http")], "ran on w1", "its host's services too"),
+    (hosts["plain1"], "ran on engine", "hosts=no: a host without a pool runs on the engine"),
+    (services[("plain1", "special")], "ran on w2", "a custom variable's pool: w2"),
+    (hosts["lab1"], "No worker is connected for pool hostgroup_lab", "a pool nobody serves"),
+    (services[("plain1", "forbidden")], "Refused by worker w2", "a program outside --restrict-path"),
+]
+failed = 0
+for row, text, what in want:
+    if text in row["plugin_output"]:
+        print(f"ok    {what}")
+    else:
+        print(f"FAIL  {what}: {row['plugin_output']!r}")
+        failed += 1
+for row, state, what in [(services[("plain1", "forbidden")], 3, "refused is UNKNOWN"), (hosts["lab1"], 1, "an orphaned host check is DOWN")]:
+    if row["state"] == state:
+        print(f"ok    {what}")
+    else:
+        print(f"FAIL  {what}: state {row['state']}")
+        failed += 1
+sys.exit(1 if failed else 0)
+PY
+
+if docker logs "$tag-w3" 2>&1 | grep -q "the engine said: REFUSED"; then
+    ok "a worker with a wrong token is refused"
+else
+    bad "w3 was not refused"
+fi
+metrics=$(api /metrics)
+if grep -q '^checkd_pool_workers{pool="service"} 2$' <<<"$metrics" && grep -q '^checkd_pool_workers{pool="pool_x"} 1$' <<<"$metrics"; then
+    ok "/metrics shows the workers of each pool"
+else
+    bad "/metrics: $(grep checkd_pool_workers <<<"$metrics" | tr '\n' ' ')"
+fi
+
+# A slow check, half way through on one worker, which is then killed.
+# A start from now on, so that the kill comes early in it.
+before=$(grep -c " slow start" "$work/out/trace" || true)
+for _ in $(seq 40); do
+    [ "$(grep -c " slow start" "$work/out/trace" || true)" -gt "$before" ] && break
+    sleep 1
+done
+first=$(grep " slow start" "$work/out/trace" | tail -1 | cut -d' ' -f2)
+case "$first" in
+w1) other=w2 ;;
+w2) other=w1 ;;
+*) bad "the slow check started on '$first'"; other=none ;;
+esac
+sleep 3
+killed=$(date +%s)
+docker kill "$tag-$first" >/dev/null
+echo "      killed $first at $killed, half way through the slow check"
+if wait_for "$work/out/engine.log" "Worker $first left" 40; then
+    ok "the engine sees $first leave"
+else
+    bad "the engine did not see $first leave"
+fi
+done_by=""
+for _ in $(seq 40); do
+    done_by=$(awk -v t="$killed" '$3 == "slow" && $4 == "done" && $1 >= t { print $2; exit }' "$work/out/trace")
+    [ -n "$done_by" ] && break
+    sleep 1
+done
+if [ "$done_by" = "$other" ]; then
+    ok "the slow check was run again by $other"
+else
+    bad "the slow check was finished by '$done_by', not $other"
+fi
+sleep 2
+output=$(api '/api/v1/services?columns=plugin_output&filter=description+%3D+slow')
+if grep -q "ran on $other" <<<"$output"; then
+    ok "its result is $other's"
+else
+    bad "the slow check's result: $output"
+fi
+
+echo
+if [ "$failures" = 0 ]; then
+    echo "All checks of remote workers passed."
+else
+    echo "$failures checks of remote workers failed. The logs are in $work/out."
+    exit 1
+fi

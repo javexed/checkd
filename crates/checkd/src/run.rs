@@ -14,33 +14,22 @@ use std::collections::BTreeMap;
 use std::ffi::CStr;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
-use std::process::{ExitCode, Stdio};
+use std::process::ExitCode;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use checkd_config::maincfg::PathMap;
 use checkd_config::{Options, load};
-use checkd_core::cmdline::{self, Start};
-use checkd_core::engine::{Effect, Engine, Job, JobKind, JobResult, Ms, Outcome};
+use checkd_core::engine::{Effect, Engine, JobKind, JobResult, Ms};
 use checkd_core::timeperiod::Zone;
-use tokio::io::{AsyncRead, AsyncReadExt};
-use tokio::process::{Child, Command};
 use tokio::signal::unix::{SignalKind, signal};
 use tokio::sync::mpsc;
 
 use crate::otel::{self, Telemetry};
+use crate::runner::{start, stop_group};
 use crate::store::{Sqlite, Store};
 
-/// How much of what a command prints is kept, on each of standard output
-/// and standard error. The rest is read and dropped, so that the command
-/// is not held up.
-const KEEP: usize = 1024 * 1024;
-
-/// How long output is still read after a command has ended. Something
-/// the command started may have kept its output open.
-const GRACE: Duration = Duration::from_millis(500);
 
 pub struct RunArgs {
     pub main: PathBuf,
@@ -73,6 +62,8 @@ pub struct RunArgs {
     pub livestatus: Option<PathBuf>,
     /// Shadow mode: the Livestatus socket of the production engine.
     pub shadow: Option<PathBuf>,
+    /// The remote workers' file.
+    pub workers: Option<PathBuf>,
     /// Failover, with a PostgreSQL store.
     pub failover: Option<Failover>,
     /// Where the HTTP API listens, if anywhere.
@@ -270,6 +261,17 @@ async fn serve(
         command_file(path, lines)?;
     }
     let spool = engine.settings().check_result_path.clone().map(PathBuf::from);
+    // Remote workers: the file is read now, so that a mistake in it shows
+    // at once; a standby listens for workers only once it leads.
+    #[cfg(feature = "workers")]
+    let workers_config = match &args.workers {
+        Some(path) => Some(crate::workers::read_config(path)?),
+        None => None,
+    };
+    #[cfg(not(feature = "workers"))]
+    if args.workers.is_some() {
+        return Err("--workers: this checkd was built without remote workers (the workers feature)".into());
+    }
 
     // A node in failover waits as a standby until it holds the lease.
     #[cfg(feature = "postgres")]
@@ -361,6 +363,18 @@ async fn serve(
         None => None,
     };
     let mut counts = Counts::default();
+    #[cfg(feature = "workers")]
+    let mut pools = match workers_config {
+        Some(config) => {
+            let events = crate::workers::listen(&config).await?;
+            log.line(&format!("Listening for workers at {}", config.listen));
+            Some((crate::workers::Pools::new(config), events))
+        }
+        None => None,
+    };
+    #[cfg(not(feature = "workers"))]
+    let mut pools: Option<((), ())> = None;
+    let mut worker_tick = tokio::time::interval(Duration::from_secs(1));
     // Performance data straight to a metrics store.
     let (notes_out, mut notes) = mpsc::unbounded_channel::<String>();
     let mut targets = Vec::new();
@@ -457,6 +471,15 @@ async fn serve(
                 };
                 telemetry.job_started(&job, &engine.log_name(job.obj), latency);
             }
+            #[cfg(feature = "workers")]
+            if let Some((pools, _)) = pools.as_mut() {
+                if let crate::workers::Route::Pool(pool) = crate::workers::route(engine, pools.config(), &job) {
+                    for given in pools.submit(job, pool, now()) {
+                        let _ = done.send((given.id, given.result));
+                    }
+                    continue;
+                }
+            }
             if let Some(group) = start(job, done.clone()) {
                 running.insert(id, group);
             }
@@ -488,7 +511,11 @@ async fn serve(
                 engine.command(&line, now(), &mut effects);
             }
             Some(ask) = async { http.as_mut()?.recv().await }, if http.is_some() => {
-                let reply = answer_http(engine, &ask, &history, &program, &counts, running.len(), store_failing);
+                #[cfg(feature = "workers")]
+                let pool_stats = pools.as_ref().map(|(pools, _)| pools.stats(now())).unwrap_or_default();
+                #[cfg(not(feature = "workers"))]
+                let pool_stats = Vec::new();
+                let reply = answer_http(engine, &ask, &history, &program, &counts, running.len(), store_failing, &pool_stats);
                 if ask.method == "POST" && ask.path == "/api/v1/command" && ask.authorized {
                     counts.commands += 1;
                     let line = format!("[{}] {}", now().div_euclid(1000), ask.body.trim());
@@ -568,6 +595,28 @@ async fn serve(
                 #[cfg(not(feature = "postgres"))]
                 let _ = event;
             }
+            Some(event) = worker_event(&mut pools) => {
+                #[cfg(feature = "workers")]
+                if let Some((pools, _)) = pools.as_mut() {
+                    let (given, notes) = pools.event(event, now());
+                    for note in notes {
+                        log.line(&note);
+                    }
+                    for given in given {
+                        let _ = done.send((given.id, given.result));
+                    }
+                }
+                #[cfg(not(feature = "workers"))]
+                let _ = event;
+            }
+            _ = worker_tick.tick(), if pools.is_some() => {
+                #[cfg(feature = "workers")]
+                if let Some((pools, _)) = pools.as_mut() {
+                    for given in pools.expire(now()) {
+                        let _ = done.send((given.id, given.result));
+                    }
+                }
+            }
             _ = terminate.recv() => break "Caught SIGTERM",
             _ = interrupt.recv() => break "Caught SIGINT",
             _ = &mut over => break "The time given with --for is up",
@@ -588,6 +637,22 @@ async fn serve(
     let _ = &held_notifications;
     log.line(&format!("Successfully shutdown... (PID={pid})"));
     Ok(lost)
+}
+
+/// The next event of the remote workers, or never without them.
+#[cfg(feature = "workers")]
+async fn worker_event(
+    pools: &mut Option<(crate::workers::Pools, mpsc::UnboundedReceiver<crate::workers::Event>)>,
+) -> Option<crate::workers::Event> {
+    match pools.as_mut() {
+        Some((_, events)) => events.recv().await,
+        None => std::future::pending().await,
+    }
+}
+
+#[cfg(not(feature = "workers"))]
+async fn worker_event(_: &mut Option<((), ())>) -> Option<()> {
+    std::future::pending().await
 }
 
 /// The next event of the lease thread, or never without failover.
@@ -641,6 +706,7 @@ fn answer_http(
     counts: &Counts,
     running: usize,
     store_failing: bool,
+    pools: &[(String, usize, usize, usize, f64)],
 ) -> crate::http::Reply {
     use crate::http::Reply;
     let source = checkd_livestatus::Source {
@@ -651,7 +717,7 @@ fn answer_http(
         window: None,
     };
     match (ask.method.as_str(), ask.path.as_str()) {
-        ("GET", "/metrics") => Reply::text(200, metrics(engine, program, counts, running, store_failing)),
+        ("GET", "/metrics") => Reply::text(200, metrics(engine, program, counts, running, store_failing, pools)),
         ("POST", "/api/v1/command") => {
             if ask.authorized {
                 Reply::json(200, "{\"accepted\":true}\n".to_string())
@@ -684,6 +750,7 @@ fn metrics(
     counts: &Counts,
     running: usize,
     store_failing: bool,
+    pools: &[(String, usize, usize, usize, f64)],
 ) -> String {
     let (host_checks, service_checks) = engine.checks_run();
     let mut out = String::new();
@@ -736,6 +803,16 @@ fn metrics(
     }
     metric("checkd_objects", "gauge", "Hosts and services by their current state.", states);
     metric("checkd_store_failing", "gauge", "1 while the store cannot be written.", vec![(String::new(), store_failing as u8 as f64)]);
+    if !pools.is_empty() {
+        let label = |pool: &str| format!("{{pool=\"{}\"}}", pool.replace('\\', "\\\\").replace('"', "\\\""));
+        let each = |pick: fn(&(String, usize, usize, usize, f64)) -> f64| -> Vec<(String, f64)> {
+            pools.iter().map(|p| (label(&p.0), pick(p))).collect()
+        };
+        metric("checkd_pool_workers", "gauge", "Remote workers connected that serve the pool.", each(|p| p.1 as f64));
+        metric("checkd_pool_jobs_waiting", "gauge", "Jobs waiting for a worker of the pool.", each(|p| p.2 as f64));
+        metric("checkd_pool_jobs_running", "gauge", "Jobs held by workers of the pool.", each(|p| p.3 as f64));
+        metric("checkd_pool_oldest_waiting_seconds", "gauge", "How long the oldest job waiting has waited.", each(|p| p.4));
+    }
     out
 }
 
@@ -1005,138 +1082,6 @@ fn command_file(path: &Path, lines: mpsc::UnboundedSender<String>) -> Result<(),
     Ok(())
 }
 
-/// Starts a command. Its result comes back on `done`. The answer is the
-/// command's process group, when it could be started.
-fn start(job: Job, done: mpsc::UnboundedSender<(u64, JobResult)>) -> Option<i32> {
-    let (program, mut command) = match cmdline::plan(&job.line) {
-        Start::Direct { env, argv } => {
-            let program = argv.first().cloned().unwrap_or_default();
-            let mut command = Command::new(&program);
-            command.args(argv.iter().skip(1)).envs(env);
-            (program, command)
-        }
-        Start::Shell => {
-            let mut command = Command::new("/bin/sh");
-            command.arg("-c").arg(&job.line);
-            ("/bin/sh".to_string(), command)
-        }
-    };
-    // A group of its own, so that the command can be stopped together
-    // with everything it started.
-    command
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .process_group(0)
-        .kill_on_drop(true);
-    let child = match command.spawn() {
-        Ok(child) => child,
-        Err(err) => {
-            // The reference tries to start the program in a process of
-            // its own, which says this and ends with the error's number.
-            let errno = err.raw_os_error().unwrap_or(libc::ENOENT);
-            let result = JobResult {
-                outcome: Outcome::Exited(errno),
-                stdout: String::new(),
-                stderr: format!(
-                    "execvp({program}, ...) failed. errno is {errno}: {}",
-                    error_text(errno)
-                ),
-            };
-            let _ = done.send((job.id, result));
-            return None;
-        }
-    };
-    let group = child.id().map(|pid| pid as i32);
-    tokio::spawn(async move {
-        let result = finish(child, group, job.timeout).await;
-        let _ = done.send((job.id, result));
-    });
-    group
-}
-
-/// Waits for a command to end, or stops it at its timeout.
-async fn finish(mut child: Child, group: Option<i32>, timeout: Ms) -> JobResult {
-    let mut out = child.stdout.take();
-    let mut err = child.stderr.take();
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-
-    let work = async {
-        let mut ended = None;
-        {
-            let read = async {
-                tokio::join!(keep(&mut out, &mut stdout), keep(&mut err, &mut stderr));
-            };
-            tokio::pin!(read);
-            tokio::select! {
-                _ = &mut read => {}
-                status = child.wait() => {
-                    ended = Some(status);
-                    let _ = tokio::time::timeout(GRACE, &mut read).await;
-                }
-            }
-        }
-        match ended {
-            Some(status) => status,
-            None => child.wait().await,
-        }
-    };
-    let limit = Duration::from_millis(timeout.max(0) as u64);
-    let outcome = match tokio::time::timeout(limit, work).await {
-        Ok(Ok(status)) => match (status.code(), status.signal()) {
-            (Some(code), _) => Outcome::Exited(code),
-            (None, Some(signal)) => Outcome::Signaled(signal),
-            (None, None) => Outcome::Failed("ended in a way that is not understood".to_string()),
-        },
-        Ok(Err(err)) => Outcome::Failed(err.to_string()),
-        Err(_) => {
-            if let Some(group) = group {
-                stop_group(group);
-            }
-            let _ = child.wait().await;
-            Outcome::TimedOut
-        }
-    };
-    JobResult {
-        outcome,
-        stdout: String::from_utf8_lossy(&stdout).into_owned(),
-        stderr: String::from_utf8_lossy(&stderr).into_owned(),
-    }
-}
-
-/// Reads a pipe to its end and keeps the first `KEEP` bytes.
-async fn keep<R: AsyncRead + Unpin>(pipe: &mut Option<R>, into: &mut Vec<u8>) {
-    let Some(pipe) = pipe else { return };
-    let mut buffer = [0u8; 8192];
-    loop {
-        match pipe.read(&mut buffer).await {
-            Ok(0) | Err(_) => return,
-            Ok(n) => {
-                let room = KEEP.saturating_sub(into.len());
-                into.extend_from_slice(&buffer[..n.min(room)]);
-            }
-        }
-    }
-}
-
-/// Ends every process of a group at once.
-fn stop_group(group: i32) {
-    if group > 1 {
-        // SAFETY: a plain system call. A group that is gone is an error
-        // that does not matter here.
-        unsafe { libc::kill(-group, libc::SIGKILL) };
-    }
-}
-
-/// The system's words for an error number.
-fn error_text(errno: i32) -> String {
-    let text = std::io::Error::from_raw_os_error(errno).to_string();
-    match text.rfind(" (os error ") {
-        Some(at) => text[..at].to_string(),
-        None => text,
-    }
-}
 
 /// How far the time checkd goes by is ahead of the system's clock, in
 /// milliseconds. Not 0 only in a test run that was given `--start-at`.

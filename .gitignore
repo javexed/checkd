@@ -12,3 +12,4 @@
 /livestatus/rendered
 /runs/shadow-work
 /runs/failover-work
+/runs/workers-work

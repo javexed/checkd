@@ -50,6 +50,11 @@ a time: see [docs/failover.md](docs/failover.md).
 Beyond parity: an HTTP API on the Livestatus tables, with commands
 behind a token, `/metrics` for Prometheus, and performance data sent
 straight to Graphite or InfluxDB: see [docs/api.md](docs/api.md).
+Remote workers run checks, event handlers and notifications on other
+machines, in place of mod_gearman, over TLS with a token per worker: see
+[docs/workers.md](docs/workers.md). They are tested with an engine and
+three workers in containers, one of them killed half way through a
+check; not yet with two failover nodes, or under load.
 
 It answers Livestatus at the socket of a config's Livestatus
 `broker_module` line. The 108 queries Thruk was seen sending for 54 of
@@ -105,6 +110,7 @@ it makes when it is not there.
     --http <addr>          the HTTP API and /metrics, see docs/api.md
     --perfdata-graphite <host:port>, --perfdata-influx <url>
                            send performance data to a metrics store
+    --workers <file>       hand jobs to remote workers, see docs/workers.md
     --otlp-endpoint <url>  see below
 
     target/debug/checkd state sqlite:/path/to/checkd.sqlite
@@ -165,7 +171,8 @@ Phases, each with a gate that must pass before the next starts:
 - `livestatus/`: recording what Thruk asks, and rendering Thruk's pages
   against both engines, see [livestatus/README.md](livestatus/README.md).
 - `docs/`: [the store](docs/store.md), [failover](docs/failover.md),
-  [the HTTP API, metrics and perfdata export](docs/api.md).
+  [the HTTP API, metrics and perfdata export](docs/api.md),
+  [remote workers](docs/workers.md).
 - `real/`: the harness for config trees that other people wrote. The
   trees themselves are downloaded and stay out of git.
 
@@ -175,7 +182,9 @@ Phases, each with a gate that must pass before the next starts:
 in) in the daemon. The OpenTelemetry export is written by hand on top of
 those and adds none. The PostgreSQL store, behind the `postgres` feature,
 adds `tokio-postgres`, and `rustls`, `tokio-postgres-rustls` and
-`webpki-roots` for TLS.
+`webpki-roots` for TLS. Remote workers, behind the `workers` feature,
+add `tokio-rustls` and `rustls` for TLS and `rcgen` for `checkd
+make-certs`.
 
 ## Licence
 

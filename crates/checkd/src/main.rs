@@ -13,8 +13,15 @@ mod livestatus;
 mod perfexport;
 mod postgres;
 mod run;
+mod runner;
 mod shadow;
 mod store;
+#[cfg(feature = "workers")]
+mod tls;
+#[cfg(feature = "workers")]
+mod worker;
+#[cfg(feature = "workers")]
+mod workers;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -26,6 +33,8 @@ const USAGE: &str = "\
 usage: checkd verify [options] <main-config-file>
        checkd run [options] <main-config-file>
        checkd state <store>
+       checkd worker [options]
+       checkd make-certs <dir> <engine host name>...
 
 verify reads a Nagios or Naemon configuration and reports what is wrong
 with it. It exits 0 when the configuration can be used, 1 when it has
@@ -37,6 +46,12 @@ commands from the command file, and keeps its state in a store, until it
 gets SIGTERM or SIGINT.
 
 state prints what a store holds: sqlite:<file> or postgres:<connection>.
+
+worker runs the jobs of an engine started with --workers, on another
+machine; checkd worker --help says how. make-certs writes a certificate
+authority and a certificate for the engine's host names into <dir>, for
+a site that has none of its own. Both only in a build with the workers
+feature.
 
 options of verify:
   --dump <file>         write the resolved objects to <file>, in the layout
@@ -96,6 +111,9 @@ options of run:
                         send them to InfluxDB, as line protocol posted to
                         this http:// URL; CHECKD_INFLUX_TOKEN is sent when
                         set
+  --workers <file>      hand checks, event handlers and notifications to
+                        remote workers, as the file says (docs/workers.md).
+                        Only in a build with the workers feature.
   --otlp-endpoint <url> send metrics and traces about checkd itself to
                         the OpenTelemetry collector at this http:// URL,
                         as OTLP over HTTP; without it the URL in
@@ -124,6 +142,10 @@ enum Asked {
     State(String),
     Verify(Args),
     Run(run::RunArgs),
+    #[cfg(feature = "workers")]
+    Worker(worker::WorkerArgs),
+    #[cfg(feature = "workers")]
+    MakeCerts(PathBuf, Vec<String>),
 }
 
 fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, String> {
@@ -132,6 +154,7 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
     let mut otlp_endpoint = None;
     let (mut store, mut import, mut livestatus, mut shadow) = (None, None, None, None);
     let mut http = None;
+    let mut workers = None;
     let (mut perfdata_graphite, mut perfdata_influx) = (None, None);
     let mut failover = run::Failover {
         lease: 15.0,
@@ -149,6 +172,7 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
             "--livestatus" => livestatus = Some(PathBuf::from(value("a socket path")?)),
             "--shadow" => shadow = Some(PathBuf::from(value("a socket path")?)),
             "--http" => http = Some(value("an address")?),
+            "--workers" => workers = Some(PathBuf::from(value("a file name")?)),
             "--perfdata-graphite" => perfdata_graphite = Some(value("host:port")?),
             "--perfdata-influx" => perfdata_influx = Some(value("a URL")?),
             "--failover" => failover.node = value("the name of this node")?,
@@ -213,6 +237,7 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
         livestatus,
         shadow,
         http,
+        workers,
         perfdata_graphite,
         perfdata_influx,
         failover: (!failover.node.is_empty()).then(|| {
@@ -233,6 +258,21 @@ fn parse_args(mut args: impl Iterator<Item = String>) -> Result<Asked, String> {
                 (Some(spec), None) => Ok(Asked::State(spec)),
                 _ => Err(format!("state takes one store\n\n{USAGE}")),
             };
+        }
+        #[cfg(feature = "workers")]
+        Some("worker") => return worker::parse(args).map(Asked::Worker),
+        #[cfg(feature = "workers")]
+        Some("make-certs") => {
+            let dir = args.next().ok_or(format!("make-certs needs a directory\n\n{USAGE}"))?;
+            let names: Vec<String> = args.collect();
+            if names.is_empty() {
+                return Err(format!("make-certs needs the engine's host names\n\n{USAGE}"));
+            }
+            return Ok(Asked::MakeCerts(PathBuf::from(dir), names));
+        }
+        #[cfg(not(feature = "workers"))]
+        Some("worker" | "make-certs") => {
+            return Err("this checkd was built without remote workers (the workers feature)".to_string());
         }
         Some("--version") => return Err(format!("checkd {}", env!("CARGO_PKG_VERSION"))),
         Some(other) => return Err(format!("'{other}' is not a checkd command\n\n{USAGE}")),
@@ -278,6 +318,24 @@ fn main() -> ExitCode {
         Ok(Asked::Verify(args)) => args,
         Ok(Asked::Run(args)) => return run::run(args),
         Ok(Asked::State(spec)) => return run::show_state(&spec),
+        #[cfg(feature = "workers")]
+        Ok(Asked::Worker(args)) => return worker::run(args),
+        #[cfg(feature = "workers")]
+        Ok(Asked::MakeCerts(dir, names)) => {
+            return match tls::make_certs(&dir, &names) {
+                Ok(()) => {
+                    println!(
+                        "Wrote ca.crt, ca.key, engine.crt and engine.key to {}. Give workers ca.crt; keep ca.key away from the engine.",
+                        dir.display()
+                    );
+                    ExitCode::SUCCESS
+                }
+                Err(err) => {
+                    eprintln!("{err}");
+                    ExitCode::from(2)
+                }
+            };
+        }
         Err(message) => {
             eprintln!("{}", message.trim_end());
             return ExitCode::from(2);

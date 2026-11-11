@@ -20,6 +20,9 @@ directory holds those runs and what compares them.
 - `shadow/`: checkd in shadow mode beside the reference.
 - `failover/`: kill and partition tests of two nodes on one PostgreSQL
   database, the phase 5 gate. See `../docs/failover.md`.
+- `workers/`: an engine and remote workers on an internal network: where
+  jobs go, refusals, and a worker killed half way through a check. See
+  `../docs/workers.md`.
 - `timeperiods/`: timeperiods against the reference, see
   [timeperiods/README.md](timeperiods/README.md).
 

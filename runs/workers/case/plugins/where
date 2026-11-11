@@ -1,0 +1,9 @@
+#!/bin/sh
+# where <label> [seconds]: says which machine ran it, after sleeping that
+# long, and leaves a line in /out/trace before and after.
+me=$(hostname)
+echo "$(date +%s) $me $1 start" >> /out/trace
+[ -n "${2:-}" ] && sleep "$2"
+echo "$(date +%s) $me $1 done" >> /out/trace
+echo "OK $1 ran on $me"
+exit 0
