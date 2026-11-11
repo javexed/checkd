@@ -1,0 +1,5 @@
+# The reference starts the 70-second check again while an earlier run of
+# it is still going. checkd does not run two checks of one object at once.
+drop slow@8009 no second check of an object while one is running
+drop slow@69011 no second check of an object while one is running
+drop slow@74012 no second check of an object while one is running

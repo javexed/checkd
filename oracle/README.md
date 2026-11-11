@@ -23,6 +23,18 @@ Docker is the only requirement.
 
 The container runs without network access and as the calling user.
 
+For phase 2 there is a second question: what does Naemon do on a config
+over time?
+
+    oracle/play <case-dir> <out-dir> <seconds>
+
+`play` starts Naemon as a daemon on the case, stops it after the seconds
+given, and writes its log, the trace of the scripted plugins' calls, the
+moment it began, its status file and the state it saved. Here plugins are
+run: the scripts of `runs/lib/plugins`, mounted at `/case/plugins`. The
+container has no network and runs as the calling user, as above. See
+[`../runs/README.md`](../runs/README.md).
+
 ## What a case is
 
 A directory with a main config named `naemon.cfg` and whatever it refers to.
@@ -32,7 +44,7 @@ A directory with a main config named `naemon.cfg` and whatever it refers to.
   config's directory.
 - The oracle sets `log_file`, `precached_object_file` and `check_result_path`
   itself and drops any value a case gives for them.
-- Plugins are never run, so command lines may name paths that don't exist.
+- `run` never runs plugins, so command lines may name paths that don't exist.
 
 In the corpus a case lives at `corpus/<name>/config`, with the oracle's
 answer beside it in `corpus/<name>/expected`.

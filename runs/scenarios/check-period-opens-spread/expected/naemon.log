@@ -1,0 +1,50 @@
+[1794404990] Naemon 1.5.2 starting... (PID=15)
+[1794404990] Local time is Wed Nov 11 13:49:50 UTC 2026
+[1794404990] LOG VERSION: 2.0
+[1794404990] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794404990] nerd: Channel hostchecks registered successfully
+[1794404990] nerd: Channel servicechecks registered successfully
+[1794404990] nerd: Fully initialized and ready to rock!
+[1794404990] Successfully launched command file worker with pid 16
+[1794404990] Reading all config object data
+[1794404990] Loading neb modules
+[1794404990] Warning: Service 'g1' on host 'a'  has a notification interval less than its check interval!  Notifications are only re-sent after checks are made, so the effective notification interval will be that of the check interval.
+[1794404990] Warning: Service 'g10' on host 'a'  has a notification interval less than its check interval!  Notifications are only re-sent after checks are made, so the effective notification interval will be that of the check interval.
+[1794404990] Warning: Service 'g2' on host 'a'  has a notification interval less than its check interval!  Notifications are only re-sent after checks are made, so the effective notification interval will be that of the check interval.
+[1794404990] Warning: Service 'g3' on host 'a'  has a notification interval less than its check interval!  Notifications are only re-sent after checks are made, so the effective notification interval will be that of the check interval.
+[1794404990] Warning: Service 'g4' on host 'a'  has a notification interval less than its check interval!  Notifications are only re-sent after checks are made, so the effective notification interval will be that of the check interval.
+[1794404990] Warning: Service 'g5' on host 'a'  has a notification interval less than its check interval!  Notifications are only re-sent after checks are made, so the effective notification interval will be that of the check interval.
+[1794404990] Warning: Service 'g6' on host 'a'  has a notification interval less than its check interval!  Notifications are only re-sent after checks are made, so the effective notification interval will be that of the check interval.
+[1794404990] Warning: Service 'g7' on host 'a'  has a notification interval less than its check interval!  Notifications are only re-sent after checks are made, so the effective notification interval will be that of the check interval.
+[1794404990] Warning: Service 'g8' on host 'a'  has a notification interval less than its check interval!  Notifications are only re-sent after checks are made, so the effective notification interval will be that of the check interval.
+[1794404990] Warning: Service 'g9' on host 'a'  has a notification interval less than its check interval!  Notifications are only re-sent after checks are made, so the effective notification interval will be that of the check interval.
+[1794404990] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794404990] INITIAL HOST STATE: a;UP;HARD;1;
+[1794404990] INITIAL SERVICE STATE: a;f1;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;f10;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;f2;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;f3;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;f4;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;f5;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;f6;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;f7;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;f8;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;f9;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;g1;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;g10;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;g2;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;g3;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;g4;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;g5;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;g6;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;g7;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;g8;OK;HARD;1;(null)
+[1794404990] INITIAL SERVICE STATE: a;g9;OK;HARD;1;(null)
+[1794404990] Naemon successfully initialized (PID=15)
+[1794405050] Auto-save of retention data completed successfully.
+[1794405110] Auto-save of retention data completed successfully.
+[1794405170] Auto-save of retention data completed successfully.
+[1794405190] Caught 'Terminated', shutting down...
+[1794405190] Retention data successfully saved.
+[1794405190] Successfully shutdown... (PID=15)
+[1794405190] Event broker module 'NERD' deinitialized successfully.

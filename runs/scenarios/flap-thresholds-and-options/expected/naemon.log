@@ -1,0 +1,58 @@
+[1794404078] Naemon 1.5.2 starting... (PID=15)
+[1794404078] Local time is Wed Nov 11 13:34:38 UTC 2026
+[1794404078] LOG VERSION: 2.0
+[1794404078] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794404078] nerd: Channel hostchecks registered successfully
+[1794404078] nerd: Channel servicechecks registered successfully
+[1794404078] nerd: Fully initialized and ready to rock!
+[1794404078] Successfully launched command file worker with pid 16
+[1794404078] Reading all config object data
+[1794404078] Loading neb modules
+[1794404078] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794404078] INITIAL HOST STATE: a;UP;HARD;1;
+[1794404078] INITIAL HOST STATE: z;UP;HARD;1;
+[1794404078] INITIAL SERVICE STATE: a;s;OK;HARD;1;(null)
+[1794404078] INITIAL SERVICE STATE: z;spy;OK;HARD;1;(null)
+[1794404078] Naemon successfully initialized (PID=15)
+[1794404085] SERVICE ALERT: a;s;WARNING;HARD;1;a-s call 4 gives 1
+[1794404085] SERVICE CONTACT NOTIFICATION SUPPRESSED: ops;a;s;Notifications are disabled for this object by its configuration.
+[1794404085] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794404087] SERVICE ALERT: a;s;OK;HARD;1;a-s call 5 gives 0
+[1794404087] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404089] SERVICE ALERT: a;s;WARNING;HARD;1;a-s call 6 gives 1
+[1794404089] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794404091] SERVICE ALERT: a;s;OK;HARD;1;a-s call 7 gives 0
+[1794404091] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404093] SERVICE ALERT: a;s;WARNING;HARD;1;a-s call 8 gives 1
+[1794404093] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794404095] SERVICE ALERT: a;s;OK;HARD;1;a-s call 9 gives 0
+[1794404095] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404097] SERVICE ALERT: a;s;WARNING;HARD;1;a-s call 10 gives 1
+[1794404097] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794404099] SERVICE ALERT: a;s;OK;HARD;1;a-s call 11 gives 0
+[1794404099] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404101] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 12 gives 2
+[1794404101] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794404103] SERVICE ALERT: a;s;OK;HARD;1;a-s call 13 gives 0
+[1794404103] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404105] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 14 gives 2
+[1794404105] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794404107] SERVICE ALERT: a;s;OK;HARD;1;a-s call 15 gives 0
+[1794404107] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404109] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 16 gives 2
+[1794404109] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794404111] SERVICE ALERT: a;s;OK;HARD;1;a-s call 17 gives 0
+[1794404111] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404113] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 18 gives 2
+[1794404113] SERVICE FLAPPING ALERT: a;s;STARTED; Service appears to have started flapping (35.5% change >= 30.0% threshold)
+[1794404113] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794404113] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked because the object is currently flapping.
+[1794404115] SERVICE ALERT: a;s;OK;HARD;1;a-s call 19 gives 0
+[1794404115] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404138] Auto-save of retention data completed successfully.
+[1794404151] SERVICE FLAPPING ALERT: a;s;STOPPED; Service appears to have stopped flapping (7.9% change < 10.0% threshold)
+[1794404151] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794404153] Caught 'Terminated', shutting down...
+[1794404153] Retention data successfully saved.
+[1794404153] Successfully shutdown... (PID=15)
+[1794404153] Event broker module 'NERD' deinitialized successfully.

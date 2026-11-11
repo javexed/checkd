@@ -8,3 +8,11 @@ publish.workspace = true
 
 [dependencies]
 checkd-config = { path = "../checkd-config" }
+checkd-core = { version = "0.0.0", path = "../checkd-core" }
+libc = "0.2.191"
+tokio = { version = "1.54.1", default-features = false, features = ["rt", "process", "time", "io-util", "sync", "signal", "macros"] }
+
+[features]
+# The optional export of checkd's own metrics and traces to an
+# OpenTelemetry collector. Off in a plain build.
+otel = ["tokio/net"]

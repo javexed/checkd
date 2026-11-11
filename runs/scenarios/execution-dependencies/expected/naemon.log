@@ -1,0 +1,37 @@
+[1794404643] Naemon 1.5.2 starting... (PID=15)
+[1794404643] Local time is Wed Nov 11 13:44:03 UTC 2026
+[1794404643] LOG VERSION: 2.0
+[1794404643] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794404643] nerd: Channel hostchecks registered successfully
+[1794404643] nerd: Channel servicechecks registered successfully
+[1794404643] nerd: Fully initialized and ready to rock!
+[1794404643] Successfully launched command file worker with pid 16
+[1794404643] Reading all config object data
+[1794404643] Loading neb modules
+[1794404643] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794404643] INITIAL HOST STATE: a;UP;HARD;1;
+[1794404643] INITIAL HOST STATE: b;UP;HARD;1;
+[1794404643] INITIAL HOST STATE: c;UP;HARD;1;
+[1794404643] INITIAL SERVICE STATE: a;chain;OK;HARD;1;(null)
+[1794404643] INITIAL SERVICE STATE: a;dep;OK;HARD;1;(null)
+[1794404643] INITIAL SERVICE STATE: a;dep2;OK;HARD;1;(null)
+[1794404643] INITIAL SERVICE STATE: a;master;OK;HARD;1;(null)
+[1794404643] INITIAL SERVICE STATE: c;onb;OK;HARD;1;(null)
+[1794404643] Naemon successfully initialized (PID=15)
+[1794404660] SERVICE ALERT: a;master;CRITICAL;SOFT;1;a-master is 2 at second 17
+[1794404661] SERVICE ALERT: a;master;CRITICAL;SOFT;2;a-master is 2 at second 18
+[1794404662] SERVICE ALERT: a;master;CRITICAL;HARD;3;a-master is 2 at second 19
+[1794404662] SERVICE CONTACT NOTIFICATION SUPPRESSED: ops;a;master;Notifications are disabled for this object by its configuration.
+[1794404662] SERVICE NOTIFICATION SUPPRESSED: a;master;No notification sent, because no contacts were found for notification purposes.
+[1794404667] HOST ALERT: b;DOWN;HARD;1;b is 2 at second 24
+[1794404667] HOST CONTACT NOTIFICATION SUPPRESSED: ops;b;Notifications are disabled for this object by its configuration.
+[1794404667] HOST NOTIFICATION SUPPRESSED: b;No notification sent, because no contacts were found for notification purposes.
+[1794404687] HOST ALERT: b;UP;HARD;1;b is 0 at second 44
+[1794404687] HOST NOTIFICATION SUPPRESSED: b;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404687] SERVICE ALERT: a;master;OK;HARD;3;a-master is 0 at second 44
+[1794404687] SERVICE NOTIFICATION SUPPRESSED: a;master;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404703] Auto-save of retention data completed successfully.
+[1794404723] Caught 'Terminated', shutting down...
+[1794404723] Retention data successfully saved.
+[1794404723] Successfully shutdown... (PID=15)
+[1794404723] Event broker module 'NERD' deinitialized successfully.

@@ -1,0 +1,73 @@
+14 b 2
+15 a 0
+1012 a-t 1
+1014 a 0
+2012 sm3 tup=1|tdn=1|tun=0|thp=1|tso=0|tsw=1|tsc=0|tsu=0|tsp=1|ae=root@example.test|ap=555|mcf=/case/naemon.cfg|lf=/tmp/oracle/naemon.log|rf=/case/resource.cfg|tp=/tmp/oracle|cf=/tmp/oracle/naemon.cmd|od=DOWN|od2=OK|od3=WARNING|od4=$HOSTADDRESS:nosuch$|od5=|grp=0,1|grp2=a+b|sgrp=0,0|cn=$CONTACTNAME$|ce=|ca=ops|cgm=ann,ann,ops|cga=Ops People|cvh=R13|cvc=$_CONTACTDESK:ops$
+2014 a-t 1
+2016 b 2
+2016 a 0
+3012 sm4 time=13:41:12|date=11-11-2026|ldt=Wed Nov 11 13:41:12 UTC 2026|sdt=11-11-2026 13:41:12|timet=1794404472|pst=1794404469|est=1794404469|iv=1|nv=1794404472|iv2=0|nv2=0|iv3=1|nv3=1794404472|iv4=$ISVALIDTIME:nosuch$|lsc=0|lssc=0|lsok=0|lsw=0|lscr=0|lsu=0|lhc=1794404471|lhsc=1794404469|lhu=1794404471|lhd=0|lhur=0|sct=ACTIVE|hct=ACTIVE|snn=0|sack=|nt=|hpar=$HOSTPARENTS:b$|hch=$HOSTCHILDREN$|hid=|htz=$HOSTTIMEZONE$|sproblem=|lspi=|sev=0|hev=3|hpi=f9919571-2aeb-4943-9937-5adb9bcbaf97
+3013 b-t 2
+3015 b 2
+3016 a-t 1
+3018 a 0
+8013 sm3 tup=1|tdn=1|tun=0|thp=1|tso=2|tsw=1|tsc=1|tsu=0|tsp=2|ae=root@example.test|ap=555|mcf=/case/naemon.cfg|lf=/tmp/oracle/naemon.log|rf=/case/resource.cfg|tp=/tmp/oracle|cf=/tmp/oracle/naemon.cmd|od=DOWN|od2=CRITICAL|od3=WARNING|od4=$HOSTADDRESS:nosuch$|od5=b-t is 2 at second 3|grp=0,1|grp2=a+b|sgrp=2,0|cn=$CONTACTNAME$|ce=|ca=ops|cgm=ann,ann,ops|cga=Ops People|cvh=R13|cvc=$_CONTACTDESK:ops$
+8014 b-t 2
+8016 a-t 1
+9013 sm4 time=13:41:18|date=11-11-2026|ldt=Wed Nov 11 13:41:18 UTC 2026|sdt=11-11-2026 13:41:18|timet=1794404478|pst=1794404469|est=1794404469|iv=1|nv=1794404478|iv2=0|nv2=0|iv3=1|nv3=1794404478|iv4=$ISVALIDTIME:nosuch$|lsc=1794404472|lssc=1794404472|lsok=1794404472|lsw=0|lscr=0|lsu=0|lhc=1794404472|lhsc=1794404469|lhu=1794404472|lhd=0|lhur=0|sct=ACTIVE|hct=ACTIVE|snn=0|sack=|nt=|hpar=$HOSTPARENTS:b$|hch=$HOSTCHILDREN$|hid=|htz=$HOSTTIMEZONE$|sproblem=7dc86236-ff8b-4b00-9a86-3d818e68b811|lspi=|sev=4|hev=5|hpi=f9919571-2aeb-4943-9937-5adb9bcbaf97
+13014 b-t 2
+13016 a-t 1
+14017 sm3 tup=1|tdn=1|tun=0|thp=1|tso=2|tsw=1|tsc=1|tsu=0|tsp=2|ae=root@example.test|ap=555|mcf=/case/naemon.cfg|lf=/tmp/oracle/naemon.log|rf=/case/resource.cfg|tp=/tmp/oracle|cf=/tmp/oracle/naemon.cmd|od=DOWN|od2=CRITICAL|od3=WARNING|od4=$HOSTADDRESS:nosuch$|od5=b-t is 2 at second 13|grp=0,1|grp2=a+b|sgrp=2,0|cn=$CONTACTNAME$|ce=|ca=ops|cgm=ann,ann,ops|cga=Ops People|cvh=R13|cvc=$_CONTACTDESK:ops$
+15013 sm4 time=13:41:24|date=11-11-2026|ldt=Wed Nov 11 13:41:24 UTC 2026|sdt=11-11-2026 13:41:24|timet=1794404484|pst=1794404469|est=1794404469|iv=1|nv=1794404484|iv2=0|nv2=0|iv3=1|nv3=1794404484|iv4=$ISVALIDTIME:nosuch$|lsc=1794404478|lssc=1794404472|lsok=1794404478|lsw=0|lscr=0|lsu=0|lhc=1794404472|lhsc=1794404469|lhu=1794404472|lhd=0|lhur=0|sct=ACTIVE|hct=ACTIVE|snn=0|sack=|nt=|hpar=$HOSTPARENTS:b$|hch=$HOSTCHILDREN$|hid=|htz=$HOSTTIMEZONE$|sproblem=7dc86236-ff8b-4b00-9a86-3d818e68b811|lspi=|sev=4|hev=5|hpi=f9919571-2aeb-4943-9937-5adb9bcbaf97
+18015 b-t 2
+18015 a-t 1
+20014 sm3 tup=1|tdn=1|tun=0|thp=1|tso=2|tsw=1|tsc=1|tsu=0|tsp=2|ae=root@example.test|ap=555|mcf=/case/naemon.cfg|lf=/tmp/oracle/naemon.log|rf=/case/resource.cfg|tp=/tmp/oracle|cf=/tmp/oracle/naemon.cmd|od=DOWN|od2=CRITICAL|od3=WARNING|od4=$HOSTADDRESS:nosuch$|od5=b-t is 2 at second 18|grp=0,1|grp2=a+b|sgrp=2,0|cn=$CONTACTNAME$|ce=|ca=ops|cgm=ann,ann,ops|cga=Ops People|cvh=R13|cvc=$_CONTACTDESK:ops$
+21014 sm4 time=13:41:30|date=11-11-2026|ldt=Wed Nov 11 13:41:30 UTC 2026|sdt=11-11-2026 13:41:30|timet=1794404490|pst=1794404469|est=1794404469|iv=1|nv=1794404490|iv2=0|nv2=0|iv3=1|nv3=1794404490|iv4=$ISVALIDTIME:nosuch$|lsc=1794404484|lssc=1794404472|lsok=1794404484|lsw=0|lscr=0|lsu=0|lhc=1794404472|lhsc=1794404469|lhu=1794404472|lhd=0|lhur=0|sct=ACTIVE|hct=ACTIVE|snn=0|sack=|nt=|hpar=$HOSTPARENTS:b$|hch=$HOSTCHILDREN$|hid=|htz=$HOSTTIMEZONE$|sproblem=7dc86236-ff8b-4b00-9a86-3d818e68b811|lspi=|sev=4|hev=5|hpi=f9919571-2aeb-4943-9937-5adb9bcbaf97
+23016 a-t 1
+23016 b 2
+23016 b-t 2
+23018 a 0
+26014 sm3 tup=1|tdn=1|tun=0|thp=1|tso=2|tsw=1|tsc=1|tsu=0|tsp=2|ae=root@example.test|ap=555|mcf=/case/naemon.cfg|lf=/tmp/oracle/naemon.log|rf=/case/resource.cfg|tp=/tmp/oracle|cf=/tmp/oracle/naemon.cmd|od=DOWN|od2=CRITICAL|od3=WARNING|od4=$HOSTADDRESS:nosuch$|od5=b-t is 2 at second 23|grp=0,1|grp2=a+b|sgrp=2,0|cn=$CONTACTNAME$|ce=|ca=ops|cgm=ann,ann,ops|cga=Ops People|cvh=R13|cvc=$_CONTACTDESK:ops$
+27015 sm4 time=13:41:36|date=11-11-2026|ldt=Wed Nov 11 13:41:36 UTC 2026|sdt=11-11-2026 13:41:36|timet=1794404496|pst=1794404469|est=1794404469|iv=1|nv=1794404496|iv2=0|nv2=0|iv3=1|nv3=1794404496|iv4=$ISVALIDTIME:nosuch$|lsc=1794404490|lssc=1794404472|lsok=1794404490|lsw=0|lscr=0|lsu=0|lhc=1794404492|lhsc=1794404469|lhu=1794404492|lhd=0|lhur=0|sct=ACTIVE|hct=ACTIVE|snn=0|sack=|nt=|hpar=$HOSTPARENTS:b$|hch=$HOSTCHILDREN$|hid=|htz=$HOSTTIMEZONE$|sproblem=7dc86236-ff8b-4b00-9a86-3d818e68b811|lspi=|sev=4|hev=5|hpi=f9919571-2aeb-4943-9937-5adb9bcbaf97
+28017 b-t 2
+28017 a-t 1
+32015 sm3 tup=1|tdn=1|tun=0|thp=1|tso=2|tsw=1|tsc=1|tsu=0|tsp=2|ae=root@example.test|ap=555|mcf=/case/naemon.cfg|lf=/tmp/oracle/naemon.log|rf=/case/resource.cfg|tp=/tmp/oracle|cf=/tmp/oracle/naemon.cmd|od=DOWN|od2=CRITICAL|od3=WARNING|od4=$HOSTADDRESS:nosuch$|od5=b-t is 2 at second 28|grp=0,1|grp2=a+b|sgrp=2,0|cn=$CONTACTNAME$|ce=|ca=ops|cgm=ann,ann,ops|cga=Ops People|cvh=R13|cvc=$_CONTACTDESK:ops$
+33017 sm4 time=13:41:42|date=11-11-2026|ldt=Wed Nov 11 13:41:42 UTC 2026|sdt=11-11-2026 13:41:42|timet=1794404502|pst=1794404469|est=1794404469|iv=1|nv=1794404502|iv2=0|nv2=0|iv3=1|nv3=1794404502|iv4=$ISVALIDTIME:nosuch$|lsc=1794404496|lssc=1794404472|lsok=1794404496|lsw=0|lscr=0|lsu=0|lhc=1794404492|lhsc=1794404469|lhu=1794404492|lhd=0|lhur=0|sct=ACTIVE|hct=ACTIVE|snn=0|sack=|nt=|hpar=$HOSTPARENTS:b$|hch=$HOSTCHILDREN$|hid=|htz=$HOSTTIMEZONE$|sproblem=7dc86236-ff8b-4b00-9a86-3d818e68b811|lspi=|sev=4|hev=5|hpi=f9919571-2aeb-4943-9937-5adb9bcbaf97
+33017 b-t 2
+33018 a-t 1
+38016 sm3 tup=1|tdn=1|tun=0|thp=1|tso=2|tsw=1|tsc=1|tsu=0|tsp=2|ae=root@example.test|ap=555|mcf=/case/naemon.cfg|lf=/tmp/oracle/naemon.log|rf=/case/resource.cfg|tp=/tmp/oracle|cf=/tmp/oracle/naemon.cmd|od=DOWN|od2=CRITICAL|od3=WARNING|od4=$HOSTADDRESS:nosuch$|od5=b-t is 2 at second 33|grp=0,1|grp2=a+b|sgrp=2,0|cn=$CONTACTNAME$|ce=|ca=ops|cgm=ann,ann,ops|cga=Ops People|cvh=R13|cvc=$_CONTACTDESK:ops$
+38017 b-t 2
+38018 a-t 1
+39018 sm4 time=13:41:48|date=11-11-2026|ldt=Wed Nov 11 13:41:48 UTC 2026|sdt=11-11-2026 13:41:48|timet=1794404508|pst=1794404469|est=1794404469|iv=1|nv=1794404508|iv2=0|nv2=0|iv3=1|nv3=1794404508|iv4=$ISVALIDTIME:nosuch$|lsc=1794404502|lssc=1794404472|lsok=1794404502|lsw=0|lscr=0|lsu=0|lhc=1794404492|lhsc=1794404469|lhu=1794404492|lhd=0|lhur=0|sct=ACTIVE|hct=ACTIVE|snn=0|sack=|nt=|hpar=$HOSTPARENTS:b$|hch=$HOSTCHILDREN$|hid=|htz=$HOSTTIMEZONE$|sproblem=7dc86236-ff8b-4b00-9a86-3d818e68b811|lspi=|sev=4|hev=5|hpi=f9919571-2aeb-4943-9937-5adb9bcbaf97
+43017 b-t 2
+43017 b 2
+43017 a-t 1
+43018 a 0
+44017 sm3 tup=1|tdn=1|tun=0|thp=1|tso=2|tsw=1|tsc=1|tsu=0|tsp=2|ae=root@example.test|ap=555|mcf=/case/naemon.cfg|lf=/tmp/oracle/naemon.log|rf=/case/resource.cfg|tp=/tmp/oracle|cf=/tmp/oracle/naemon.cmd|od=DOWN|od2=CRITICAL|od3=WARNING|od4=$HOSTADDRESS:nosuch$|od5=b-t is 2 at second 43|grp=0,1|grp2=a+b|sgrp=2,0|cn=$CONTACTNAME$|ce=|ca=ops|cgm=ann,ann,ops|cga=Ops People|cvh=R13|cvc=$_CONTACTDESK:ops$
+45017 sm4 time=13:41:54|date=11-11-2026|ldt=Wed Nov 11 13:41:54 UTC 2026|sdt=11-11-2026 13:41:54|timet=1794404514|pst=1794404469|est=1794404469|iv=1|nv=1794404514|iv2=0|nv2=0|iv3=1|nv3=1794404514|iv4=$ISVALIDTIME:nosuch$|lsc=1794404508|lssc=1794404472|lsok=1794404508|lsw=0|lscr=0|lsu=0|lhc=1794404512|lhsc=1794404469|lhu=1794404512|lhd=0|lhur=0|sct=ACTIVE|hct=ACTIVE|snn=0|sack=|nt=|hpar=$HOSTPARENTS:b$|hch=$HOSTCHILDREN$|hid=|htz=$HOSTTIMEZONE$|sproblem=7dc86236-ff8b-4b00-9a86-3d818e68b811|lspi=|sev=4|hev=5|hpi=f9919571-2aeb-4943-9937-5adb9bcbaf97
+48019 a-t 1
+48019 b-t 2
+50016 sm3 tup=1|tdn=1|tun=0|thp=1|tso=2|tsw=1|tsc=1|tsu=0|tsp=2|ae=root@example.test|ap=555|mcf=/case/naemon.cfg|lf=/tmp/oracle/naemon.log|rf=/case/resource.cfg|tp=/tmp/oracle|cf=/tmp/oracle/naemon.cmd|od=DOWN|od2=CRITICAL|od3=WARNING|od4=$HOSTADDRESS:nosuch$|od5=b-t is 2 at second 48|grp=0,1|grp2=a+b|sgrp=2,0|cn=$CONTACTNAME$|ce=|ca=ops|cgm=ann,ann,ops|cga=Ops People|cvh=R13|cvc=$_CONTACTDESK:ops$
+51019 sm4 time=13:42:00|date=11-11-2026|ldt=Wed Nov 11 13:42:00 UTC 2026|sdt=11-11-2026 13:42:00|timet=1794404520|pst=1794404469|est=1794404469|iv=1|nv=1794404520|iv2=0|nv2=0|iv3=1|nv3=1794404520|iv4=$ISVALIDTIME:nosuch$|lsc=1794404514|lssc=1794404472|lsok=1794404514|lsw=0|lscr=0|lsu=0|lhc=1794404512|lhsc=1794404469|lhu=1794404512|lhd=0|lhur=0|sct=ACTIVE|hct=ACTIVE|snn=0|sack=|nt=|hpar=$HOSTPARENTS:b$|hch=$HOSTCHILDREN$|hid=|htz=$HOSTTIMEZONE$|sproblem=7dc86236-ff8b-4b00-9a86-3d818e68b811|lspi=|sev=4|hev=5|hpi=f9919571-2aeb-4943-9937-5adb9bcbaf97
+53020 a-t 1
+53020 b-t 2
+56016 sm3 tup=1|tdn=1|tun=0|thp=1|tso=2|tsw=1|tsc=1|tsu=0|tsp=2|ae=root@example.test|ap=555|mcf=/case/naemon.cfg|lf=/tmp/oracle/naemon.log|rf=/case/resource.cfg|tp=/tmp/oracle|cf=/tmp/oracle/naemon.cmd|od=DOWN|od2=CRITICAL|od3=WARNING|od4=$HOSTADDRESS:nosuch$|od5=b-t is 2 at second 53|grp=0,1|grp2=a+b|sgrp=2,0|cn=$CONTACTNAME$|ce=|ca=ops|cgm=ann,ann,ops|cga=Ops People|cvh=R13|cvc=$_CONTACTDESK:ops$
+57021 sm4 time=13:42:06|date=11-11-2026|ldt=Wed Nov 11 13:42:06 UTC 2026|sdt=11-11-2026 13:42:06|timet=1794404526|pst=1794404469|est=1794404469|iv=1|nv=1794404526|iv2=0|nv2=0|iv3=1|nv3=1794404526|iv4=$ISVALIDTIME:nosuch$|lsc=1794404520|lssc=1794404472|lsok=1794404520|lsw=0|lscr=0|lsu=0|lhc=1794404512|lhsc=1794404469|lhu=1794404512|lhd=0|lhur=0|sct=ACTIVE|hct=ACTIVE|snn=0|sack=|nt=|hpar=$HOSTPARENTS:b$|hch=$HOSTCHILDREN$|hid=|htz=$HOSTTIMEZONE$|sproblem=7dc86236-ff8b-4b00-9a86-3d818e68b811|lspi=|sev=4|hev=5|hpi=f9919571-2aeb-4943-9937-5adb9bcbaf97
+58021 a-t 1
+58021 b-t 2
+62017 sm3 tup=1|tdn=1|tun=0|thp=1|tso=2|tsw=1|tsc=1|tsu=0|tsp=2|ae=root@example.test|ap=555|mcf=/case/naemon.cfg|lf=/tmp/oracle/naemon.log|rf=/case/resource.cfg|tp=/tmp/oracle|cf=/tmp/oracle/naemon.cmd|od=DOWN|od2=CRITICAL|od3=WARNING|od4=$HOSTADDRESS:nosuch$|od5=b-t is 2 at second 58|grp=0,1|grp2=a+b|sgrp=2,0|cn=$CONTACTNAME$|ce=|ca=ops|cgm=ann,ann,ops|cga=Ops People|cvh=R13|cvc=$_CONTACTDESK:ops$
+63017 a 0
+63017 b 2
+63019 sm4 time=13:42:12|date=11-11-2026|ldt=Wed Nov 11 13:42:12 UTC 2026|sdt=11-11-2026 13:42:12|timet=1794404532|pst=1794404469|est=1794404469|iv=1|nv=1794404532|iv2=0|nv2=0|iv3=1|nv3=1794404532|iv4=$ISVALIDTIME:nosuch$|lsc=1794404526|lssc=1794404472|lsok=1794404526|lsw=0|lscr=0|lsu=0|lhc=1794404512|lhsc=1794404469|lhu=1794404512|lhd=0|lhur=0|sct=ACTIVE|hct=ACTIVE|snn=0|sack=|nt=|hpar=$HOSTPARENTS:b$|hch=$HOSTCHILDREN$|hid=|htz=$HOSTTIMEZONE$|sproblem=7dc86236-ff8b-4b00-9a86-3d818e68b811|lspi=|sev=4|hev=5|hpi=f9919571-2aeb-4943-9937-5adb9bcbaf97
+63020 b-t 2
+63020 a-t 1
+68018 sm3 tup=1|tdn=1|tun=0|thp=1|tso=2|tsw=1|tsc=1|tsu=0|tsp=2|ae=root@example.test|ap=555|mcf=/case/naemon.cfg|lf=/tmp/oracle/naemon.log|rf=/case/resource.cfg|tp=/tmp/oracle|cf=/tmp/oracle/naemon.cmd|od=DOWN|od2=CRITICAL|od3=WARNING|od4=$HOSTADDRESS:nosuch$|od5=b-t is 2 at second 63|grp=0,1|grp2=a+b|sgrp=2,0|cn=$CONTACTNAME$|ce=|ca=ops|cgm=ann,ann,ops|cga=Ops People|cvh=R13|cvc=$_CONTACTDESK:ops$
+68020 b-t 2
+68020 a-t 1
+69020 sm4 time=13:42:18|date=11-11-2026|ldt=Wed Nov 11 13:42:18 UTC 2026|sdt=11-11-2026 13:42:18|timet=1794404538|pst=1794404469|est=1794404469|iv=1|nv=1794404538|iv2=0|nv2=0|iv3=1|nv3=1794404538|iv4=$ISVALIDTIME:nosuch$|lsc=1794404532|lssc=1794404472|lsok=1794404532|lsw=0|lscr=0|lsu=0|lhc=1794404532|lhsc=1794404469|lhu=1794404532|lhd=0|lhur=0|sct=ACTIVE|hct=ACTIVE|snn=0|sack=|nt=|hpar=$HOSTPARENTS:b$|hch=$HOSTCHILDREN$|hid=|htz=$HOSTTIMEZONE$|sproblem=7dc86236-ff8b-4b00-9a86-3d818e68b811|lspi=|sev=4|hev=5|hpi=f9919571-2aeb-4943-9937-5adb9bcbaf97
+73020 b-t 2
+73020 a-t 1
+74019 sm3 tup=1|tdn=1|tun=0|thp=1|tso=2|tsw=1|tsc=1|tsu=0|tsp=2|ae=root@example.test|ap=555|mcf=/case/naemon.cfg|lf=/tmp/oracle/naemon.log|rf=/case/resource.cfg|tp=/tmp/oracle|cf=/tmp/oracle/naemon.cmd|od=DOWN|od2=CRITICAL|od3=WARNING|od4=$HOSTADDRESS:nosuch$|od5=b-t is 2 at second 73|grp=0,1|grp2=a+b|sgrp=2,0|cn=$CONTACTNAME$|ce=|ca=ops|cgm=ann,ann,ops|cga=Ops People|cvh=R13|cvc=$_CONTACTDESK:ops$
+75020 sm4 time=13:42:24|date=11-11-2026|ldt=Wed Nov 11 13:42:24 UTC 2026|sdt=11-11-2026 13:42:24|timet=1794404544|pst=1794404469|est=1794404469|iv=1|nv=1794404544|iv2=0|nv2=0|iv3=1|nv3=1794404544|iv4=$ISVALIDTIME:nosuch$|lsc=1794404538|lssc=1794404472|lsok=1794404538|lsw=0|lscr=0|lsu=0|lhc=1794404532|lhsc=1794404469|lhu=1794404532|lhd=0|lhur=0|sct=ACTIVE|hct=ACTIVE|snn=0|sack=|nt=|hpar=$HOSTPARENTS:b$|hch=$HOSTCHILDREN$|hid=|htz=$HOSTTIMEZONE$|sproblem=7dc86236-ff8b-4b00-9a86-3d818e68b811|lspi=|sev=4|hev=5|hpi=f9919571-2aeb-4943-9937-5adb9bcbaf97
+78022 b-t 2
+78022 a-t 1

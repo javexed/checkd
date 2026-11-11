@@ -1,0 +1,35 @@
+[1794404469] Naemon 1.5.2 starting... (PID=15)
+[1794404469] Local time is Wed Nov 11 13:41:09 UTC 2026
+[1794404469] LOG VERSION: 2.0
+[1794404469] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794404469] nerd: Channel hostchecks registered successfully
+[1794404469] nerd: Channel servicechecks registered successfully
+[1794404469] nerd: Fully initialized and ready to rock!
+[1794404469] Successfully launched command file worker with pid 16
+[1794404469] Reading all config object data
+[1794404469] Loading neb modules
+[1794404469] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794404469] INITIAL HOST STATE: a;UP;HARD;1;
+[1794404469] INITIAL HOST STATE: b;UP;HARD;1;
+[1794404469] INITIAL SERVICE STATE: a;m3;OK;HARD;1;(null)
+[1794404469] INITIAL SERVICE STATE: a;m4;OK;HARD;1;(null)
+[1794404469] INITIAL SERVICE STATE: a;t;OK;HARD;1;(null)
+[1794404469] INITIAL SERVICE STATE: b;t;OK;HARD;1;(null)
+[1794404469] Naemon successfully initialized (PID=15)
+[1794404469] HOST ALERT: b;DOWN;SOFT;1;b is 2 at second 0
+[1794404470] SERVICE ALERT: a;t;WARNING;SOFT;1;a-t is 1 at second 1
+[1794404471] SERVICE ALERT: a;t;WARNING;SOFT;2;a-t is 1 at second 2
+[1794404471] HOST ALERT: b;DOWN;SOFT;2;b is 2 at second 2
+[1794404472] SERVICE INFO: b;t; Service switch to hard down state due to host down.
+[1794404472] SERVICE ALERT: b;t;CRITICAL;HARD;1;b-t is 2 at second 3
+[1794404472] HOST ALERT: b;DOWN;HARD;3;b is 2 at second 3
+[1794404472] HOST CONTACT NOTIFICATION SUPPRESSED: ops;b;Notifications are disabled for this object by its configuration.
+[1794404472] HOST NOTIFICATION SUPPRESSED: b;No notification sent, because no contacts were found for notification purposes.
+[1794404472] SERVICE ALERT: a;t;WARNING;HARD;3;a-t is 1 at second 3
+[1794404472] SERVICE CONTACT NOTIFICATION SUPPRESSED: ops;a;t;Notifications are disabled for this object by its configuration.
+[1794404472] SERVICE NOTIFICATION SUPPRESSED: a;t;No notification sent, because no contacts were found for notification purposes.
+[1794404529] Auto-save of retention data completed successfully.
+[1794404549] Caught 'Terminated', shutting down...
+[1794404549] Retention data successfully saved.
+[1794404549] Successfully shutdown... (PID=15)
+[1794404549] Event broker module 'NERD' deinitialized successfully.

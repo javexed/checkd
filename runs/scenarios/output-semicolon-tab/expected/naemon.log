@@ -1,0 +1,33 @@
+[1794405190] Naemon 1.5.2 starting... (PID=15)
+[1794405190] Local time is Wed Nov 11 13:53:10 UTC 2026
+[1794405190] LOG VERSION: 2.0
+[1794405190] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794405190] nerd: Channel hostchecks registered successfully
+[1794405190] nerd: Channel servicechecks registered successfully
+[1794405190] nerd: Fully initialized and ready to rock!
+[1794405190] Successfully launched command file worker with pid 16
+[1794405190] Reading all config object data
+[1794405190] Loading neb modules
+[1794405190] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794405190] INITIAL HOST STATE: a;UP;HARD;1;
+[1794405190] INITIAL SERVICE STATE: a;exit0err;OK;HARD;1;(null)
+[1794405190] INITIAL SERVICE STATE: a;ng;OK;HARD;1;(null)
+[1794405190] INITIAL SERVICE STATE: a;nsemi;OK;HARD;1;(null)
+[1794405190] INITIAL SERVICE STATE: a;semi2;OK;HARD;1;(null)
+[1794405190] INITIAL SERVICE STATE: a;tab;OK;HARD;1;(null)
+[1794405190] Naemon successfully initialized (PID=15)
+[1794405192] SERVICE ALERT: a;semi2;WARNING;HARD;1;short:one
+[1794405192] SERVICE CONTACT NOTIFICATION SUPPRESSED: ops;a;semi2;Notifications are disabled for this object by its configuration.
+[1794405192] SERVICE NOTIFICATION SUPPRESSED: a;semi2;No notification sent, because no contacts were found for notification purposes.
+[1794405194] SERVICE ALERT: a;nsemi;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794405194] SERVICE NOTIFICATION SUPPRESSED: a;nsemi;No notification sent, because no contacts were found for notification purposes.
+[1794405196] Warning: Return code of 127 for check of service 'ng' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794405196] SERVICE ALERT: a;ng;CRITICAL;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794405196] SERVICE NOTIFICATION SUPPRESSED: a;ng;No notification sent, because no contacts were found for notification purposes.
+[1794405199] SERVICE ALERT: a;tab;WARNING;HARD;1;tab	here  and  double  spaces
+[1794405199] SERVICE NOTIFICATION SUPPRESSED: a;tab;No notification sent, because no contacts were found for notification purposes.
+[1794405206] Warning: Return code of 127 for check of service 'ng' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794405215] Caught 'Terminated', shutting down...
+[1794405215] Retention data successfully saved.
+[1794405215] Successfully shutdown... (PID=15)
+[1794405215] Event broker module 'NERD' deinitialized successfully.

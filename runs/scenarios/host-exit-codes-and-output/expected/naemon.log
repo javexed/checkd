@@ -1,0 +1,70 @@
+[1794411331] Naemon 1.5.2 starting... (PID=15)
+[1794411331] Local time is Wed Nov 11 15:35:31 UTC 2026
+[1794411331] LOG VERSION: 2.0
+[1794411331] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794411331] nerd: Channel hostchecks registered successfully
+[1794411331] nerd: Channel servicechecks registered successfully
+[1794411331] nerd: Fully initialized and ready to rock!
+[1794411331] Successfully launched command file worker with pid 16
+[1794411331] Reading all config object data
+[1794411331] Loading neb modules
+[1794411331] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794411331] INITIAL HOST STATE: code1;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: code126;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: code127;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: code255;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: code3;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: code4;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: codekill;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: empty0;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: empty2;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: multi;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: noexec;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: nosuch;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: nosuchsh;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: onlyerr;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: perfonly;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: slow;UP;HARD;1;
+[1794411331] Naemon successfully initialized (PID=15)
+[1794411331] Warning: Return code of 4 for check of host 'code4' was out of bounds.
+[1794411331] HOST ALERT: code4;DOWN;HARD;1;(Return code of 4 is out of bounds)
+[1794411331] HOST CONTACT NOTIFICATION SUPPRESSED: ops;code4;Notifications are disabled for this object by its configuration.
+[1794411331] HOST NOTIFICATION SUPPRESSED: code4;No notification sent, because no contacts were found for notification purposes.
+[1794411332] HOST ALERT: perfonly;DOWN;HARD;1;
+[1794411332] HOST NOTIFICATION SUPPRESSED: perfonly;No notification sent, because no contacts were found for notification purposes.
+[1794411333] HOST ALERT: empty2;DOWN;HARD;1;(No output returned from host check)
+[1794411333] HOST NOTIFICATION SUPPRESSED: empty2;No notification sent, because no contacts were found for notification purposes.
+[1794411336] Warning: Return code of 255 for check of host 'code255' was out of bounds.
+[1794411336] HOST ALERT: code255;DOWN;HARD;1;(Return code of 255 is out of bounds)
+[1794411336] HOST NOTIFICATION SUPPRESSED: code255;No notification sent, because no contacts were found for notification purposes.
+[1794411337] Warning: Return code of 127 for check of host 'code127' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794411337] HOST ALERT: code127;DOWN;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794411337] HOST NOTIFICATION SUPPRESSED: code127;No notification sent, because no contacts were found for notification purposes.
+[1794411344] HOST ALERT: onlyerr;DOWN;HARD;1;(No output on stdout) stderr: onlyerr
+[1794411344] HOST NOTIFICATION SUPPRESSED: onlyerr;No notification sent, because no contacts were found for notification purposes.
+[1794411344] HOST ALERT: codekill;DOWN;HARD;1;one
+[1794411344] HOST NOTIFICATION SUPPRESSED: codekill;No notification sent, because no contacts were found for notification purposes.
+[1794411347] HOST ALERT: slow;DOWN;HARD;1;(Host check timed out after 3.00 seconds)
+[1794411347] HOST NOTIFICATION SUPPRESSED: slow;No notification sent, because no contacts were found for notification purposes.
+[1794411347] Warning: Return code of 126 for check of host 'code126' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794411347] HOST ALERT: code126;DOWN;HARD;1;(Return code of 126 is out of bounds - plugin may be missing)
+[1794411347] HOST NOTIFICATION SUPPRESSED: code126;No notification sent, because no contacts were found for notification purposes.
+[1794411349] Warning: Return code of 13 for check of host 'noexec' was out of bounds.
+[1794411349] HOST ALERT: noexec;DOWN;HARD;1;(Return code of 13 is out of bounds)
+[1794411349] HOST NOTIFICATION SUPPRESSED: noexec;No notification sent, because no contacts were found for notification purposes.
+[1794411349] Warning: Return code of 127 for check of host 'nosuchsh' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794411349] HOST ALERT: nosuchsh;DOWN;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794411349] HOST NOTIFICATION SUPPRESSED: nosuchsh;No notification sent, because no contacts were found for notification purposes.
+[1794411349] HOST ALERT: code3;DOWN;HARD;1;one
+[1794411349] HOST NOTIFICATION SUPPRESSED: code3;No notification sent, because no contacts were found for notification purposes.
+[1794411350] HOST ALERT: nosuch;DOWN;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794411350] HOST NOTIFICATION SUPPRESSED: nosuch;No notification sent, because no contacts were found for notification purposes.
+[1794411355] HOST ALERT: multi;DOWN;HARD;1;first line
+[1794411355] HOST NOTIFICATION SUPPRESSED: multi;No notification sent, because no contacts were found for notification purposes.
+[1794411361] Warning: Return code of 4 for check of host 'code4' was out of bounds.
+[1794411366] Warning: Return code of 255 for check of host 'code255' was out of bounds.
+[1794411367] Warning: Return code of 127 for check of host 'code127' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794411371] Caught 'Terminated', shutting down...
+[1794411371] Retention data successfully saved.
+[1794411371] Successfully shutdown... (PID=15)
+[1794411371] Event broker module 'NERD' deinitialized successfully.

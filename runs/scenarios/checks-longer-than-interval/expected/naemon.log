@@ -1,0 +1,41 @@
+[1794408310] Naemon 1.5.2 starting... (PID=15)
+[1794408310] Local time is Wed Nov 11 14:45:10 UTC 2026
+[1794408310] LOG VERSION: 2.0
+[1794408310] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794408310] nerd: Channel hostchecks registered successfully
+[1794408310] nerd: Channel servicechecks registered successfully
+[1794408310] nerd: Fully initialized and ready to rock!
+[1794408310] Successfully launched command file worker with pid 16
+[1794408310] Reading all config object data
+[1794408310] Loading neb modules
+[1794408310] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794408310] INITIAL HOST STATE: a;UP;HARD;1;
+[1794408310] INITIAL HOST STATE: h3;UP;HARD;1;
+[1794408310] INITIAL HOST STATE: h7;UP;HARD;1;
+[1794408310] INITIAL HOST STATE: hq;UP;HARD;1;
+[1794408310] INITIAL SERVICE STATE: a;q;OK;HARD;1;(null)
+[1794408310] INITIAL SERVICE STATE: a;s3;OK;HARD;1;(null)
+[1794408310] INITIAL SERVICE STATE: a;s5;OK;HARD;1;(null)
+[1794408310] INITIAL SERVICE STATE: a;s7;OK;HARD;1;(null)
+[1794408310] Naemon successfully initialized (PID=15)
+[1794408325] HOST ALERT: h3;DOWN;HARD;1;(Host check timed out after 15.00 seconds)
+[1794408325] HOST CONTACT NOTIFICATION SUPPRESSED: ops;h3;Notifications are disabled for this object by its configuration.
+[1794408325] HOST NOTIFICATION SUPPRESSED: h3;No notification sent, because no contacts were found for notification purposes.
+[1794408327] HOST ALERT: h7;DOWN;SOFT;1;(Host check timed out after 15.00 seconds)
+[1794408330] SERVICE ALERT: a;s7;CRITICAL;SOFT;1;(Service check timed out after 20.00 seconds)
+[1794408331] SERVICE ALERT: a;s5;CRITICAL;HARD;1;(Service check timed out after 20.00 seconds)
+[1794408331] SERVICE CONTACT NOTIFICATION SUPPRESSED: ops;a;s5;Notifications are disabled for this object by its configuration.
+[1794408331] SERVICE NOTIFICATION SUPPRESSED: a;s5;No notification sent, because no contacts were found for notification purposes.
+[1794408331] SERVICE ALERT: a;s3;CRITICAL;HARD;1;(Service check timed out after 20.00 seconds)
+[1794408331] SERVICE NOTIFICATION SUPPRESSED: a;s3;No notification sent, because no contacts were found for notification purposes.
+[1794408337] SERVICE ALERT: a;s7;CRITICAL;SOFT;2;(Service check timed out after 20.00 seconds)
+[1794408344] HOST ALERT: h7;DOWN;SOFT;2;(Host check timed out after 15.00 seconds)
+[1794408351] SERVICE ALERT: a;s7;CRITICAL;HARD;3;(Service check timed out after 20.00 seconds)
+[1794408351] SERVICE NOTIFICATION SUPPRESSED: a;s7;No notification sent, because no contacts were found for notification purposes.
+[1794408361] HOST ALERT: h7;DOWN;HARD;3;(Host check timed out after 15.00 seconds)
+[1794408361] HOST NOTIFICATION SUPPRESSED: h7;No notification sent, because no contacts were found for notification purposes.
+[1794408370] Auto-save of retention data completed successfully.
+[1794408420] Caught 'Terminated', shutting down...
+[1794408420] Retention data successfully saved.
+[1794408420] Successfully shutdown... (PID=15)
+[1794408420] Event broker module 'NERD' deinitialized successfully.

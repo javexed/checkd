@@ -1,0 +1,46 @@
+[1794403781] Naemon 1.5.2 starting... (PID=15)
+[1794403781] Local time is Wed Nov 11 13:29:41 UTC 2026
+[1794403781] LOG VERSION: 2.0
+[1794403781] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794403781] nerd: Channel hostchecks registered successfully
+[1794403781] nerd: Channel servicechecks registered successfully
+[1794403781] nerd: Fully initialized and ready to rock!
+[1794403781] Successfully launched command file worker with pid 16
+[1794403781] Reading all config object data
+[1794403781] Loading neb modules
+[1794403781] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794403781] INITIAL HOST STATE: c;UP;HARD;1;
+[1794403781] INITIAL HOST STATE: d;UP;HARD;1;
+[1794403781] INITIAL HOST STATE: p;UP;HARD;1;
+[1794403781] INITIAL SERVICE STATE: c;s;OK;HARD;1;(null)
+[1794403781] Naemon successfully initialized (PID=15)
+[1794403802] SERVICE ALERT: c;s;CRITICAL;SOFT;1;c-s is 2 at second 21
+[1794403802] HOST ALERT: p;DOWN;SOFT;1;p is 2 at second 21
+[1794403802] HOST ALERT: c;UNREACHABLE;SOFT;1;c is 2 at second 21
+[1794403803] SERVICE INFO: c;s; Service switch to hard down state due to host down.
+[1794403803] SERVICE ALERT: c;s;CRITICAL;HARD;2;c-s is 2 at second 22
+[1794403803] HOST ALERT: c;UNREACHABLE;SOFT;2;c is 2 at second 22
+[1794403804] HOST ALERT: p;DOWN;SOFT;2;p is 2 at second 23
+[1794403805] HOST ALERT: c;UNREACHABLE;HARD;3;c is 2 at second 24
+[1794403805] HOST CONTACT NOTIFICATION SUPPRESSED: ops;c;Notifications are disabled for this object by its configuration.
+[1794403805] HOST NOTIFICATION SUPPRESSED: c;No notification sent, because no contacts were found for notification purposes.
+[1794403806] HOST ALERT: p;DOWN;HARD;3;p is 2 at second 25
+[1794403806] HOST NOTIFICATION SUPPRESSED: p;No notification sent, because no contacts were found for notification purposes.
+[1794403812] HOST ALERT: d;UNREACHABLE;SOFT;1;d is 2 at second 31
+[1794403814] HOST ALERT: d;UNREACHABLE;SOFT;2;d is 2 at second 33
+[1794403816] HOST ALERT: d;UNREACHABLE;HARD;3;d is 2 at second 35
+[1794403816] HOST NOTIFICATION SUPPRESSED: d;No notification sent, because no contacts were found for notification purposes.
+[1794403841] Auto-save of retention data completed successfully.
+[1794403841] HOST ALERT: p;UP;HARD;1;p is 0 at second 60
+[1794403841] HOST NOTIFICATION SUPPRESSED: p;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794403841] HOST ALERT: c;UP;HARD;1;c is 0 at second 60
+[1794403841] HOST NOTIFICATION SUPPRESSED: c;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794403841] HOST ALERT: d;DOWN;HARD;1;d is 2 at second 60
+[1794403843] SERVICE ALERT: c;s;OK;HARD;2;c-s is 0 at second 62
+[1794403843] SERVICE NOTIFICATION SUPPRESSED: c;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794403851] HOST ALERT: d;UP;HARD;1;d is 0 at second 70
+[1794403851] HOST NOTIFICATION SUPPRESSED: d;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794403891] Caught 'Terminated', shutting down...
+[1794403891] Retention data successfully saved.
+[1794403891] Successfully shutdown... (PID=15)
+[1794403891] Event broker module 'NERD' deinitialized successfully.

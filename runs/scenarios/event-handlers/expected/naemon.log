@@ -1,0 +1,76 @@
+[1794403781] Naemon 1.5.2 starting... (PID=16)
+[1794403781] Local time is Wed Nov 11 13:29:41 UTC 2026
+[1794403781] LOG VERSION: 2.0
+[1794403781] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794403781] nerd: Channel hostchecks registered successfully
+[1794403781] nerd: Channel servicechecks registered successfully
+[1794403781] nerd: Fully initialized and ready to rock!
+[1794403781] Successfully launched command file worker with pid 17
+[1794403781] Reading all config object data
+[1794403781] Loading neb modules
+[1794403781] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794403781] INITIAL HOST STATE: a;UP;HARD;1;
+[1794403781] INITIAL HOST STATE: b;UP;HARD;1;
+[1794403781] INITIAL SERVICE STATE: b;s;OK;HARD;1;(null)
+[1794403781] Naemon successfully initialized (PID=16)
+[1794403787] SERVICE ALERT: b;s;CRITICAL;SOFT;1;b-s call 2 gives 2
+[1794403787] GLOBAL SERVICE EVENT HANDLER: b;s;CRITICAL;SOFT;1;geh-svc
+[1794403787] SERVICE EVENT HANDLER: b;s;CRITICAL;SOFT;1;eh-svc
+[1794403788] SERVICE ALERT: b;s;CRITICAL;SOFT;2;b-s call 3 gives 2
+[1794403788] GLOBAL SERVICE EVENT HANDLER: b;s;CRITICAL;SOFT;2;geh-svc
+[1794403788] SERVICE EVENT HANDLER: b;s;CRITICAL;SOFT;2;eh-svc
+[1794403789] SERVICE ALERT: b;s;CRITICAL;HARD;3;b-s call 4 gives 2
+[1794403789] SERVICE CONTACT NOTIFICATION SUPPRESSED: ops;b;s;Notifications are disabled for this object by its configuration.
+[1794403789] SERVICE NOTIFICATION SUPPRESSED: b;s;No notification sent, because no contacts were found for notification purposes.
+[1794403789] GLOBAL SERVICE EVENT HANDLER: b;s;CRITICAL;HARD;3;geh-svc
+[1794403789] SERVICE EVENT HANDLER: b;s;CRITICAL;HARD;3;eh-svc
+[1794403790] HOST ALERT: a;DOWN;SOFT;1;a call 2 gives 2
+[1794403790] GLOBAL HOST EVENT HANDLER: a;DOWN;SOFT;1;geh-host
+[1794403790] HOST EVENT HANDLER: a;DOWN;SOFT;1;eh-host
+[1794403792] HOST ALERT: a;DOWN;SOFT;2;a call 3 gives 2
+[1794403792] GLOBAL HOST EVENT HANDLER: a;DOWN;SOFT;2;geh-host
+[1794403792] HOST EVENT HANDLER: a;DOWN;SOFT;2;eh-host
+[1794403794] HOST ALERT: a;DOWN;HARD;3;a call 4 gives 2
+[1794403794] HOST CONTACT NOTIFICATION SUPPRESSED: ops;a;Notifications are disabled for this object by its configuration.
+[1794403794] HOST NOTIFICATION SUPPRESSED: a;No notification sent, because no contacts were found for notification purposes.
+[1794403794] GLOBAL HOST EVENT HANDLER: a;DOWN;HARD;3;geh-host
+[1794403794] HOST EVENT HANDLER: a;DOWN;HARD;3;eh-host
+[1794403804] SERVICE ALERT: b;s;OK;HARD;3;b-s call 7 gives 0
+[1794403804] SERVICE NOTIFICATION SUPPRESSED: b;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794403804] GLOBAL SERVICE EVENT HANDLER: b;s;OK;HARD;3;geh-svc
+[1794403804] SERVICE EVENT HANDLER: b;s;OK;HARD;3;eh-svc
+[1794403809] HOST ALERT: a;UP;HARD;1;a call 7 gives 0
+[1794403809] HOST NOTIFICATION SUPPRESSED: a;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794403809] GLOBAL HOST EVENT HANDLER: a;UP;HARD;1;geh-host
+[1794403809] HOST EVENT HANDLER: a;UP;HARD;1;eh-host
+[1794403809] SERVICE ALERT: b;s;WARNING;SOFT;1;b-s call 8 gives 1
+[1794403809] GLOBAL SERVICE EVENT HANDLER: b;s;WARNING;SOFT;1;geh-svc
+[1794403809] SERVICE EVENT HANDLER: b;s;WARNING;SOFT;1;eh-svc
+[1794403810] SERVICE ALERT: b;s;OK;SOFT;2;b-s call 9 gives 0
+[1794403810] GLOBAL SERVICE EVENT HANDLER: b;s;OK;SOFT;2;geh-svc
+[1794403810] SERVICE EVENT HANDLER: b;s;OK;SOFT;2;eh-svc
+[1794403814] HOST ALERT: a;DOWN;SOFT;1;a call 8 gives 2
+[1794403814] GLOBAL HOST EVENT HANDLER: a;DOWN;SOFT;1;geh-host
+[1794403814] HOST EVENT HANDLER: a;DOWN;SOFT;1;eh-host
+[1794403815] SERVICE ALERT: b;s;WARNING;SOFT;1;b-s call 10 gives 1
+[1794403815] GLOBAL SERVICE EVENT HANDLER: b;s;WARNING;SOFT;1;geh-svc
+[1794403815] SERVICE EVENT HANDLER: b;s;WARNING;SOFT;1;eh-svc
+[1794403816] HOST ALERT: a;UP;SOFT;2;a call 9 gives 0
+[1794403816] GLOBAL HOST EVENT HANDLER: a;UP;SOFT;2;geh-host
+[1794403816] HOST EVENT HANDLER: a;UP;SOFT;2;eh-host
+[1794403816] SERVICE ALERT: b;s;WARNING;SOFT;2;b-s call 11 gives 1
+[1794403816] GLOBAL SERVICE EVENT HANDLER: b;s;WARNING;SOFT;2;geh-svc
+[1794403816] SERVICE EVENT HANDLER: b;s;WARNING;SOFT;2;eh-svc
+[1794403817] SERVICE ALERT: b;s;CRITICAL;HARD;3;b-s call 12 gives 2
+[1794403817] SERVICE NOTIFICATION SUPPRESSED: b;s;No notification sent, because no contacts were found for notification purposes.
+[1794403817] GLOBAL SERVICE EVENT HANDLER: b;s;CRITICAL;HARD;3;geh-svc
+[1794403817] SERVICE EVENT HANDLER: b;s;CRITICAL;HARD;3;eh-svc
+[1794403837] SERVICE ALERT: b;s;OK;HARD;3;b-s call 16 gives 0
+[1794403837] SERVICE NOTIFICATION SUPPRESSED: b;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794403837] GLOBAL SERVICE EVENT HANDLER: b;s;OK;HARD;3;geh-svc
+[1794403837] SERVICE EVENT HANDLER: b;s;OK;HARD;3;eh-svc
+[1794403841] Auto-save of retention data completed successfully.
+[1794403891] Caught 'Terminated', shutting down...
+[1794403891] Retention data successfully saved.
+[1794403891] Successfully shutdown... (PID=16)
+[1794403891] Event broker module 'NERD' deinitialized successfully.

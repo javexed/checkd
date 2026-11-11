@@ -1,0 +1,5 @@
+# These four checks are real programs, or need a real shell.
+real noexec a file that is not a program
+real nosuch a program that is not there
+real nosuchsh a program that is not there, asked for through a shell
+real onlyerr a shell command

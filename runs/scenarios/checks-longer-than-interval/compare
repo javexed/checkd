@@ -1,0 +1,16 @@
+# The services here run longer than their check interval. The reference
+# starts such a check again while earlier runs of it are still going, and
+# takes each run's result as it comes. checkd does not run two checks of
+# one object at once: the next check is planned when the result is in.
+# So the services are checked at other moments, service s7 gets to its
+# hard state later, and host a, which is checked whenever one of its
+# services turns bad, is checked at other moments too.
+#
+# What is left to compare is the hosts whose own check is slow. The
+# reference does not start a host check again while one is going.
+ignore s3
+ignore s5
+ignore s7
+ignore q
+ignore a
+ignore-log a;s7

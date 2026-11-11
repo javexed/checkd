@@ -1,0 +1,16 @@
+# The three checks of host a in this run are made because its service t
+# is not OK. The check the reference had planned for the host itself comes
+# after the end of the run: the next check in the state it saved.
+first hm1@21200 the reference had planned its first check for after the end of the run
+
+# sl: the reference's latency is a real clock's, a millisecond here.
+# sdu, sds: before a service's first check the reference counts how long
+# it has been in its state from 1970. checkd counts from its own start.
+# sgm: the reference gives the members of a service group in the reverse
+# of the order it added them in, checkd by name.
+mask sm2 sl,sdu,sds,sgm latency, the time in a state before the first check, the order of group members
+# How long a check waited and how long it ran are measured on the real
+# clock, in milliseconds.
+mask-real hm1 hl,het,sl,set measured times
+mask-real sm1 hl,het,sl,set measured times
+mask-real sm2 hl,het,sl,set measured times

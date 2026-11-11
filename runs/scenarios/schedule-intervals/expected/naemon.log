@@ -1,0 +1,26 @@
+[1794403279] Naemon 1.5.2 starting... (PID=15)
+[1794403279] Local time is Wed Nov 11 13:21:19 UTC 2026
+[1794403279] LOG VERSION: 2.0
+[1794403279] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794403279] nerd: Channel hostchecks registered successfully
+[1794403279] nerd: Channel servicechecks registered successfully
+[1794403279] nerd: Fully initialized and ready to rock!
+[1794403279] Successfully launched command file worker with pid 16
+[1794403279] Reading all config object data
+[1794403279] Loading neb modules
+[1794403279] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794403279] INITIAL HOST STATE: i1;UP;HARD;1;
+[1794403279] INITIAL HOST STATE: i10;UP;HARD;1;
+[1794403279] INITIAL HOST STATE: i2;UP;HARD;1;
+[1794403279] INITIAL HOST STATE: i30;UP;HARD;1;
+[1794403279] INITIAL HOST STATE: i5;UP;HARD;1;
+[1794403279] INITIAL SERVICE STATE: i30;s1;OK;HARD;1;(null)
+[1794403279] INITIAL SERVICE STATE: i30;s10;OK;HARD;1;(null)
+[1794403279] INITIAL SERVICE STATE: i30;s3;OK;HARD;1;(null)
+[1794403279] Naemon successfully initialized (PID=15)
+[1794403339] Auto-save of retention data completed successfully.
+[1794403399] Auto-save of retention data completed successfully.
+[1794403429] Caught 'Terminated', shutting down...
+[1794403429] Retention data successfully saved.
+[1794403429] Successfully shutdown... (PID=15)
+[1794403429] Event broker module 'NERD' deinitialized successfully.

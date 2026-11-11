@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Shows that an OpenTelemetry collector takes what checkd sends.
+#
+#   runs/otel [<scenario>]
+#
+# checkd, built with the otel feature, runs a scenario for a quarter of a
+# minute inside the oracle image and sends to a collector in a second
+# container. The two share one network that has no way out: the
+# collector's container is started without a network, and checkd's joins
+# it. The collector prints what it took, and this script looks in that
+# for the metrics and the spans checkd should have sent.
+#
+# The collector is the OpenTelemetry project's own image, pinned below.
+# What it printed stays in runs/otel-work/collector.txt.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(dirname "$here")
+work=$here/otel-work
+name=${1:-event-handlers}
+seconds=15
+collector='otel/opentelemetry-collector@sha256:34b24b740c3c88d3467740e8642a397c13898ef76d7295c5425164c482ed1b73'
+
+core=$(sed -n 's/^ARG NAEMON_CORE_VERSION=//p' "$root/oracle/Dockerfile")
+inputs=$(cat "$root/oracle/Dockerfile" "$root/oracle/entry.sh" | sha256sum | cut -c1-12)
+image="checkd-oracle:naemon-${core}-${inputs}"
+docker image inspect "$image" >/dev/null 2>&1 \
+    || { echo "no oracle image; run oracle/run on any case first" >&2; exit 2; }
+[ -d "$here/scenarios/$name" ] || { echo "no scenario $name" >&2; exit 2; }
+
+cd "$root"
+CARGO_TARGET_DIR=$root/target/otel cargo build --quiet -p checkd --features otel
+
+rm -rf "$work"
+mkdir -p "$work/plan" "$work/out"
+echo "$seconds" > "$work/plan/seconds"
+date +%s%3N > "$work/plan/start"
+: > "$work/plan/firsts"
+cat > "$work/collector.yaml" <<'YAML'
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 127.0.0.1:4318
+exporters:
+  debug:
+    verbosity: detailed
+service:
+  telemetry:
+    metrics:
+      level: none
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      exporters: [debug]
+    traces:
+      receivers: [otlp]
+      exporters: [debug]
+YAML
+
+box="checkd-otel-$$"
+docker run -d --name "$box" --network none \
+    -v "$work/collector.yaml:/etc/otelcol/config.yaml:ro" "$collector" >/dev/null
+trap 'docker rm -f "$box" >/dev/null 2>&1 || true' EXIT
+# The collector listens a moment after it starts.
+for _ in $(seq 50); do
+    docker logs "$box" 2>&1 | grep -q 'Everything is ready' && break
+    sleep 0.2
+done
+
+docker run --rm --network "container:$box" --user "$(id -u):$(id -g)" \
+    -e OTEL_TRACES_SAMPLER_ARG=1 -e OTEL_METRIC_EXPORT_INTERVAL=5000 \
+    -e CHECKD_OPTIONS='--otlp-endpoint http://127.0.0.1:4318' \
+    -v "$here/scenarios/$name:/in:ro" -v "$here/lib:/shared:ro" \
+    -v "$work/plan:/plan:ro" -v "$root/target/otel/debug/checkd:/checkd:ro" \
+    -v "$here/real-entry.sh:/real-entry:ro" -v "$work/out:/out" \
+    --entrypoint sh "$image" /real-entry
+sleep 1
+docker logs "$box" > "$work/collector.txt" 2>&1
+
+echo "checkd said:"
+sed 's/^/    /' "$work/out/stdout.txt"
+count() { grep -c -- "$1" "$work/collector.txt" || true; }
+echo "the collector took:"
+missing=0
+for wanted in 'Name: checkd.checks' 'Name: checkd.check.latency' \
+    'Name: checkd.command.duration' 'Name: checkd.commands.running' \
+    'Name: checkd.otel.dropped' 'Name           : host check ' \
+    'Name           : service check ' 'checkd.host: Str(' 'service.name: Str(checkd)'; do
+    n=$(count "$wanted")
+    printf '    %5s  %s\n' "$n" "$wanted"
+    [ "$n" -gt 0 ] || missing=1
+done
+if grep -q -i 'error\|refus\|invalid' "$work/collector.txt"; then
+    echo "the collector complained:"
+    grep -i 'error\|refus\|invalid' "$work/collector.txt" | head -5 | sed 's/^/    /'
+    missing=1
+fi
+[ "$missing" -eq 0 ] || { echo "not everything arrived" >&2; exit 1; }
+echo "all of it arrived"

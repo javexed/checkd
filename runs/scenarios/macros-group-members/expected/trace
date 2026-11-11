@@ -1,0 +1,11 @@
+10 sgrp h1=a,b,c,e|h2=b,d|h3=a,b,c,d|h4=b,d|s1=c,q,a,m,a,z,b,t|s2=c,q|s3=a,z,a,m,a,g|s4=a,g,c,q|c1=ann,ann,ops|c2=bob,bob,ann,ops,zed|c3=bob,bob|c4=ann,ann,bob|c5=bob,bob,zed|own=a,b,c,d|ownn=hg3,hg1|owns=a,g,c,q|ownsn=sg4,sg3|hn=a,b,c,e|sn=q,m,z,t
+2008 b-t 0
+3009 hgrp h1=a,b,c,e|h2=b,d|h3=a,b,c,d|h4=b,d|s1=c,q,a,m,a,z,b,t|s2=c,q|s3=a,z,a,m,a,g|s4=a,g,c,q|c1=ann,ann,ops|c2=bob,bob,ann,ops,zed|c3=bob,bob|c4=ann,ann,bob|c5=bob,bob,zed|own=a,b,c,e|ownn=hg1|owns=$SERVICEGROUPMEMBERS$|ownsn=$SERVICEGROUPNAMES$|hn=a,b,c,e|sn=q,m,z,t
+5009 sgrp h1=a,b,c,e|h2=b,d|h3=a,b,c,d|h4=b,d|s1=c,q,a,m,a,z,b,t|s2=c,q|s3=a,z,a,m,a,g|s4=a,g,c,q|c1=ann,ann,ops|c2=bob,bob,ann,ops,zed|c3=bob,bob|c4=ann,ann,bob|c5=bob,bob,zed|own=a,b,c,d|ownn=hg3,hg1|owns=a,g,c,q|ownsn=sg4,sg3|hn=a,b,c,e|sn=q,m,z,t
+5009 d 0
+6010 c 0
+6010 a 0
+8008 hgrp h1=a,b,c,e|h2=b,d|h3=a,b,c,d|h4=b,d|s1=c,q,a,m,a,z,b,t|s2=c,q|s3=a,z,a,m,a,g|s4=a,g,c,q|c1=ann,ann,ops|c2=bob,bob,ann,ops,zed|c3=bob,bob|c4=ann,ann,bob|c5=bob,bob,zed|own=a,b,c,e|ownn=hg1|owns=$SERVICEGROUPMEMBERS$|ownsn=$SERVICEGROUPNAMES$|hn=a,b,c,e|sn=q,m,z,t
+10009 sgrp h1=a,b,c,e|h2=b,d|h3=a,b,c,d|h4=b,d|s1=c,q,a,m,a,z,b,t|s2=c,q|s3=a,z,a,m,a,g|s4=a,g,c,q|c1=ann,ann,ops|c2=bob,bob,ann,ops,zed|c3=bob,bob|c4=ann,ann,bob|c5=bob,bob,zed|own=a,b,c,d|ownn=hg3,hg1|owns=a,g,c,q|ownsn=sg4,sg3|hn=a,b,c,e|sn=q,m,z,t
+13009 hgrp h1=a,b,c,e|h2=b,d|h3=a,b,c,d|h4=b,d|s1=c,q,a,m,a,z,b,t|s2=c,q|s3=a,z,a,m,a,g|s4=a,g,c,q|c1=ann,ann,ops|c2=bob,bob,ann,ops,zed|c3=bob,bob|c4=ann,ann,bob|c5=bob,bob,zed|own=a,b,c,e|ownn=hg1|owns=$SERVICEGROUPMEMBERS$|ownsn=$SERVICEGROUPNAMES$|hn=a,b,c,e|sn=q,m,z,t
+13009 a-m 0

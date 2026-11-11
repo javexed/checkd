@@ -1,0 +1,17 @@
+# The reference had planned the first check of these for after the end of
+# the run: the next check in the state it saved.
+first b@15200 the reference had planned its first check for after the end of the run
+first a-z@23200 the reference had planned its first check for after the end of the run
+first c-q@23200 the reference had planned its first check for after the end of the run
+
+# The members of a group. The reference gives the hosts of a host group by
+# name, the services of a service group in the reverse of the order it
+# added them in, and the contacts of a contact group in an order of its
+# own with the first one twice. checkd gives all three by name, each
+# member once.
+mask sgrp s1,s3,c1,c2,c3,c4,c5,sn the order of the members of a service group or a contact group
+mask hgrp s1,s3,c1,c2,c3,c4,c5,sn the order of the members of a service group or a contact group
+
+# The groups an object is in, and so which one is its first. The reference
+# has them in the reverse of the order it added them in, checkd by name.
+mask sgrp own,ownn,owns,ownsn the order of the groups an object is in

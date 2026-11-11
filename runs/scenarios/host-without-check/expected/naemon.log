@@ -1,0 +1,38 @@
+[1794403781] Naemon 1.5.2 starting... (PID=15)
+[1794403781] Local time is Wed Nov 11 13:29:41 UTC 2026
+[1794403781] LOG VERSION: 2.0
+[1794403781] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794403781] nerd: Channel hostchecks registered successfully
+[1794403781] nerd: Channel servicechecks registered successfully
+[1794403781] nerd: Fully initialized and ready to rock!
+[1794403781] Successfully launched command file worker with pid 16
+[1794403781] Reading all config object data
+[1794403781] Loading neb modules
+[1794403781] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794403781] INITIAL HOST STATE: a;UP;HARD;1;
+[1794403781] INITIAL HOST STATE: n;UP;HARD;1;
+[1794403781] INITIAL SERVICE STATE: a;s;OK;HARD;1;(null)
+[1794403781] INITIAL SERVICE STATE: n;s;OK;HARD;1;(null)
+[1794403781] Naemon successfully initialized (PID=15)
+[1794403792] SERVICE ALERT: n;s;CRITICAL;SOFT;1;n-s call 3 gives 2
+[1794403792] SERVICE ALERT: a;s;CRITICAL;SOFT;1;a-s call 3 gives 2
+[1794403792] HOST ALERT: a;DOWN;SOFT;1;a call 2 gives 2
+[1794403793] SERVICE INFO: a;s; Service switch to hard down state due to host down.
+[1794403793] SERVICE ALERT: a;s;CRITICAL;HARD;2;a-s call 4 gives 2
+[1794403793] SERVICE ALERT: n;s;CRITICAL;SOFT;2;n-s call 4 gives 2
+[1794403793] HOST ALERT: a;DOWN;SOFT;2;a call 3 gives 2
+[1794403794] SERVICE ALERT: n;s;CRITICAL;HARD;3;n-s call 5 gives 2
+[1794403794] SERVICE CONTACT NOTIFICATION SUPPRESSED: ops;n;s;Notifications are disabled for this object by its configuration.
+[1794403794] SERVICE NOTIFICATION SUPPRESSED: n;s;No notification sent, because no contacts were found for notification purposes.
+[1794403795] HOST ALERT: a;DOWN;HARD;3;a call 4 gives 2
+[1794403795] HOST CONTACT NOTIFICATION SUPPRESSED: ops;a;Notifications are disabled for this object by its configuration.
+[1794403795] HOST NOTIFICATION SUPPRESSED: a;No notification sent, because no contacts were found for notification purposes.
+[1794403809] SERVICE ALERT: n;s;OK;HARD;3;n-s call 8 gives 0
+[1794403809] SERVICE NOTIFICATION SUPPRESSED: n;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794403813] SERVICE ALERT: a;s;OK;HARD;2;a-s call 8 gives 0
+[1794403813] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794403841] Auto-save of retention data completed successfully.
+[1794403891] Caught 'Terminated', shutting down...
+[1794403891] Retention data successfully saved.
+[1794403891] Successfully shutdown... (PID=15)
+[1794403891] Event broker module 'NERD' deinitialized successfully.

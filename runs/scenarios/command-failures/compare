@@ -1,0 +1,7 @@
+# These checks are real programs, or need a real shell: runs/real
+# compares them.
+skip real programs and shell command lines
+# From the state the reference saved at the end of its 20 seconds.
+first-of a;exit0err@13000 an OK result leaves nothing in the log
+first-of a;ng@27000 the reference had planned its first check for after the end of the run
+first-of a;nsemi@26000 the reference had planned its first check for after the end of the run

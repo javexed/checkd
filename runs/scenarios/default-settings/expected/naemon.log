@@ -1,0 +1,33 @@
+[1794408065] Naemon 1.5.2 starting... (PID=15)
+[1794408065] Local time is Wed Nov 11 14:41:05 UTC 2026
+[1794408065] LOG VERSION: 2.0
+[1794408065] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794408065] nerd: Channel hostchecks registered successfully
+[1794408065] nerd: Channel servicechecks registered successfully
+[1794408065] nerd: Fully initialized and ready to rock!
+[1794408065] Successfully launched command file worker with pid 16
+[1794408065] Reading all config object data
+[1794408065] Loading neb modules
+[1794408065] Warning: Service 'slow' on host 'a'  has a notification interval less than its check interval!  Notifications are only re-sent after checks are made, so the effective notification interval will be that of the check interval.
+[1794408065] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794408065] Naemon successfully initialized (PID=15)
+[1794408083] SERVICE EVENT HANDLER: a;soft;CRITICAL;SOFT;1;eh-svc
+[1794408100] SERVICE EVENT HANDLER: a;soft;CRITICAL;SOFT;2;eh-svc
+[1794408114] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 4 gives 2
+[1794408114] SERVICE CONTACT NOTIFICATION SUPPRESSED: ops;a;s;Notifications are disabled for this object by its configuration.
+[1794408114] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794408117] SERVICE ALERT: a;soft;CRITICAL;HARD;3;a-soft call 4 gives 2
+[1794408117] SERVICE NOTIFICATION SUPPRESSED: a;soft;No notification sent, because no contacts were found for notification purposes.
+[1794408117] SERVICE EVENT HANDLER: a;soft;CRITICAL;HARD;3;eh-svc
+[1794408130] SERVICE ALERT: a;s;OK;HARD;1;a-s call 5 gives 0
+[1794408130] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794408133] SERVICE ALERT: a;soft;OK;HARD;3;a-soft call 5 gives 0
+[1794408133] SERVICE NOTIFICATION SUPPRESSED: a;soft;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794408133] SERVICE EVENT HANDLER: a;soft;OK;HARD;3;eh-svc
+[1794408146] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 6 gives 2
+[1794408146] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794408162] SERVICE ALERT: a;s;OK;HARD;1;a-s call 7 gives 0
+[1794408162] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794408165] Caught 'Terminated', shutting down...
+[1794408165] Successfully shutdown... (PID=15)
+[1794408165] Event broker module 'NERD' deinitialized successfully.

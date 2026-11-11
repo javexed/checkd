@@ -24,6 +24,12 @@ nothing in this repo may be derived from their source.
   loader first met there is known to it by name only. What the setting
   does was taken from the oracle, with configs written for this project.
 
+- The engine's behaviour (phase 2 on) is taken the same way: a scenario
+  written for this project is run on the reference daemon with scripted
+  plugins (`oracle/play`), and its log and plugin calls are kept beside it
+  in `runs/scenarios/<name>/expected`. Where checkd does something else on
+  purpose, the scenario's `compare` file says so and why.
+
 By contributing you confirm that your change was not written from the GPL
 source.
 

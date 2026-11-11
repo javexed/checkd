@@ -1,0 +1,20 @@
+10 k19 x|"b"|c
+10 k7 a\b|c\\d
+10 k9 x|||y
+10 a 0
+10 k12 a|'|x
+1009 k2 a b|c d|e f|g\h
+1009 k8 atb|anb
+2010 k0 a|>|/dev/null
+2010 k13 a|#|b
+2010 k1 a|<|/dev/null
+3009 k18 a'b
+3009 k5 a|b|c
+4010 k10 ab cd
+4010 e1 0
+5010 k3 [a]|{b,c}|#d|^e|%f
+5010 k16 a>b
+6009 k11 ab cd
+6009 k15 a|>b|2>c
+6009 k17 -w|5|-c|10|--opt:val|-H|192.0.2.1
+7009 k4 a 'b' c|d "e" f

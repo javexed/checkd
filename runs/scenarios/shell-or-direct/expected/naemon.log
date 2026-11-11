@@ -1,0 +1,131 @@
+[1794412453] Naemon 1.5.2 starting... (PID=15)
+[1794412453] Local time is Wed Nov 11 15:54:13 UTC 2026
+[1794412453] LOG VERSION: 2.0
+[1794412453] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794412453] nerd: Channel hostchecks registered successfully
+[1794412453] nerd: Channel servicechecks registered successfully
+[1794412453] nerd: Fully initialized and ready to rock!
+[1794412453] Successfully launched command file worker with pid 16
+[1794412453] Reading all config object data
+[1794412453] Loading neb modules
+[1794412453] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794412453] INITIAL HOST STATE: a;UP;HARD;1;
+[1794412453] INITIAL SERVICE STATE: a;c0;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c1;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c10;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c11;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c12;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c13;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c14;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c15;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c16;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c17;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c18;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c19;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c2;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c20;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c21;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c22;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c23;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c24;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c25;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c26;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c27;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c28;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c29;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c3;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c30;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c31;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c32;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c33;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c4;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c5;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c6;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c7;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c8;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;c9;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;e1;OK;HARD;1;(null)
+[1794412453] Naemon successfully initialized (PID=15)
+[1794412453] SERVICE ALERT: a;c2;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412453] SERVICE CONTACT NOTIFICATION SUPPRESSED: ops;a;c2;Notifications are disabled for this object by its configuration.
+[1794412453] SERVICE NOTIFICATION SUPPRESSED: a;c2;No notification sent, because no contacts were found for notification purposes.
+[1794412453] SERVICE ALERT: a;c25;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412453] SERVICE NOTIFICATION SUPPRESSED: a;c25;No notification sent, because no contacts were found for notification purposes.
+[1794412453] SERVICE ALERT: a;c27;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412453] SERVICE NOTIFICATION SUPPRESSED: a;c27;No notification sent, because no contacts were found for notification purposes.
+[1794412453] SERVICE ALERT: a;c13;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412453] SERVICE NOTIFICATION SUPPRESSED: a;c13;No notification sent, because no contacts were found for notification purposes.
+[1794412454] SERVICE ALERT: a;c20;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412454] SERVICE NOTIFICATION SUPPRESSED: a;c20;No notification sent, because no contacts were found for notification purposes.
+[1794412454] SERVICE ALERT: a;c30;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412454] SERVICE NOTIFICATION SUPPRESSED: a;c30;No notification sent, because no contacts were found for notification purposes.
+[1794412454] SERVICE ALERT: a;c26;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412454] SERVICE NOTIFICATION SUPPRESSED: a;c26;No notification sent, because no contacts were found for notification purposes.
+[1794412455] SERVICE ALERT: a;c1;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412455] SERVICE NOTIFICATION SUPPRESSED: a;c1;No notification sent, because no contacts were found for notification purposes.
+[1794412455] SERVICE ALERT: a;c33;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412455] SERVICE NOTIFICATION SUPPRESSED: a;c33;No notification sent, because no contacts were found for notification purposes.
+[1794412455] SERVICE ALERT: a;c14;CRITICAL;HARD;1;(No output on stdout) stderr: /bin/sh: 1: Syntax error: word unexpected (expecting ")")
+[1794412455] SERVICE NOTIFICATION SUPPRESSED: a;c14;No notification sent, because no contacts were found for notification purposes.
+[1794412455] Warning: Return code of 127 for check of service 'c15' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412455] SERVICE ALERT: a;c15;CRITICAL;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794412455] SERVICE NOTIFICATION SUPPRESSED: a;c15;No notification sent, because no contacts were found for notification purposes.
+[1794412455] Warning: Return code of 127 for check of service 'c10' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412455] SERVICE ALERT: a;c10;CRITICAL;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794412455] SERVICE NOTIFICATION SUPPRESSED: a;c10;No notification sent, because no contacts were found for notification purposes.
+[1794412456] SERVICE ALERT: a;c19;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412456] SERVICE NOTIFICATION SUPPRESSED: a;c19;No notification sent, because no contacts were found for notification purposes.
+[1794412456] SERVICE ALERT: a;c23;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412456] SERVICE NOTIFICATION SUPPRESSED: a;c23;No notification sent, because no contacts were found for notification purposes.
+[1794412456] Warning: Return code of 127 for check of service 'c4' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412456] SERVICE ALERT: a;c4;CRITICAL;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794412456] SERVICE NOTIFICATION SUPPRESSED: a;c4;No notification sent, because no contacts were found for notification purposes.
+[1794412457] SERVICE ALERT: a;c0;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412457] SERVICE NOTIFICATION SUPPRESSED: a;c0;No notification sent, because no contacts were found for notification purposes.
+[1794412457] SERVICE ALERT: a;c11;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412457] SERVICE NOTIFICATION SUPPRESSED: a;c11;No notification sent, because no contacts were found for notification purposes.
+[1794412457] SERVICE ALERT: a;e1;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412457] SERVICE NOTIFICATION SUPPRESSED: a;e1;No notification sent, because no contacts were found for notification purposes.
+[1794412457] Warning: Return code of 127 for check of service 'c32' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412457] SERVICE ALERT: a;c32;CRITICAL;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794412457] SERVICE NOTIFICATION SUPPRESSED: a;c32;No notification sent, because no contacts were found for notification purposes.
+[1794412457] Warning: Return code of 127 for check of service 'c6' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412457] SERVICE ALERT: a;c6;CRITICAL;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794412457] SERVICE NOTIFICATION SUPPRESSED: a;c6;No notification sent, because no contacts were found for notification purposes.
+[1794412457] Warning: Return code of 127 for check of service 'c5' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412457] SERVICE ALERT: a;c5;CRITICAL;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794412457] SERVICE NOTIFICATION SUPPRESSED: a;c5;No notification sent, because no contacts were found for notification purposes.
+[1794412458] SERVICE ALERT: a;c17;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412458] SERVICE NOTIFICATION SUPPRESSED: a;c17;No notification sent, because no contacts were found for notification purposes.
+[1794412458] SERVICE ALERT: a;c31;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412458] SERVICE NOTIFICATION SUPPRESSED: a;c31;No notification sent, because no contacts were found for notification purposes.
+[1794412458] Warning: Return code of 127 for check of service 'c21' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412458] SERVICE ALERT: a;c21;CRITICAL;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794412458] SERVICE NOTIFICATION SUPPRESSED: a;c21;No notification sent, because no contacts were found for notification purposes.
+[1794412458] Warning: Return code of 127 for check of service 'c3' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412458] SERVICE ALERT: a;c3;CRITICAL;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794412458] SERVICE NOTIFICATION SUPPRESSED: a;c3;No notification sent, because no contacts were found for notification purposes.
+[1794412459] SERVICE ALERT: a;c18;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412459] SERVICE NOTIFICATION SUPPRESSED: a;c18;No notification sent, because no contacts were found for notification purposes.
+[1794412459] SERVICE ALERT: a;c24;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412459] SERVICE NOTIFICATION SUPPRESSED: a;c24;No notification sent, because no contacts were found for notification purposes.
+[1794412459] Warning: Return code of 127 for check of service 'c12' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412459] SERVICE ALERT: a;c12;CRITICAL;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794412459] SERVICE NOTIFICATION SUPPRESSED: a;c12;No notification sent, because no contacts were found for notification purposes.
+[1794412459] Warning: Return code of 127 for check of service 'c16' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412459] SERVICE ALERT: a;c16;CRITICAL;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794412459] SERVICE NOTIFICATION SUPPRESSED: a;c16;No notification sent, because no contacts were found for notification purposes.
+[1794412460] SERVICE ALERT: a;c22;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412460] SERVICE NOTIFICATION SUPPRESSED: a;c22;No notification sent, because no contacts were found for notification purposes.
+[1794412460] SERVICE ALERT: a;c28;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412460] SERVICE NOTIFICATION SUPPRESSED: a;c28;No notification sent, because no contacts were found for notification purposes.
+[1794412460] Warning: Return code of 127 for check of service 'c7' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412460] SERVICE ALERT: a;c7;CRITICAL;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794412460] SERVICE NOTIFICATION SUPPRESSED: a;c7;No notification sent, because no contacts were found for notification purposes.
+[1794412460] Warning: Return code of 127 for check of service 'c9' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412460] SERVICE ALERT: a;c9;CRITICAL;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794412460] SERVICE NOTIFICATION SUPPRESSED: a;c9;No notification sent, because no contacts were found for notification purposes.
+[1794412465] Caught 'Terminated', shutting down...
+[1794412465] Retention data successfully saved.
+[1794412465] Successfully shutdown... (PID=15)
+[1794412465] Event broker module 'NERD' deinitialized successfully.

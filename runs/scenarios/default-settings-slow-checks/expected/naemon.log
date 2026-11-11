@@ -1,0 +1,50 @@
+[1794408176] Naemon 1.5.2 starting... (PID=15)
+[1794408176] Local time is Wed Nov 11 14:42:56 UTC 2026
+[1794408176] LOG VERSION: 2.0
+[1794408176] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794408176] nerd: Channel hostchecks registered successfully
+[1794408176] nerd: Channel servicechecks registered successfully
+[1794408176] nerd: Fully initialized and ready to rock!
+[1794408176] Successfully launched command file worker with pid 16
+[1794408176] Reading all config object data
+[1794408176] Loading neb modules
+[1794408176] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794408176] Naemon successfully initialized (PID=15)
+[1794408183] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 4 gives 2
+[1794408183] SERVICE CONTACT NOTIFICATION SUPPRESSED: ops;a;s;Notifications are disabled for this object by its configuration.
+[1794408183] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794408185] SERVICE ALERT: a;s;OK;HARD;1;a-s call 5 gives 0
+[1794408185] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794408187] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 6 gives 2
+[1794408187] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794408189] SERVICE ALERT: a;s;OK;HARD;1;a-s call 7 gives 0
+[1794408189] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794408191] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 8 gives 2
+[1794408191] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794408193] SERVICE ALERT: a;s;OK;HARD;1;a-s call 9 gives 0
+[1794408193] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794408195] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 10 gives 2
+[1794408195] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794408197] SERVICE ALERT: a;s;OK;HARD;1;a-s call 11 gives 0
+[1794408197] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794408199] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 12 gives 2
+[1794408199] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794408199] HOST EVENT HANDLER: a;DOWN;SOFT;1;eh-host
+[1794408201] SERVICE ALERT: a;s;OK;HARD;1;a-s call 13 gives 0
+[1794408201] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794408201] HOST EVENT HANDLER: a;DOWN;SOFT;2;eh-host
+[1794408203] SERVICE INFO: a;s; Service switch to hard down state due to host down.
+[1794408203] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 14 gives 2
+[1794408203] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for service because its associated host is either down or unreachable.
+[1794408203] HOST ALERT: a;UP;HARD;3;a is 0 at second 27
+[1794408203] HOST NOTIFICATION SUPPRESSED: a;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794408203] HOST EVENT HANDLER: a;UP;HARD;3;eh-host
+[1794408205] SERVICE ALERT: a;s;OK;HARD;1;a-s call 15 gives 0
+[1794408205] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794408207] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 16 gives 2
+[1794408207] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794408209] SERVICE ALERT: a;s;OK;HARD;1;a-s call 17 gives 0
+[1794408209] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794408256] Caught 'Terminated', shutting down...
+[1794408256] Successfully shutdown... (PID=15)
+[1794408256] Event broker module 'NERD' deinitialized successfully.

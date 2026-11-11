@@ -2,3 +2,6 @@
 /real/trees
 /real/work
 /real/stubs
+/runs/*/work
+/runs/real-work
+/runs/otel-work

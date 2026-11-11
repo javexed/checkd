@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Runs checkd itself, on the real clock and with the real plugins, on the
+# scenarios, and compares each run with the reference's recording.
+#
+#   runs/real [<scenario>...]
+#
+# With one scenario, both sides are shown in full. JOBS is how many runs
+# go on at one time, 8 if it is not set.
+#
+# The runs happen inside the oracle image, without a network, where the
+# reference made its recordings: the same shell, the same paths and the
+# same plugins. Nothing of the reference is run. What each run wrote
+# stays in runs/real-work/<scenario>.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(dirname "$here")
+work=$here/real-work
+jobs=${JOBS:-8}
+
+core=$(sed -n 's/^ARG NAEMON_CORE_VERSION=//p' "$root/oracle/Dockerfile")
+inputs=$(cat "$root/oracle/Dockerfile" "$root/oracle/entry.sh" | sha256sum | cut -c1-12)
+image="checkd-oracle:naemon-${core}-${inputs}"
+docker image inspect "$image" >/dev/null 2>&1 \
+    || { echo "no oracle image; run oracle/run on any case first" >&2; exit 2; }
+
+cd "$root"
+cargo build --quiet -p checkd
+if [ $# -gt 0 ]; then
+    names=("$@")
+    SCENARIO=$(IFS=,; echo "$*")
+    export SCENARIO
+else
+    names=()
+    for dir in "$here"/scenarios/*/; do
+        names+=("$(basename "$dir")")
+    done
+fi
+
+# The test writes, for each scenario, how long the reference ran and when
+# it first checked each object.
+rm -rf "$work"
+mkdir -p "$work"
+CHECKD_REAL_PLAN=$work cargo test --quiet -p checkd-core --test scenarios plan >/dev/null
+
+one() {
+    name=$1
+    [ -f "$work/$name/seconds" ] || return 0
+    mkdir -p "$work/$name/out"
+    docker run --rm --network none --user "$(id -u):$(id -g)" \
+        -v "$here/scenarios/$name:/in:ro" -v "$here/lib:/shared:ro" \
+        -v "$work/$name:/plan:ro" -v "$root/target/debug/checkd:/checkd:ro" \
+        -v "$here/real-entry.sh:/real-entry:ro" -v "$work/$name/out:/out" \
+        --entrypoint sh "$image" /real-entry
+}
+export -f one
+export here root work image
+printf '%s\n' "${names[@]}" | xargs -P "$jobs" -I{} bash -c 'one {}'
+
+CHECKD_REAL=$work cargo test --quiet -p checkd-core --test scenarios real -- --nocapture

@@ -1,0 +1,52 @@
+[1794404078] Naemon 1.5.2 starting... (PID=16)
+[1794404078] Local time is Wed Nov 11 13:34:38 UTC 2026
+[1794404078] LOG VERSION: 2.0
+[1794404078] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794404078] nerd: Channel hostchecks registered successfully
+[1794404078] nerd: Channel servicechecks registered successfully
+[1794404078] nerd: Fully initialized and ready to rock!
+[1794404078] Successfully launched command file worker with pid 17
+[1794404078] Reading all config object data
+[1794404078] Loading neb modules
+[1794404078] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794404078] INITIAL HOST STATE: a;UP;HARD;1;
+[1794404078] INITIAL HOST STATE: z;UP;HARD;1;
+[1794404078] INITIAL SERVICE STATE: z;spy;OK;HARD;1;(null)
+[1794404078] Naemon successfully initialized (PID=16)
+[1794404084] HOST ALERT: a;DOWN;HARD;1;a call 4 gives 2
+[1794404084] HOST CONTACT NOTIFICATION SUPPRESSED: ops;a;Notifications are disabled for this object by its configuration.
+[1794404084] HOST NOTIFICATION SUPPRESSED: a;No notification sent, because no contacts were found for notification purposes.
+[1794404086] HOST ALERT: a;UP;HARD;1;a call 5 gives 0
+[1794404086] HOST NOTIFICATION SUPPRESSED: a;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404088] HOST ALERT: a;DOWN;HARD;1;a call 6 gives 2
+[1794404088] HOST NOTIFICATION SUPPRESSED: a;No notification sent, because no contacts were found for notification purposes.
+[1794404090] HOST ALERT: a;UP;HARD;1;a call 7 gives 0
+[1794404090] HOST NOTIFICATION SUPPRESSED: a;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404092] HOST ALERT: a;DOWN;HARD;1;a call 8 gives 2
+[1794404092] HOST NOTIFICATION SUPPRESSED: a;No notification sent, because no contacts were found for notification purposes.
+[1794404094] HOST ALERT: a;UP;HARD;1;a call 9 gives 0
+[1794404094] HOST NOTIFICATION SUPPRESSED: a;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404096] HOST ALERT: a;DOWN;HARD;1;a call 10 gives 2
+[1794404096] HOST NOTIFICATION SUPPRESSED: a;No notification sent, because no contacts were found for notification purposes.
+[1794404096] HOST FLAPPING ALERT: a;STARTED; Host appears to have started flapping (35.5% change > 30.0% threshold)
+[1794404098] HOST ALERT: a;UP;HARD;1;a call 11 gives 0
+[1794404098] HOST NOTIFICATION SUPPRESSED: a;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404100] HOST ALERT: a;DOWN;HARD;1;a call 12 gives 2
+[1794404100] HOST NOTIFICATION SUPPRESSED: a;Notification blocked because the object is currently flapping.
+[1794404102] HOST ALERT: a;UP;HARD;1;a call 13 gives 0
+[1794404102] HOST NOTIFICATION SUPPRESSED: a;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404104] HOST ALERT: a;DOWN;HARD;1;a call 14 gives 2
+[1794404104] HOST NOTIFICATION SUPPRESSED: a;Notification blocked because the object is currently flapping.
+[1794404106] HOST ALERT: a;UP;HARD;1;a call 15 gives 0
+[1794404106] HOST NOTIFICATION SUPPRESSED: a;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404108] HOST ALERT: a;DOWN;HARD;1;a call 16 gives 2
+[1794404108] HOST NOTIFICATION SUPPRESSED: a;Notification blocked because the object is currently flapping.
+[1794404110] HOST ALERT: a;UP;HARD;1;a call 17 gives 0
+[1794404110] HOST NOTIFICATION SUPPRESSED: a;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794404138] Auto-save of retention data completed successfully.
+[1794404142] HOST FLAPPING ALERT: a;STOPPED; Host appears to have stopped flapping (16.3% change < 20.0% threshold)
+[1794404142] HOST NOTIFICATION SUPPRESSED: a;No notification sent, because no contacts were found for notification purposes.
+[1794404153] Caught 'Terminated', shutting down...
+[1794404153] Retention data successfully saved.
+[1794404153] Successfully shutdown... (PID=16)
+[1794404153] Event broker module 'NERD' deinitialized successfully.

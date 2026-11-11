@@ -1,0 +1,3 @@
+# The spy checks are started within a millisecond or two of the result
+# they look at. Which of the two comes first differs from call to call.
+watch spy1 looks at another object as it changes

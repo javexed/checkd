@@ -1,0 +1,7 @@
+# In the reference's run the first check of host p fell 2 ms after a check
+# of its child c, at second 20, when both begin to fail. The reference
+# read c's result first: c is DOWN, and UNREACHABLE at the next attempt.
+# Read the other way round, c is UNREACHABLE from the first attempt. The
+# play on the simulated clock keeps the reference's order. A real run
+# cannot be held to 2 ms.
+skip-real two results that depend on each other, 2 ms apart

@@ -1,0 +1,13 @@
+# The reference puts the first check of an object whose check period is
+# closed at a moment of its own choosing after the period opens. For this
+# service that was second 142, after the end of the run: the next check in
+# the state it saved.
+first a-soon@142000 the reference had planned its first check for after the end of the run
+
+# The host c and its service are first checked in the same millisecond.
+# Whose result is read first decides whether the service goes through a
+# soft state. In real time that is not the same from run to run.
+ignore-real c the order of two results a millisecond apart
+ignore-real c-onc the order of two results a millisecond apart
+ignore-log-real c the order of two results a millisecond apart
+ignore-log-real c;onc the order of two results a millisecond apart

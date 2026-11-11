@@ -1,0 +1,21 @@
+#!/bin/sh
+# Prints a file of the case as it is and ends with a given code, for
+# output that a command line cannot carry: several lines, perfdata, none.
+#
+#   raw <key> <code> <file under ../fixtures> [<seconds to wait first>]
+#
+# A code of "kill" ends the plugin by a signal instead. Every call is added
+# to ../state/trace as "<ms since start> <key> <code>".
+set -u
+dir=$(dirname "$0")/../state
+key=$1
+code=$2
+file=$3
+wait=${4:-0}
+
+. "$dir/../plugins/trace.sh"
+trace "$key" "$code"
+[ "$wait" = 0 ] || sleep "$wait"
+[ "$file" = - ] || cat "$dir/../fixtures/$file"
+[ "$code" = kill ] && kill -KILL $$
+exit "$code"

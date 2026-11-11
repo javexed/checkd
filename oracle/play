@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Lets the Naemon oracle run one case as a daemon for a while.
+#
+#   oracle/play <case-dir> <out-dir> <seconds> [status]
+#
+# Writes to <out-dir>:
+#   naemon.log      Naemon's log of the run
+#   trace           every call of a scripted plugin: ms since start, key, code
+#   commands        the external commands of <case-dir>/commands as they
+#                   were sent: ms since start, command
+#   start           when the run began, in ns since the epoch
+#   status.dat      Naemon's status file as it was at the end
+#   status/<n>.dat  with 'status' as the last argument: the status file
+#                   as it was in each second of the run
+#   retention.dat   the state Naemon saved when it was stopped
+#   stdout.txt      what Naemon printed
+#   oracle.version  the Naemon version
+set -euo pipefail
+
+if [ $# -lt 3 ]; then
+    sed -n '2,18p' "$0" >&2
+    exit 2
+fi
+
+here=$(cd "$(dirname "$0")" && pwd)
+case_dir=$(realpath "$1")
+mkdir -p "$2"
+out_dir=$(realpath "$2")
+seconds=$3
+
+[ -f "$case_dir/naemon.cfg" ] || { echo "no naemon.cfg in $case_dir" >&2; exit 2; }
+
+# The image is the one oracle/run builds. This script only adds another
+# entry point to it, so the image does not change.
+core=$(sed -n 's/^ARG NAEMON_CORE_VERSION=//p' "$here/Dockerfile")
+inputs=$(cat "$here/Dockerfile" "$here/entry.sh" | sha256sum | cut -c1-12)
+image="checkd-oracle:naemon-${core}-${inputs}"
+docker image inspect "$image" >/dev/null 2>&1 \
+    || { echo "no oracle image; run oracle/run on any case first" >&2; exit 2; }
+
+docker run --rm --network none --user "$(id -u):$(id -g)" \
+    -v "$case_dir:/in:ro" -v "$here/../runs/lib:/shared:ro" \
+    -v "$here/play-entry.sh:/play-entry:ro" -v "$out_dir:/out" \
+    --entrypoint sh "$image" /play-entry "$seconds" ${4:+"$4"}

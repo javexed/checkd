@@ -1,0 +1,45 @@
+#!/bin/sh
+# A scripted check plugin for the differential runs.
+#
+#   seq <key> <step>...
+#
+# The Nth call with a key gives the Nth step, and the last step again on
+# every call after that. A step is an exit code, optionally followed by
+# "x<count>" to repeat it and by ":<text>" for the output:
+#
+#   seq web 0 2x3 0          OK, three times CRITICAL, then OK for good
+#   seq web 0 "1:disk 91%"   OK, then WARNING with that text
+#
+# The count of calls is kept in ../state/<key>.count beside this script,
+# and every call is added to ../state/trace as "<ms since start> <key> <code>".
+set -u
+dir=$(dirname "$0")/../state
+key=$1
+shift
+
+n=0
+[ -f "$dir/$key.count" ] && read -r n < "$dir/$key.count"
+n=$((n + 1))
+echo "$n" > "$dir/$key.count"
+
+left=$n
+code=3
+text=
+for step in "$@"; do
+    case $step in
+        *:*) text=${step#*:}; step=${step%%:*} ;;
+        *) text= ;;
+    esac
+    case $step in
+        *x*) count=${step#*x}; code=${step%%x*} ;;
+        *) count=1; code=$step ;;
+    esac
+    left=$((left - count))
+    [ "$left" -le 0 ] && break
+done
+
+. "$dir/../plugins/trace.sh"
+trace "$key" "$code"
+[ -n "$text" ] || text="$key call $n gives $code"
+echo "$text"
+exit "$code"

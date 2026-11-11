@@ -1,0 +1,6 @@
+# The reference spreads the first checks at random. This one it had
+# planned for second 259, after the end of the run: the next check in the
+# state it saved.
+first g10@259000 the reference had planned its first check for after the end of the run
+first g7@246000 the reference had planned its first check for after the end of the run
+first g9@276000 the reference had planned its first check for after the end of the run

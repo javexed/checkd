@@ -1,0 +1,107 @@
+[1794412453] Naemon 1.5.2 starting... (PID=15)
+[1794412453] Local time is Wed Nov 11 15:54:13 UTC 2026
+[1794412453] LOG VERSION: 2.0
+[1794412453] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794412453] nerd: Channel hostchecks registered successfully
+[1794412453] nerd: Channel servicechecks registered successfully
+[1794412453] nerd: Fully initialized and ready to rock!
+[1794412453] Successfully launched command file worker with pid 16
+[1794412453] Reading all config object data
+[1794412453] Loading neb modules
+[1794412453] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794412453] INITIAL HOST STATE: a;UP;HARD;1;
+[1794412453] INITIAL HOST STATE: t;UP;HARD;1;
+[1794412453] INITIAL SERVICE STATE: a;blank;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;code126;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;code127;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;code255;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;code4;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;codekill;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;empty;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;envp;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;esc;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;lead;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;long;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;multi;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;noexec;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;nonl;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;nosuch;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;perfonly;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;quoted;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;redir;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;semi;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;shsemi;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;slow;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;slow2;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;stderr;OK;HARD;1;(null)
+[1794412453] INITIAL SERVICE STATE: a;tilde;OK;HARD;1;(null)
+[1794412453] Naemon successfully initialized (PID=15)
+[1794412453] SERVICE ALERT: a;redir;WARNING;HARD;1;redirected
+[1794412453] SERVICE CONTACT NOTIFICATION SUPPRESSED: ops;a;redir;Notifications are disabled for this object by its configuration.
+[1794412453] SERVICE NOTIFICATION SUPPRESSED: a;redir;No notification sent, because no contacts were found for notification purposes.
+[1794412453] Warning: Return code of 4 for check of service 'code4' on host 'a' was out of bounds.
+[1794412453] SERVICE ALERT: a;code4;CRITICAL;HARD;1;(Return code of 4 is out of bounds)
+[1794412453] SERVICE NOTIFICATION SUPPRESSED: a;code4;No notification sent, because no contacts were found for notification purposes.
+[1794412454] SERVICE ALERT: a;multi;WARNING;HARD;1;first line
+[1794412454] SERVICE NOTIFICATION SUPPRESSED: a;multi;No notification sent, because no contacts were found for notification purposes.
+[1794412457] SERVICE ALERT: a;tilde;WARNING;HARD;1;glob called
+[1794412457] SERVICE NOTIFICATION SUPPRESSED: a;tilde;No notification sent, because no contacts were found for notification purposes.
+[1794412458] Warning: Return code of 13 for check of service 'noexec' on host 'a' was out of bounds.
+[1794412458] SERVICE ALERT: a;noexec;CRITICAL;HARD;1;(Return code of 13 is out of bounds)
+[1794412458] SERVICE NOTIFICATION SUPPRESSED: a;noexec;No notification sent, because no contacts were found for notification purposes.
+[1794412459] SERVICE ALERT: a;semi;WARNING;HARD;1;has:semicolon and
+[1794412459] SERVICE NOTIFICATION SUPPRESSED: a;semi;No notification sent, because no contacts were found for notification purposes.
+[1794412461] SERVICE ALERT: a;blank;WARNING;HARD;1;after two empty lines
+[1794412461] SERVICE NOTIFICATION SUPPRESSED: a;blank;No notification sent, because no contacts were found for notification purposes.
+[1794412462] SERVICE ALERT: a;codekill;UNKNOWN;HARD;1;one
+[1794412462] SERVICE NOTIFICATION SUPPRESSED: a;codekill;No notification sent, because no contacts were found for notification purposes.
+[1794412463] SERVICE ALERT: a;empty;WARNING;HARD;1;(No output returned from plugin)
+[1794412463] SERVICE NOTIFICATION SUPPRESSED: a;empty;No notification sent, because no contacts were found for notification purposes.
+[1794412463] Warning: Return code of 126 for check of service 'code126' on host 'a' was out of bounds.Make sure the plugin you're trying to run is executable.
+[1794412463] SERVICE ALERT: a;code126;CRITICAL;HARD;1;(Return code of 126 is out of bounds - plugin may not be executable)
+[1794412463] SERVICE NOTIFICATION SUPPRESSED: a;code126;No notification sent, because no contacts were found for notification purposes.
+[1794412464] SERVICE ALERT: a;long;WARNING;HARD;1;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxEND
+[1794412464] SERVICE NOTIFICATION SUPPRESSED: a;long;No notification sent, because no contacts were found for notification purposes.
+[1794412467] SERVICE ALERT: a;perfonly;WARNING;HARD;1;
+[1794412467] SERVICE NOTIFICATION SUPPRESSED: a;perfonly;No notification sent, because no contacts were found for notification purposes.
+[1794412471] HOST ALERT: t;DOWN;HARD;1;(Host check timed out after 3.00 seconds)
+[1794412471] HOST CONTACT NOTIFICATION SUPPRESSED: ops;t;Notifications are disabled for this object by its configuration.
+[1794412471] HOST NOTIFICATION SUPPRESSED: t;No notification sent, because no contacts were found for notification purposes.
+[1794412471] Warning: Return code of 127 for check of service 'code127' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412471] SERVICE ALERT: a;code127;CRITICAL;HARD;1;(Return code of 127 is out of bounds - plugin may be missing)
+[1794412471] SERVICE NOTIFICATION SUPPRESSED: a;code127;No notification sent, because no contacts were found for notification purposes.
+[1794412473] SERVICE ALERT: a;nonl;WARNING;HARD;1;no newline at end
+[1794412473] SERVICE NOTIFICATION SUPPRESSED: a;nonl;No notification sent, because no contacts were found for notification purposes.
+[1794412475] SERVICE ALERT: a;stderr;CRITICAL;HARD;1;(No output on stdout) stderr: /bin/sh: 1: Syntax error: Unterminated quoted string
+[1794412475] SERVICE NOTIFICATION SUPPRESSED: a;stderr;No notification sent, because no contacts were found for notification purposes.
+[1794412475] SERVICE ALERT: a;esc;WARNING;HARD;1;back\\slash and \n literal
+[1794412475] SERVICE NOTIFICATION SUPPRESSED: a;esc;No notification sent, because no contacts were found for notification purposes.
+[1794412476] SERVICE ALERT: a;slow2;CRITICAL;HARD;1;(Service check timed out after 2.00 seconds)
+[1794412476] SERVICE NOTIFICATION SUPPRESSED: a;slow2;No notification sent, because no contacts were found for notification purposes.
+[1794412477] SERVICE ALERT: a;quoted;WARNING;HARD;1;quoted called
+[1794412477] SERVICE NOTIFICATION SUPPRESSED: a;quoted;No notification sent, because no contacts were found for notification purposes.
+[1794412477] Warning: Return code of 255 for check of service 'code255' on host 'a' was out of bounds.
+[1794412477] SERVICE ALERT: a;code255;CRITICAL;HARD;1;(Return code of 255 is out of bounds)
+[1794412477] SERVICE NOTIFICATION SUPPRESSED: a;code255;No notification sent, because no contacts were found for notification purposes.
+[1794412477] SERVICE ALERT: a;lead;WARNING;HARD;1;leading and trailing
+[1794412477] SERVICE NOTIFICATION SUPPRESSED: a;lead;No notification sent, because no contacts were found for notification purposes.
+[1794412478] SERVICE ALERT: a;envp;WARNING;HARD;1;envp called
+[1794412478] SERVICE NOTIFICATION SUPPRESSED: a;envp;No notification sent, because no contacts were found for notification purposes.
+[1794412479] SERVICE ALERT: a;nosuch;CRITICAL;HARD;1;(No output on stdout) stderr: execvp(/case/plugins/nosuch, ...) failed. errno is 2: No such file or directory
+[1794412479] SERVICE NOTIFICATION SUPPRESSED: a;nosuch;No notification sent, because no contacts were found for notification purposes.
+[1794412483] Warning: Return code of 4 for check of service 'code4' on host 'a' was out of bounds.
+[1794412485] SERVICE ALERT: a;slow;CRITICAL;HARD;1;(Service check timed out after 4.00 seconds)
+[1794412485] SERVICE NOTIFICATION SUPPRESSED: a;slow;No notification sent, because no contacts were found for notification purposes.
+[1794412488] Warning: Return code of 13 for check of service 'noexec' on host 'a' was out of bounds.
+[1794412493] Warning: Return code of 126 for check of service 'code126' on host 'a' was out of bounds.Make sure the plugin you're trying to run is executable.
+[1794412501] Warning: Return code of 127 for check of service 'code127' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412507] Warning: Return code of 255 for check of service 'code255' on host 'a' was out of bounds.
+[1794412513] Auto-save of retention data completed successfully.
+[1794412513] Warning: Return code of 4 for check of service 'code4' on host 'a' was out of bounds.
+[1794412518] Warning: Return code of 13 for check of service 'noexec' on host 'a' was out of bounds.
+[1794412523] Warning: Return code of 126 for check of service 'code126' on host 'a' was out of bounds.Make sure the plugin you're trying to run is executable.
+[1794412531] Warning: Return code of 127 for check of service 'code127' on host 'a' was out of bounds. Make sure the plugin you're trying to run actually exists.
+[1794412533] Caught 'Terminated', shutting down...
+[1794412533] Retention data successfully saved.
+[1794412533] Successfully shutdown... (PID=15)
+[1794412533] Event broker module 'NERD' deinitialized successfully.

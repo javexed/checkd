@@ -1,4 +1,12 @@
-//! The `checkd` command. For now it can only check a configuration.
+//! The `checkd` command: `verify` checks a configuration, `run` runs its
+//! checks.
+
+#[cfg(feature = "otel")]
+mod otel;
+#[cfg(not(feature = "otel"))]
+#[path = "otel_off.rs"]
+mod otel;
+mod run;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -8,12 +16,17 @@ use checkd_config::{Options, dump, load};
 
 const USAGE: &str = "\
 usage: checkd verify [options] <main-config-file>
+       checkd run [options] <main-config-file>
 
-Reads a Nagios or Naemon configuration and reports what is wrong with it.
-Exits 0 when the configuration can be used, 1 when it has errors, and 2
-when checkd could not be run as asked.
+verify reads a Nagios or Naemon configuration and reports what is wrong
+with it. It exits 0 when the configuration can be used, 1 when it has
+errors, and 2 when checkd could not be run as asked.
 
-options:
+run runs the checks of a configuration and writes the state changes of
+its hosts and services to the log, until it gets SIGTERM or SIGINT. It
+does not send notifications yet.
+
+options of verify:
   --dump <file>         write the resolved objects to <file>, in the layout
                         of Naemon's precached object file
   --path-map <from>=<to>
@@ -21,6 +34,29 @@ options:
                         absolute path <from> from <to> instead; can be
                         given more than once
   --quiet               do not print warnings
+
+options of run:
+  --log-file <file>     write the log to <file> instead of the log_file
+                        of the configuration; - is standard output, which
+                        is also where the log goes when neither is given
+  --for <seconds>       stop after this long
+  --path-map <from>=<to>
+                        as for verify
+  --otlp-endpoint <url> send metrics and traces about checkd itself to
+                        the OpenTelemetry collector at this http:// URL,
+                        as OTLP over HTTP; without it the URL in
+                        OTEL_EXPORTER_OTLP_ENDPOINT is used, and without
+                        either nothing is sent. Only in a build with the
+                        otel feature.
+
+options of run for tests that compare its runs with another engine's:
+  --first-checks <file> check each object first at the moment <file>
+                        gives for it, one
+                        '<milliseconds since 1970> <host>[;<service>]'
+                        to a line
+  --start-at <milliseconds since 1970>
+                        take the moment of the start for this time, and
+                        count on from there
 ";
 
 struct Args {
@@ -30,9 +66,67 @@ struct Args {
     quiet: bool,
 }
 
-fn parse_args(mut args: impl Iterator<Item = String>) -> Result<Args, String> {
+enum Asked {
+    Verify(Args),
+    Run(run::RunArgs),
+}
+
+fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, String> {
+    let (mut main, mut path_map) = (None, PathMap::default());
+    let (mut log_file, mut seconds, mut first_checks, mut start_at) = (None, None, None, None);
+    let mut otlp_endpoint = None;
+    while let Some(arg) = args.next() {
+        let mut value = |what: &str| args.next().ok_or(format!("{arg} needs {what}"));
+        match arg.as_str() {
+            "--log-file" => log_file = Some(PathBuf::from(value("a file name")?)),
+            "--otlp-endpoint" => otlp_endpoint = Some(value("a URL")?),
+            "--first-checks" => first_checks = Some(PathBuf::from(value("a file name")?)),
+            "--for" => {
+                let text = value("a number of seconds")?;
+                seconds = Some(
+                    text.parse()
+                        .map_err(|_| format!("--for needs a number of seconds, not '{text}'"))?,
+                );
+            }
+            "--start-at" => {
+                let text = value("a time in milliseconds")?;
+                start_at = Some(text.parse().map_err(|_| {
+                    format!("--start-at needs a time in milliseconds, not '{text}'")
+                })?);
+            }
+            "--path-map" => {
+                let value = value("<from>=<to>")?;
+                let (from, to) = value
+                    .split_once('=')
+                    .ok_or("--path-map needs <from>=<to>")?;
+                path_map.0.push((PathBuf::from(from), PathBuf::from(to)));
+            }
+            "--help" | "-h" => return Err(USAGE.to_string()),
+            _ if arg.starts_with("--") => {
+                return Err(format!("'{arg}' is not an option of run\n\n{USAGE}"));
+            }
+            _ if main.is_some() => {
+                return Err("run takes one main configuration file".to_string());
+            }
+            _ => main = Some(PathBuf::from(arg)),
+        }
+    }
+    let main = main.ok_or_else(|| format!("run needs a main configuration file\n\n{USAGE}"))?;
+    Ok(run::RunArgs {
+        main,
+        path_map,
+        log_file,
+        seconds,
+        first_checks,
+        start_at,
+        otlp_endpoint,
+    })
+}
+
+fn parse_args(mut args: impl Iterator<Item = String>) -> Result<Asked, String> {
     match args.next().as_deref() {
         Some("verify") => {}
+        Some("run") => return parse_run(args).map(Asked::Run),
         Some("--version") => return Err(format!("checkd {}", env!("CARGO_PKG_VERSION"))),
         Some(other) => return Err(format!("'{other}' is not a checkd command\n\n{USAGE}")),
         None => return Err(USAGE.to_string()),
@@ -64,17 +158,18 @@ fn parse_args(mut args: impl Iterator<Item = String>) -> Result<Args, String> {
         }
     }
     let main = main.ok_or_else(|| format!("verify needs a main configuration file\n\n{USAGE}"))?;
-    Ok(Args {
+    Ok(Asked::Verify(Args {
         main,
         dump,
         path_map,
         quiet,
-    })
+    }))
 }
 
 fn main() -> ExitCode {
     let args = match parse_args(std::env::args().skip(1)) {
-        Ok(args) => args,
+        Ok(Asked::Verify(args)) => args,
+        Ok(Asked::Run(args)) => return run::run(args),
         Err(message) => {
             eprintln!("{}", message.trim_end());
             return ExitCode::from(2);

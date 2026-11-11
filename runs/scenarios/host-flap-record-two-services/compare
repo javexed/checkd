@@ -1,0 +1,11 @@
+# The spy checks are started within a millisecond or two of the result
+# they look at. Which of the two comes first differs from call to call.
+watch spy1 looks at another object as it changes
+
+# At second 22 the host's check and a check of a service on it come due
+# within a few milliseconds of each other. A service result adds the
+# host's state to the host's flap history, so which result is read first
+# decides what the spy sees from then on. The reference read the service
+# first. In real time the order is not the same from run to run; the play
+# on the simulated clock keeps the reference's order and compares the spy.
+ignore-real spy1 the order of two results a few milliseconds apart

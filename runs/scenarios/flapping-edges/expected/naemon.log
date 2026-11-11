@@ -1,0 +1,208 @@
+[1794411331] Naemon 1.5.2 starting... (PID=16)
+[1794411331] Local time is Wed Nov 11 15:35:31 UTC 2026
+[1794411331] LOG VERSION: 2.0
+[1794411331] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794411331] nerd: Channel hostchecks registered successfully
+[1794411331] nerd: Channel servicechecks registered successfully
+[1794411331] nerd: Fully initialized and ready to rock!
+[1794411331] Successfully launched command file worker with pid 17
+[1794411331] Reading all config object data
+[1794411331] Loading neb modules
+[1794411331] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794411331] INITIAL HOST STATE: a;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: b;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: d;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: d2;UP;HARD;1;
+[1794411331] INITIAL HOST STATE: g;UP;HARD;1;
+[1794411331] INITIAL SERVICE STATE: a;e;OK;HARD;1;(null)
+[1794411331] INITIAL SERVICE STATE: a;e2;OK;HARD;1;(null)
+[1794411331] INITIAL SERVICE STATE: a;s;OK;HARD;1;(null)
+[1794411331] INITIAL SERVICE STATE: g;s;OK;HARD;1;(null)
+[1794411331] Naemon successfully initialized (PID=16)
+[1794411333] SERVICE ALERT: g;s;CRITICAL;HARD;1;g-s call 2 gives 2
+[1794411333] SERVICE CONTACT NOTIFICATION SUPPRESSED: ops;g;s;Notifications are disabled for this object by its configuration.
+[1794411333] SERVICE NOTIFICATION SUPPRESSED: g;s;No notification sent, because no contacts were found for notification purposes.
+[1794411334] HOST ALERT: b;DOWN;HARD;1;b call 2 gives 2
+[1794411334] HOST CONTACT NOTIFICATION SUPPRESSED: ops;b;Notifications are disabled for this object by its configuration.
+[1794411334] HOST NOTIFICATION SUPPRESSED: b;No notification sent, because no contacts were found for notification purposes.
+[1794411334] HOST EVENT HANDLER: b;DOWN;HARD;1;eh-host
+[1794411334] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 2 gives 2
+[1794411334] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794411334] SERVICE EVENT HANDLER: a;s;CRITICAL;HARD;1;eh-svc
+[1794411335] SERVICE ALERT: g;s;OK;HARD;1;g-s call 3 gives 0
+[1794411335] SERVICE NOTIFICATION SUPPRESSED: g;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411336] HOST ALERT: b;UP;HARD;1;b call 3 gives 0
+[1794411336] HOST NOTIFICATION SUPPRESSED: b;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411336] HOST EVENT HANDLER: b;UP;HARD;1;eh-host
+[1794411336] SERVICE ALERT: a;s;OK;HARD;1;a-s call 3 gives 0
+[1794411336] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411336] SERVICE EVENT HANDLER: a;s;OK;HARD;1;eh-svc
+[1794411337] SERVICE ALERT: g;s;CRITICAL;HARD;1;g-s call 4 gives 2
+[1794411337] SERVICE NOTIFICATION SUPPRESSED: g;s;No notification sent, because no contacts were found for notification purposes.
+[1794411338] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 4 gives 2
+[1794411338] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794411338] SERVICE EVENT HANDLER: a;s;CRITICAL;HARD;1;eh-svc
+[1794411338] HOST ALERT: b;DOWN;HARD;1;b call 4 gives 2
+[1794411338] HOST NOTIFICATION SUPPRESSED: b;No notification sent, because no contacts were found for notification purposes.
+[1794411338] HOST EVENT HANDLER: b;DOWN;HARD;1;eh-host
+[1794411339] SERVICE ALERT: g;s;OK;HARD;1;g-s call 5 gives 0
+[1794411339] SERVICE NOTIFICATION SUPPRESSED: g;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411340] HOST ALERT: b;UP;HARD;1;b call 5 gives 0
+[1794411340] HOST NOTIFICATION SUPPRESSED: b;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411340] HOST EVENT HANDLER: b;UP;HARD;1;eh-host
+[1794411340] SERVICE ALERT: a;s;OK;HARD;1;a-s call 5 gives 0
+[1794411340] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411340] SERVICE EVENT HANDLER: a;s;OK;HARD;1;eh-svc
+[1794411341] SERVICE ALERT: g;s;CRITICAL;HARD;1;g-s call 6 gives 2
+[1794411341] SERVICE NOTIFICATION SUPPRESSED: g;s;No notification sent, because no contacts were found for notification purposes.
+[1794411341] SERVICE ALERT: a;e2;CRITICAL;HARD;1;a-e2 is 2 at second 10
+[1794411341] SERVICE NOTIFICATION SUPPRESSED: a;e2;No notification sent, because no contacts were found for notification purposes.
+[1794411341] HOST ALERT: d2;DOWN;HARD;1;d2 is 2 at second 10
+[1794411341] HOST NOTIFICATION SUPPRESSED: d2;No notification sent, because no contacts were found for notification purposes.
+[1794411341] SERVICE ALERT: a;e;CRITICAL;HARD;1;a-e is 2 at second 10
+[1794411341] SERVICE NOTIFICATION SUPPRESSED: a;e;No notification sent, because no contacts were found for notification purposes.
+[1794411341] HOST ALERT: d;DOWN;HARD;1;d is 2 at second 10
+[1794411341] HOST NOTIFICATION SUPPRESSED: d;No notification sent, because no contacts were found for notification purposes.
+[1794411342] HOST ALERT: b;DOWN;HARD;1;b call 6 gives 2
+[1794411342] HOST NOTIFICATION SUPPRESSED: b;No notification sent, because no contacts were found for notification purposes.
+[1794411342] HOST EVENT HANDLER: b;DOWN;HARD;1;eh-host
+[1794411342] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 6 gives 2
+[1794411342] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794411342] SERVICE EVENT HANDLER: a;s;CRITICAL;HARD;1;eh-svc
+[1794411343] SERVICE ALERT: g;s;OK;HARD;1;g-s call 7 gives 0
+[1794411343] SERVICE NOTIFICATION SUPPRESSED: g;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411343] SERVICE FLAPPING ALERT: a;e2;STARTED; Service appears to have started flapping (6.2% change >= 6.2% threshold)
+[1794411343] SERVICE NOTIFICATION SUPPRESSED: a;e2;Notification blocked because the object is currently flapping.
+[1794411343] SERVICE FLAPPING ALERT: a;e;STARTED; Service appears to have started flapping (6.2% change >= 6.2% threshold)
+[1794411343] SERVICE NOTIFICATION SUPPRESSED: a;e;Notification blocked because the object is currently flapping.
+[1794411343] HOST FLAPPING ALERT: d;STARTED; Host appears to have started flapping (6.2% change > 6.2% threshold)
+[1794411343] HOST FLAPPING ALERT: d2;STARTED; Host appears to have started flapping (6.2% change > 6.2% threshold)
+[1794411344] SERVICE ALERT: a;s;OK;HARD;1;a-s call 7 gives 0
+[1794411344] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411344] SERVICE EVENT HANDLER: a;s;OK;HARD;1;eh-svc
+[1794411344] HOST ALERT: b;UP;HARD;1;b call 7 gives 0
+[1794411344] HOST NOTIFICATION SUPPRESSED: b;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411344] HOST EVENT HANDLER: b;UP;HARD;1;eh-host
+[1794411345] SERVICE ALERT: g;s;CRITICAL;HARD;1;g-s call 8 gives 2
+[1794411345] SERVICE FLAPPING ALERT: g;s;STARTED; Service appears to have started flapping (35.5% change >= 30.0% threshold)
+[1794411345] SERVICE NOTIFICATION SUPPRESSED: g;s;No notification sent, because no contacts were found for notification purposes.
+[1794411345] SERVICE NOTIFICATION SUPPRESSED: g;s;Notification blocked because the object is currently flapping.
+[1794411345] HOST NOTIFICATION SUPPRESSED: d2;Notification blocked because the object is currently flapping.
+[1794411345] HOST NOTIFICATION SUPPRESSED: d;Notification blocked because the object is currently flapping.
+[1794411346] HOST ALERT: b;DOWN;HARD;1;b call 8 gives 2
+[1794411346] HOST NOTIFICATION SUPPRESSED: b;No notification sent, because no contacts were found for notification purposes.
+[1794411346] HOST EVENT HANDLER: b;DOWN;HARD;1;eh-host
+[1794411346] HOST FLAPPING ALERT: b;STARTED; Host appears to have started flapping (35.5% change > 30.0% threshold)
+[1794411346] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 8 gives 2
+[1794411346] SERVICE FLAPPING ALERT: a;s;STARTED; Service appears to have started flapping (35.5% change >= 30.0% threshold)
+[1794411346] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794411346] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked because the object is currently flapping.
+[1794411346] SERVICE EVENT HANDLER: a;s;CRITICAL;HARD;1;eh-svc
+[1794411347] SERVICE ALERT: g;s;OK;HARD;1;g-s call 9 gives 0
+[1794411347] SERVICE NOTIFICATION SUPPRESSED: g;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411348] SERVICE ALERT: a;s;OK;HARD;1;a-s call 9 gives 0
+[1794411348] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411348] SERVICE EVENT HANDLER: a;s;OK;HARD;1;eh-svc
+[1794411348] HOST ALERT: b;UP;HARD;1;b call 9 gives 0
+[1794411348] HOST NOTIFICATION SUPPRESSED: b;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411348] HOST EVENT HANDLER: b;UP;HARD;1;eh-host
+[1794411349] SERVICE ALERT: g;s;CRITICAL;HARD;1;g-s call 10 gives 2
+[1794411349] SERVICE NOTIFICATION SUPPRESSED: g;s;Notification blocked because the object is currently flapping.
+[1794411350] HOST ALERT: b;DOWN;HARD;1;b call 10 gives 2
+[1794411350] HOST NOTIFICATION SUPPRESSED: b;Notification blocked because the object is currently flapping.
+[1794411350] HOST EVENT HANDLER: b;DOWN;HARD;1;eh-host
+[1794411350] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 10 gives 2
+[1794411350] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked because the object is currently flapping.
+[1794411350] SERVICE EVENT HANDLER: a;s;CRITICAL;HARD;1;eh-svc
+[1794411351] SERVICE ALERT: g;s;OK;HARD;1;g-s call 11 gives 0
+[1794411351] SERVICE NOTIFICATION SUPPRESSED: g;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411352] SERVICE ALERT: a;s;OK;HARD;1;a-s call 11 gives 0
+[1794411352] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411352] SERVICE EVENT HANDLER: a;s;OK;HARD;1;eh-svc
+[1794411352] HOST ALERT: b;UP;HARD;1;b call 11 gives 0
+[1794411352] HOST NOTIFICATION SUPPRESSED: b;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411352] HOST EVENT HANDLER: b;UP;HARD;1;eh-host
+[1794411353] SERVICE ALERT: g;s;CRITICAL;HARD;1;g-s call 12 gives 2
+[1794411353] SERVICE NOTIFICATION SUPPRESSED: g;s;Notification blocked because the object is currently flapping.
+[1794411354] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 12 gives 2
+[1794411354] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked because the object is currently flapping.
+[1794411354] SERVICE EVENT HANDLER: a;s;CRITICAL;HARD;1;eh-svc
+[1794411354] HOST ALERT: b;DOWN;HARD;1;b call 12 gives 2
+[1794411354] HOST NOTIFICATION SUPPRESSED: b;Notification blocked because the object is currently flapping.
+[1794411354] HOST EVENT HANDLER: b;DOWN;HARD;1;eh-host
+[1794411355] SERVICE ALERT: g;s;OK;HARD;1;g-s call 13 gives 0
+[1794411355] SERVICE NOTIFICATION SUPPRESSED: g;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411356] HOST ALERT: b;UP;HARD;1;b call 13 gives 0
+[1794411356] HOST NOTIFICATION SUPPRESSED: b;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411356] HOST EVENT HANDLER: b;UP;HARD;1;eh-host
+[1794411356] SERVICE ALERT: a;s;OK;HARD;1;a-s call 13 gives 0
+[1794411356] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411356] SERVICE EVENT HANDLER: a;s;OK;HARD;1;eh-svc
+[1794411357] SERVICE ALERT: g;s;CRITICAL;HARD;1;g-s call 14 gives 2
+[1794411357] SERVICE NOTIFICATION SUPPRESSED: g;s;Notification blocked because the object is currently flapping.
+[1794411358] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 14 gives 2
+[1794411358] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked because the object is currently flapping.
+[1794411358] SERVICE EVENT HANDLER: a;s;CRITICAL;HARD;1;eh-svc
+[1794411358] HOST ALERT: b;DOWN;HARD;1;b call 14 gives 2
+[1794411358] HOST NOTIFICATION SUPPRESSED: b;Notification blocked because the object is currently flapping.
+[1794411358] HOST EVENT HANDLER: b;DOWN;HARD;1;eh-host
+[1794411359] SERVICE ALERT: g;s;OK;HARD;1;g-s call 15 gives 0
+[1794411359] SERVICE NOTIFICATION SUPPRESSED: g;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411360] HOST ALERT: b;UP;HARD;1;b call 15 gives 0
+[1794411360] HOST NOTIFICATION SUPPRESSED: b;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411360] HOST EVENT HANDLER: b;UP;HARD;1;eh-host
+[1794411360] SERVICE ALERT: a;s;OK;HARD;1;a-s call 15 gives 0
+[1794411360] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411360] SERVICE EVENT HANDLER: a;s;OK;HARD;1;eh-svc
+[1794411361] SERVICE ALERT: g;s;CRITICAL;HARD;1;g-s call 16 gives 2
+[1794411361] SERVICE NOTIFICATION SUPPRESSED: g;s;Notification blocked because the object is currently flapping.
+[1794411362] HOST ALERT: b;DOWN;HARD;1;b call 16 gives 2
+[1794411362] HOST NOTIFICATION SUPPRESSED: b;Notification blocked because the object is currently flapping.
+[1794411362] HOST EVENT HANDLER: b;DOWN;HARD;1;eh-host
+[1794411362] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 16 gives 2
+[1794411362] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked because the object is currently flapping.
+[1794411362] SERVICE EVENT HANDLER: a;s;CRITICAL;HARD;1;eh-svc
+[1794411363] SERVICE ALERT: g;s;OK;HARD;1;g-s call 17 gives 0
+[1794411363] SERVICE NOTIFICATION SUPPRESSED: g;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411364] SERVICE ALERT: a;s;OK;HARD;1;a-s call 17 gives 0
+[1794411364] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411364] SERVICE EVENT HANDLER: a;s;OK;HARD;1;eh-svc
+[1794411364] HOST ALERT: b;UP;HARD;1;b call 17 gives 0
+[1794411364] HOST NOTIFICATION SUPPRESSED: b;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411364] HOST EVENT HANDLER: b;UP;HARD;1;eh-host
+[1794411366] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 18 gives 2
+[1794411366] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked because the object is currently flapping.
+[1794411366] SERVICE EVENT HANDLER: a;s;CRITICAL;HARD;1;eh-svc
+[1794411366] HOST ALERT: b;DOWN;HARD;1;b call 18 gives 2
+[1794411366] HOST NOTIFICATION SUPPRESSED: b;Notification blocked because the object is currently flapping.
+[1794411366] HOST EVENT HANDLER: b;DOWN;HARD;1;eh-host
+[1794411368] HOST ALERT: b;UP;HARD;1;b call 19 gives 0
+[1794411368] HOST NOTIFICATION SUPPRESSED: b;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411368] HOST EVENT HANDLER: b;UP;HARD;1;eh-host
+[1794411368] SERVICE ALERT: a;s;OK;HARD;1;a-s call 19 gives 0
+[1794411368] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411368] SERVICE EVENT HANDLER: a;s;OK;HARD;1;eh-svc
+[1794411370] HOST ALERT: b;DOWN;HARD;1;b call 20 gives 2
+[1794411370] HOST NOTIFICATION SUPPRESSED: b;Notification blocked because the object is currently flapping.
+[1794411370] HOST EVENT HANDLER: b;DOWN;HARD;1;eh-host
+[1794411370] SERVICE ALERT: a;s;CRITICAL;HARD;1;a-s call 20 gives 2
+[1794411370] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked because the object is currently flapping.
+[1794411370] SERVICE EVENT HANDLER: a;s;CRITICAL;HARD;1;eh-svc
+[1794411372] HOST ALERT: b;UP;HARD;1;b call 21 gives 0
+[1794411372] HOST NOTIFICATION SUPPRESSED: b;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411372] HOST EVENT HANDLER: b;UP;HARD;1;eh-host
+[1794411372] SERVICE ALERT: a;s;OK;HARD;1;a-s call 21 gives 0
+[1794411372] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794411372] SERVICE EVENT HANDLER: a;s;OK;HARD;1;eh-svc
+[1794411381] SERVICE FLAPPING ALERT: a;e2;STOPPED; Service appears to have stopped flapping (0.0% change < 1.0% threshold)
+[1794411381] SERVICE NOTIFICATION SUPPRESSED: a;e2;No notification sent, because no contacts were found for notification purposes.
+[1794411381] HOST FLAPPING ALERT: d;STOPPED; Host appears to have stopped flapping (0.0% change < 1.0% threshold)
+[1794411381] HOST NOTIFICATION SUPPRESSED: d;No notification sent, because no contacts were found for notification purposes.
+[1794411381] SERVICE FLAPPING ALERT: a;e;STOPPED; Service appears to have stopped flapping (0.0% change < 1.0% threshold)
+[1794411381] SERVICE NOTIFICATION SUPPRESSED: a;e;No notification sent, because no contacts were found for notification purposes.
+[1794411381] HOST FLAPPING ALERT: d2;STOPPED; Host appears to have stopped flapping (0.0% change < 1.0% threshold)
+[1794411381] HOST NOTIFICATION SUPPRESSED: d2;No notification sent, because no contacts were found for notification purposes.
+[1794411391] Caught 'Terminated', shutting down...
+[1794411391] Retention data successfully saved.
+[1794411391] Successfully shutdown... (PID=16)
+[1794411391] Event broker module 'NERD' deinitialized successfully.

@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+"""Asks the Naemon oracle when each period in periods.cfg is valid.
+
+    runs/timeperiods/gen
+
+Writes expected.tsv beside this file: one line for each period and each
+moment asked about, with
+
+    <period> <moment> <valid> <next>
+
+<moment> is in seconds since the epoch. <valid> is Naemon's
+$ISVALIDTIME:<period>:<moment>$, 1 or 0. <next> is its
+$NEXTVALIDTIME:<period>:<moment>$ as seconds after <moment>, or `never`
+where Naemon answers 0.
+
+The moments are all in the future (2027-01-01 to 2028-03-31) because
+Naemon answers for the present time when asked about the past. The
+oracle's clock is UTC, so the periods' local time is UTC too.
+"""
+
+import calendar
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
+
+here = pathlib.Path(__file__).resolve().parent
+root = here.parent.parent
+work = here / "work"
+
+DAYS = """
+2027-01-01 2027-01-05 2027-02-01 2027-02-08 2027-02-28 2027-03-01
+2027-03-08 2027-03-10 2027-03-11 2027-03-15 2027-03-17 2027-03-20 2027-03-21
+2027-03-29 2027-03-31 2027-04-10 2027-04-30 2027-05-14 2027-05-15
+2027-07-10 2027-07-15 2027-09-06 2027-11-25 2027-12-20 2027-12-25
+2027-12-31 2028-01-05 2028-01-06 2028-02-28 2028-02-29 2028-03-01
+""".split()
+TIMES = "00:00:00 06:30:00 08:59:59 09:00:00 12:00:00 12:59:59 13:00:00 14:30:00 16:59:59 17:00:00 23:59:59".split()
+RANDOM = 150
+PER_COMMAND = 20
+
+
+def epoch(day, time="00:00:00"):
+    y, m, d = (int(x) for x in day.split("-"))
+    h, mi, s = (int(x) for x in time.split(":"))
+    return calendar.timegm((y, m, d, h, mi, s))
+
+
+def moments():
+    out = [epoch(day, time) for day in DAYS for time in TIMES]
+    first, last = epoch("2027-01-01"), epoch("2028-04-01")
+    # A fixed series, so that every run asks about the same moments.
+    x = 20270101
+    for _ in range(RANDOM):
+        x = (x * 6364136223846793005 + 1442695040888963407) % 2**64
+        out.append(first + (x >> 20) % (last - first))
+    return sorted(set(out))
+
+
+def main():
+    periods = re.findall(r"^\s*timeperiod_name\s+(\S+)", (here / "periods.cfg").read_text(), re.M)
+    asked = [(p, m) for p in periods for m in moments()]
+
+    shutil.rmtree(work, ignore_errors=True)
+    case = work / "case"
+    case.mkdir(parents=True)
+    shutil.copy(here / "periods.cfg", case)
+    objects = [
+        "define command {\n command_name up\n command_line /case/plugins/at q 0\n}",
+        "define contact {\n contact_name nobody\n host_notifications_enabled 0\n"
+        " service_notifications_enabled 0\n host_notification_period always\n"
+        " service_notification_period always\n host_notification_commands up\n"
+        " service_notification_commands up\n}",
+        "define host {\n host_name q\n address 192.0.2.1\n max_check_attempts 1\n"
+        " check_command up\n check_interval 0\n contacts nobody\n}",
+    ]
+    for n in range(0, len(asked), PER_COMMAND):
+        items = " ".join(
+            f"'{p}@{m}=$ISVALIDTIME:{p}:{m}$/$NEXTVALIDTIME:{p}:{m}$'"
+            for p, m in asked[n : n + PER_COMMAND]
+        )
+        name = f"q{n // PER_COMMAND}"
+        objects.append(f"define command {{\n command_name {name}\n command_line /case/plugins/args {name} {items}\n}}")
+        objects.append(
+            f"define service {{\n host_name q\n service_description {name}\n check_command {name}\n"
+            " max_check_attempts 1\n check_interval 20\n retry_interval 20\n contacts nobody\n}"
+        )
+    (case / "queries.cfg").write_text("\n".join(objects) + "\n")
+    (case / "naemon.cfg").write_text(
+        "cfg_file=periods.cfg\ncfg_file=queries.cfg\ninterval_length=1\n"
+        "execute_host_checks=0\ncheck_external_commands=0\nenable_notifications=0\n"
+        "max_concurrent_checks=0\n"
+    )
+
+    subprocess.run([root / "oracle" / "play", case, work / "out", "40"], check=True)
+
+    got = {}
+    for line in (work / "out" / "trace").read_text().splitlines():
+        parts = line.split(" ", 2)
+        if len(parts) < 3 or not re.fullmatch(r"q\d+", parts[1]):
+            continue
+        for item in parts[2].split("|"):
+            m = re.fullmatch(r"(\S+)@(\d+)=([01])/(\d+)", item)
+            if not m:
+                sys.exit(f"cannot read the answer {item!r}")
+            got[(m[1], int(m[2]))] = (m[3], int(m[4]))
+    missing = [a for a in asked if a not in got]
+    if missing:
+        sys.exit(f"{len(missing)} of {len(asked)} questions were not answered, such as {missing[0]}")
+
+    with open(here / "expected.tsv", "w") as out:
+        for p, m in asked:
+            valid, nxt = got[(p, m)]
+            out.write(f"{p}\t{m}\t{valid}\t{'never' if nxt == 0 else nxt - m}\n")
+    version = (work / "out" / "oracle.version").read_text().strip()
+    (here / "oracle.version").write_text(version + "\n")
+    print(f"{len(asked)} answers from {version}")
+
+
+main()

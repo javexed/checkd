@@ -1,0 +1,38 @@
+[1794405431] Naemon 1.5.2 starting... (PID=15)
+[1794405431] Local time is Wed Nov 11 13:57:11 UTC 2026
+[1794405431] LOG VERSION: 2.0
+[1794405431] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794405431] nerd: Channel hostchecks registered successfully
+[1794405431] nerd: Channel servicechecks registered successfully
+[1794405431] nerd: Fully initialized and ready to rock!
+[1794405431] Successfully launched command file worker with pid 16
+[1794405431] Reading all config object data
+[1794405431] Loading neb modules
+[1794405431] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794405431] INITIAL HOST STATE: a;UP;HARD;1;
+[1794405431] INITIAL HOST STATE: b;UP;HARD;1;
+[1794405431] INITIAL HOST STATE: z;UP;HARD;1;
+[1794405431] INITIAL SERVICE STATE: b;s;OK;HARD;1;(null)
+[1794405431] INITIAL SERVICE STATE: z;spy;OK;HARD;1;(null)
+[1794405431] Naemon successfully initialized (PID=15)
+[1794405442] HOST ALERT: a;DOWN;SOFT;1;a is 2 at second 11
+[1794405442] HOST ALERT: b;DOWN;SOFT;1;b is 2 at second 11
+[1794405443] HOST ALERT: b;DOWN;SOFT;2;b is 2 at second 12
+[1794405443] HOST ALERT: a;DOWN;SOFT;2;a is 2 at second 12
+[1794405444] HOST ALERT: b;DOWN;HARD;3;b is 2 at second 13
+[1794405444] HOST CONTACT NOTIFICATION SUPPRESSED: ops;b;Notifications are disabled for this object by its configuration.
+[1794405444] HOST NOTIFICATION SUPPRESSED: b;No notification sent, because no contacts were found for notification purposes.
+[1794405444] HOST ALERT: a;UP;HARD;3;a is 0 at second 13
+[1794405444] HOST NOTIFICATION SUPPRESSED: a;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794405464] HOST ALERT: a;DOWN;SOFT;1;a is 2 at second 33
+[1794405465] HOST ALERT: a;DOWN;SOFT;2;a is 2 at second 34
+[1794405466] HOST ALERT: a;DOWN;HARD;3;a is 2 at second 35
+[1794405466] HOST NOTIFICATION SUPPRESSED: a;No notification sent, because no contacts were found for notification purposes.
+[1794405482] HOST ALERT: b;UP;HARD;1;b is 0 at second 51
+[1794405482] HOST NOTIFICATION SUPPRESSED: b;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794405482] HOST ALERT: a;UP;HARD;1;a is 0 at second 51
+[1794405482] HOST NOTIFICATION SUPPRESSED: a;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794405491] Caught 'Terminated', shutting down...
+[1794405491] Retention data successfully saved.
+[1794405491] Successfully shutdown... (PID=15)
+[1794405491] Event broker module 'NERD' deinitialized successfully.

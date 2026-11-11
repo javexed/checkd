@@ -1,0 +1,4 @@
+short;one | a=1;2
+long;two with ; semi
+third | b=1;2;3
+c=4;5

@@ -1,0 +1,10 @@
+# cgm: the reference gives the first contact of a contact group twice.
+mask sm3 cgm the reference names the first member of a contact group twice
+# sgrp: the states of the services of a group. The reference has the
+# services in the reverse of the order it added them in, checkd by name.
+mask sm3 sgrp the order of the members of a service group
+
+# At second 63 the check of host a ends in the same millisecond as this
+# check of a service on it starts. The reference started the service check
+# first, so it still shows the host's check before.
+mask sm4@63019 lhc,lhu the host's result and the start of this check fall in the same millisecond

@@ -1,0 +1,54 @@
+[1794403781] Naemon 1.5.2 starting... (PID=14)
+[1794403781] Local time is Wed Nov 11 13:29:41 UTC 2026
+[1794403781] LOG VERSION: 2.0
+[1794403781] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794403781] nerd: Channel hostchecks registered successfully
+[1794403781] nerd: Channel servicechecks registered successfully
+[1794403781] nerd: Fully initialized and ready to rock!
+[1794403781] Successfully launched command file worker with pid 15
+[1794403781] Reading all config object data
+[1794403781] Loading neb modules
+[1794403781] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794403781] INITIAL HOST STATE: a;UP;HARD;1;
+[1794403781] INITIAL SERVICE STATE: a;s;OK;HARD;1;(null)
+[1794403781] INITIAL SERVICE STATE: a;v;OK;HARD;1;(null)
+[1794403781] INITIAL SERVICE STATE: a;w;OK;HARD;1;(null)
+[1794403781] Naemon successfully initialized (PID=14)
+[1794403787] SERVICE ALERT: a;v;CRITICAL;HARD;1;a-v call 2 gives 2
+[1794403787] SERVICE CONTACT NOTIFICATION SUPPRESSED: ops;a;v;Notifications are disabled for this object by its configuration.
+[1794403787] SERVICE NOTIFICATION SUPPRESSED: a;v;No notification sent, because no contacts were found for notification purposes.
+[1794403787] SERVICE ALERT: a;w;CRITICAL;SOFT;1;a-w call 2 gives 2
+[1794403788] SERVICE ALERT: a;w;CRITICAL;SOFT;2;a-w call 3 gives 2
+[1794403789] SERVICE ALERT: a;w;CRITICAL;HARD;3;a-w call 4 gives 2
+[1794403789] SERVICE NOTIFICATION SUPPRESSED: a;w;No notification sent, because no contacts were found for notification purposes.
+[1794403790] SERVICE ALERT: a;s;WARNING;SOFT;1;a-s call 2 gives 1
+[1794403791] SERVICE ALERT: a;s;CRITICAL;SOFT;2;a-s call 3 gives 2
+[1794403792] SERVICE ALERT: a;v;CRITICAL;HARD;1;a-v call 3 gives 2
+[1794403792] SERVICE ALERT: a;s;UNKNOWN;HARD;3;a-s call 4 gives 3
+[1794403792] SERVICE NOTIFICATION SUPPRESSED: a;s;No notification sent, because no contacts were found for notification purposes.
+[1794403794] SERVICE ALERT: a;w;CRITICAL;HARD;3;a-w call 5 gives 2
+[1794403797] SERVICE ALERT: a;v;CRITICAL;HARD;1;a-v call 4 gives 2
+[1794403797] SERVICE ALERT: a;s;WARNING;HARD;3;a-s call 5 gives 1
+[1794403799] SERVICE ALERT: a;w;CRITICAL;HARD;3;a-w call 6 gives 2
+[1794403802] SERVICE ALERT: a;v;CRITICAL;HARD;1;a-v call 5 gives 2
+[1794403804] SERVICE ALERT: a;w;CRITICAL;HARD;3;a-w call 7 gives 2
+[1794403807] SERVICE ALERT: a;v;WARNING;HARD;1;a-v call 6 gives 1
+[1794403809] SERVICE ALERT: a;w;WARNING;HARD;3;a-w call 8 gives 1
+[1794403812] SERVICE ALERT: a;v;WARNING;HARD;1;a-v call 7 gives 1
+[1794403812] SERVICE ALERT: a;s;CRITICAL;HARD;3;a-s call 8 gives 2
+[1794403814] SERVICE ALERT: a;w;WARNING;HARD;3;a-w call 9 gives 1
+[1794403817] SERVICE ALERT: a;v;OK;HARD;1;a-v call 8 gives 0
+[1794403817] SERVICE NOTIFICATION SUPPRESSED: a;v;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794403819] SERVICE ALERT: a;w;OK;HARD;3;a-w call 10 gives 0
+[1794403819] SERVICE NOTIFICATION SUPPRESSED: a;w;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794403822] SERVICE ALERT: a;s;UNKNOWN;HARD;3;a-s call 10 gives 3
+[1794403832] SERVICE ALERT: a;s;OK;HARD;3;a-s call 12 gives 0
+[1794403832] SERVICE NOTIFICATION SUPPRESSED: a;s;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794403837] SERVICE ALERT: a;s;CRITICAL;SOFT;1;a-s call 13 gives 2
+[1794403838] SERVICE ALERT: a;s;WARNING;SOFT;2;a-s call 14 gives 1
+[1794403839] SERVICE ALERT: a;s;OK;SOFT;3;a-s call 15 gives 0
+[1794403841] Auto-save of retention data completed successfully.
+[1794403891] Caught 'Terminated', shutting down...
+[1794403891] Retention data successfully saved.
+[1794403891] Successfully shutdown... (PID=14)
+[1794403891] Event broker module 'NERD' deinitialized successfully.
