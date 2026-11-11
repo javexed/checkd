@@ -1,0 +1,17 @@
+Reading configuration data...
+   Read main config file okay...
+WARNING: Extinfo objects are deprecated and will be removed in future versions
+Error: Invalid 2d_coords value '(null)' in extended host info definition.
+Error: Could not add object property in file '/case/objects.cfg' on line 50.
+   Error processing object config files!
+
+
+***> One or more problems was encountered while processing the config files...
+
+     Check your configuration file(s) to ensure that they contain valid
+     directives and data definitions.  If you are upgrading from a previous
+     version of Naemon, you should be aware that some variables/definitions
+     may have been removed or modified in this version.  Make sure to read
+     the HTML documentation regarding the config files, as well as the
+     'Whats New' section to find out what has changed.
+

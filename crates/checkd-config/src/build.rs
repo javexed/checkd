@@ -3,6 +3,8 @@
 //! result.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::path::PathBuf;
+use std::sync::Arc;
 
 use regex::Regex;
 
@@ -47,11 +49,32 @@ impl Settings {
             || (self.regexp && (item.contains(['*', '?', '+']) || item.contains("\\.")))
     }
 
+    /// Whether `*` alone stands for every name. With `use_regexp_matching`
+    /// on, Naemon reads it as a regular expression in a list of hosts,
+    /// contacts or groups, and as such it is not valid. In a list of
+    /// service descriptions it keeps its meaning until
+    /// `use_true_regexp_matching` is on as well.
+    fn star_is_all(&self, descriptions: bool) -> bool {
+        !self.true_regexp && (descriptions || !self.regexp)
+    }
+
     /// The names that one item of a list stands for: all of them for `*`,
     /// those a pattern matches, or the one with that name.
-    fn select<'u>(&self, item: &str, universe: &[&'u str]) -> Result<Vec<&'u str>, String> {
+    fn select<'u>(
+        &self,
+        item: &str,
+        universe: &[&'u str],
+        descriptions: bool,
+    ) -> Result<Vec<&'u str>, String> {
         if item == "*" {
-            return Ok(universe.to_vec());
+            if self.star_is_all(descriptions) {
+                return Ok(universe.to_vec());
+            }
+            return Err(
+                "'*' does not stand for every name here: with regexp matching on it is read as a regular \
+                 expression, and it is not a valid one. '.*' matches every name"
+                    .to_string(),
+            );
         }
         if self.is_pattern(item) {
             let pattern = Regex::new(item)
@@ -70,11 +93,47 @@ impl Settings {
     }
 }
 
+/// What objects ask for with their own `hostgroups`, `servicegroups` or
+/// `contactgroups` setting: the list as written, the object, and where.
+type Asked<M> = Vec<(Vec<String>, M, Loc)>;
+
 /// Names picked by a list and names taken out of it with `!`.
 #[derive(Default)]
 struct Picked {
+    /// The names picked, each one once.
     include: Vec<String>,
+    /// The names picked, each one as often as the list brings it up.
+    mentions: Vec<String>,
     exclude: BTreeSet<String>,
+    /// An item of the list was reported as an error.
+    faulty: bool,
+}
+
+impl Picked {
+    /// The names picked and not taken out again.
+    fn kept(&self) -> Vec<String> {
+        self.include
+            .iter()
+            .filter(|name| !self.exclude.contains(*name))
+            .cloned()
+            .collect()
+    }
+}
+
+/// Sets a value that is not set yet.
+fn fill<T>(slot: &mut Option<T>, value: Option<T>) {
+    if slot.is_none() {
+        *slot = value;
+    }
+}
+
+/// The extended-info settings that hosts and services share.
+fn fill_extinfo(check: &mut Checkable, bag: &Resolved) {
+    fill(&mut check.notes, bag.owned("notes"));
+    fill(&mut check.notes_url, bag.owned("notes_url"));
+    fill(&mut check.action_url, bag.owned("action_url"));
+    fill(&mut check.icon_image, bag.owned("icon_image"));
+    fill(&mut check.icon_image_alt, bag.owned("icon_image_alt"));
 }
 
 fn push_unique<T: PartialEq>(list: &mut Vec<T>, item: T) {
@@ -83,11 +142,109 @@ fn push_unique<T: PartialEq>(list: &mut Vec<T>, item: T) {
     }
 }
 
+/// Joins the lines of a setting that is given more than once in one
+/// definition, for the settings where the reference adds the lines
+/// together instead of using the later one. A line that says `null` adds
+/// nothing.
+fn add_up_lines(object: &mut RawObject) {
+    let kind = object.kind;
+    let mut index = 0;
+    while index < object.attrs.len() {
+        let key = object.attrs[index].key.clone();
+        if schema::lines_add_up(kind, &key) {
+            let mut later = Vec::new();
+            let mut at = index + 1;
+            while at < object.attrs.len() {
+                if object.attrs[at].key == key {
+                    later.push(object.attrs.remove(at).value);
+                } else {
+                    at += 1;
+                }
+            }
+            let first = &mut object.attrs[index].value;
+            for value in later {
+                if value == "null" || value.is_empty() {
+                    continue;
+                }
+                if first == "null" || first.is_empty() {
+                    *first = value;
+                } else {
+                    first.push(',');
+                    first.push_str(&value);
+                }
+            }
+        }
+        index += 1;
+    }
+}
+
 /// A definition that produced a service on one host.
+/// See `Builder::side`.
+#[derive(Clone, Copy, PartialEq)]
+enum Side {
+    /// None of the four settings.
+    Nothing,
+    /// A description and nothing to say on which hosts. In a service
+    /// dependency the hosts are then those of the other side.
+    DescriptionOnly,
+    /// Hosts with a description, or a service group, or both.
+    Named,
+    /// A combination that Naemon refuses. The text says what is given.
+    Faulty(&'static str),
+}
+
 struct Candidate {
     bag: Resolved,
     /// The host is named in `host_name`, not only reached through a group.
     by_host_name: bool,
+    /// Which of two definitions of one service on one host is kept when
+    /// both name the host or both reach it through a group: the one with
+    /// the lower value. See `Builder::services`.
+    turn: (u8, i64),
+}
+
+/// The members of a host group in the order the reference holds them,
+/// which decides the turn of a service defined through the group. Found
+/// by asking the reference: members are added in the order member groups
+/// (each in its own order), hosts that name the group in `hostgroups`,
+/// then the group's own `members`; a host added again moves to its later
+/// place; and the list is held last-added first.
+fn ordered_members(
+    name: &str,
+    nested: &BTreeMap<String, Vec<String>>,
+    asked: &[(String, String)],
+    written: &BTreeMap<String, Vec<String>>,
+    done: &mut BTreeMap<String, Vec<String>>,
+    path: &mut Vec<String>,
+) -> Vec<String> {
+    if let Some(list) = done.get(name) {
+        return list.clone();
+    }
+    // A group on a loop of member groups is refused elsewhere.
+    if path.iter().any(|on_path| on_path == name) || !written.contains_key(name) {
+        return Vec::new();
+    }
+    path.push(name.to_string());
+    let mut added: Vec<String> = Vec::new();
+    for subgroup in nested.get(name).into_iter().flatten() {
+        added.extend(ordered_members(
+            subgroup, nested, asked, written, done, path,
+        ));
+    }
+    path.pop();
+    added.extend(
+        asked
+            .iter()
+            .filter(|(group, _)| group == name)
+            .map(|(_, host)| host.clone()),
+    );
+    added.extend(written.get(name).into_iter().flatten().cloned());
+    let mut list: Vec<String> = Vec::new();
+    for host in added.into_iter().rev() {
+        push_unique(&mut list, host);
+    }
+    done.insert(name.to_string(), list.clone());
+    list
 }
 
 struct Builder<'a> {
@@ -101,6 +258,15 @@ struct Builder<'a> {
     /// Where each object is defined, for messages.
     locs: HashMap<(ObjType, String), Loc>,
     service_parents: Vec<(ServiceId, Vec<String>)>,
+    /// Hosts and host groups in the order they are defined, and each host
+    /// group's members in the reference's order. These only decide which
+    /// definition is kept when a service is defined twice for one host.
+    host_order: Vec<String>,
+    hostgroup_order: Vec<String>,
+    hostgroup_lists: BTreeMap<String, Vec<String>>,
+    /// While set, errors are gathered here and not reported. Used for a
+    /// host dependency, which Naemon drops where it refuses other objects.
+    held_back: Option<Vec<String>>,
 }
 
 /// Builds the objects of a configuration from every definition read.
@@ -108,14 +274,38 @@ pub fn build(mut raw: Vec<RawObject>, settings: &Settings, diags: &mut Diagnosti
     // Settings are checked on every definition, templates included.
     for object in &mut raw {
         let mut seen = BTreeSet::new();
+        if object.kind.is_extinfo() {
+            diags.warn(
+                Some(&object.loc),
+                format!(
+                    "{} is deprecated in Naemon; the same settings can be given on the {} itself",
+                    object.kind.keyword(),
+                    if object.kind == ObjType::HostExtInfo {
+                        "host"
+                    } else {
+                        "service"
+                    }
+                ),
+            );
+        }
         for attr in &mut object.attrs {
-            if attr.key.starts_with('_') {
-                continue;
-            }
             let loc = Loc {
                 file: object.loc.file.clone(),
                 line: attr.line,
             };
+            if attr.key.starts_with('_') {
+                if object.kind.is_extinfo() {
+                    diags.error(
+                        Some(&loc),
+                        format!(
+                            "'{}': a {} takes no custom variables",
+                            attr.key,
+                            object.kind.keyword()
+                        ),
+                    );
+                }
+                continue;
+            }
             if object.kind == ObjType::Timeperiod && !TIMEPERIOD_FIXED.contains(&attr.key.as_str())
             {
                 match timeperiod::parse_entry(&attr.key, &attr.value) {
@@ -139,9 +329,14 @@ pub fn build(mut raw: Vec<RawObject>, settings: &Settings, diags: &mut Diagnosti
             }
             let key = schema::canonical_key(object.kind, &attr.key).to_string();
             if !seen.insert(key.clone()) {
+                let outcome = if schema::lines_add_up(object.kind, &key) {
+                    "the lines are added together"
+                } else {
+                    "the later line is used"
+                };
                 diags.warn(
                     Some(&loc),
-                    format!("'{key}' is given twice in this definition; the later line is used"),
+                    format!("'{key}' is given twice in this definition; {outcome}"),
                 );
             }
             if attr.value.is_empty() {
@@ -151,6 +346,10 @@ pub fn build(mut raw: Vec<RawObject>, settings: &Settings, diags: &mut Diagnosti
                 );
             }
             match schema::kind_of(object.kind, &key) {
+                Some(schema::Kind::NoEffect) => diags.warn(
+                    Some(&loc),
+                    format!("'{key}' is a setting of older Nagios versions and has no effect"),
+                ),
                 None => diags.error(
                     Some(&loc),
                     format!(
@@ -169,6 +368,11 @@ pub fn build(mut raw: Vec<RawObject>, settings: &Settings, diags: &mut Diagnosti
             }
             attr.key = key;
         }
+        let kind = object.kind;
+        object
+            .attrs
+            .retain(|attr| schema::kind_of(kind, &attr.key) != Some(schema::Kind::NoEffect));
+        add_up_lines(object);
     }
 
     let mut resolved: HashMap<ObjType, Vec<Resolved>> = HashMap::new();
@@ -190,6 +394,10 @@ pub fn build(mut raw: Vec<RawObject>, settings: &Settings, diags: &mut Diagnosti
         service_bags: BTreeMap::new(),
         locs: HashMap::new(),
         service_parents: Vec::new(),
+        host_order: Vec::new(),
+        hostgroup_order: Vec::new(),
+        hostgroup_lists: BTreeMap::new(),
+        held_back: None,
     };
     builder.timeperiods(take(ObjType::Timeperiod));
     builder.commands(take(ObjType::Command));
@@ -199,6 +407,8 @@ pub fn build(mut raw: Vec<RawObject>, settings: &Settings, diags: &mut Diagnosti
     builder.hostgroups(take(ObjType::HostGroup), host_groups);
     let service_groups = builder.services(take(ObjType::Service));
     builder.servicegroups(take(ObjType::ServiceGroup), service_groups);
+    builder.host_extinfo(take(ObjType::HostExtInfo));
+    builder.service_extinfo(take(ObjType::ServiceExtInfo));
     builder.host_dependencies(take(ObjType::HostDependency));
     builder.service_dependencies(take(ObjType::ServiceDependency));
     builder.host_escalations(take(ObjType::HostEscalation));
@@ -214,6 +424,15 @@ pub fn build(mut raw: Vec<RawObject>, settings: &Settings, diags: &mut Diagnosti
 impl Resolved {
     fn name(&self, key: &str) -> Option<String> {
         self.text(key)
+            .filter(|value| !value.is_empty())
+            .map(String::from)
+    }
+
+    /// A value where `null` is a word like any other: names, aliases,
+    /// addresses and command lines. Naemon 1.5.2 makes a contact called
+    /// "null" from `contact_name null`.
+    fn literal(&self, key: &str) -> Option<String> {
+        self.raw(key)
             .filter(|value| !value.is_empty())
             .map(String::from)
     }
@@ -249,7 +468,25 @@ impl Resolved {
 
 impl Builder<'_> {
     fn error(&mut self, loc: &Loc, message: impl Into<String>) {
-        self.diags.error(Some(loc), message);
+        match &mut self.held_back {
+            Some(held) => held.push(message.into()),
+            None => self.diags.error(Some(loc), message),
+        }
+    }
+
+    /// Reports a definition that lacks what makes it an object. One with
+    /// a template name is taken for a template, as Naemon does without a
+    /// word. Any other is an error.
+    fn nameless(&mut self, bag: &Resolved, what: &str, needs: &str) {
+        match &bag.template_name {
+            Some(template) => self.warn(
+                &bag.loc,
+                format!(
+                    "{what} template '{template}' has no {needs} and no 'register 0'; it is used as a template only"
+                ),
+            ),
+            None => self.error(&bag.loc, format!("a {what} needs a {needs}")),
+        }
     }
 
     fn warn(&mut self, loc: &Loc, message: impl Into<String>) {
@@ -287,15 +524,32 @@ impl Builder<'_> {
 
     /// Expands a list of names, patterns, `*` and `!exclusions`.
     fn pick(&mut self, items: &[String], universe: &[&str], what: &str, loc: &Loc) -> Picked {
+        self.pick_from(items, universe, what, loc, false)
+    }
+
+    /// `descriptions` says that the list is one of service descriptions,
+    /// where `*` is read differently (`Settings::star_is_all`).
+    fn pick_from(
+        &mut self,
+        items: &[String],
+        universe: &[&str],
+        what: &str,
+        loc: &Loc,
+        descriptions: bool,
+    ) -> Picked {
         let mut picked = Picked::default();
         for item in items {
             let (excluded, item) = match item.strip_prefix('!') {
                 Some(rest) => (true, rest.trim()),
                 None => (false, item.as_str()),
             };
-            match self.settings.select(item, universe) {
-                Err(why) => self.error(loc, why),
+            match self.settings.select(item, universe, descriptions) {
+                Err(why) => {
+                    picked.faulty = true;
+                    self.error(loc, why)
+                }
                 Ok(names) if names.is_empty() => {
+                    picked.faulty = true;
                     self.error(loc, format!("{what} '{item}' is not defined"))
                 }
                 Ok(names) => {
@@ -304,6 +558,7 @@ impl Builder<'_> {
                             picked.exclude.insert(name.to_string());
                         } else {
                             push_unique(&mut picked.include, name.to_string());
+                            picked.mentions.push(name.to_string());
                         }
                     }
                 }
@@ -316,8 +571,11 @@ impl Builder<'_> {
 
     fn timeperiods(&mut self, resolved: Vec<Resolved>) {
         for bag in resolved {
-            let (Some(name), Some(alias)) = (bag.name("timeperiod_name"), bag.owned("alias"))
-            else {
+            let Some(name) = bag.literal("timeperiod_name") else {
+                self.nameless(&bag, "timeperiod", "timeperiod_name");
+                continue;
+            };
+            let Some(alias) = bag.literal("alias") else {
                 self.error(
                     &bag.loc,
                     "a timeperiod needs a timeperiod_name and an alias",
@@ -350,8 +608,11 @@ impl Builder<'_> {
 
     fn commands(&mut self, resolved: Vec<Resolved>) {
         for bag in resolved {
-            let (Some(name), Some(line)) = (bag.name("command_name"), bag.name("command_line"))
-            else {
+            let Some(name) = bag.literal("command_name") else {
+                self.nameless(&bag, "command", "command_name");
+                continue;
+            };
+            let Some(line) = bag.literal("command_line") else {
                 self.error(
                     &bag.loc,
                     "a command needs a command_name and a command_line",
@@ -369,22 +630,20 @@ impl Builder<'_> {
     // ---- contacts ----
 
     /// Returns the groups each contact asks to be in.
-    fn contacts(&mut self, resolved: Vec<Resolved>) -> Vec<(String, String, Loc)> {
+    fn contacts(&mut self, resolved: Vec<Resolved>) -> Asked<String> {
         let mut memberships = Vec::new();
         for bag in resolved {
-            let Some(name) = bag.name("contact_name") else {
-                self.error(&bag.loc, "a contact needs a contact_name");
+            let Some(name) = bag.literal("contact_name") else {
+                self.nameless(&bag, "contact", "contact_name");
                 continue;
             };
             if !self.claim(ObjType::Contact, &name, &bag.loc) {
                 continue;
             }
-            for group in bag.list("contactgroups") {
-                memberships.push((group, name.clone(), bag.loc.clone()));
-            }
+            memberships.push((bag.list("contactgroups"), name.clone(), bag.loc.clone()));
             let contact = Contact {
                 name: name.clone(),
-                alias: bag.owned("alias").unwrap_or_else(|| name.clone()),
+                alias: bag.literal("alias").unwrap_or_else(|| name.clone()),
                 service_notification_period: bag.name("service_notification_period"),
                 host_notification_period: bag.name("host_notification_period"),
                 service_notification_options: bag.opts(
@@ -449,15 +708,15 @@ impl Builder<'_> {
         bag: &Resolved,
     ) -> Option<(Group<M>, Vec<String>)> {
         let word = kind.keyword();
-        let Some(name) = bag.name(&format!("{word}_name")) else {
-            self.error(&bag.loc, format!("a {word} needs a {word}_name"));
+        let Some(name) = bag.literal(&format!("{word}_name")) else {
+            self.nameless(bag, word, &format!("{word}_name"));
             return None;
         };
         if !self.claim(kind, &name, &bag.loc) {
             return None;
         }
         let group = Group {
-            alias: bag.owned("alias").unwrap_or_else(|| name.clone()),
+            alias: bag.literal("alias").unwrap_or_else(|| name.clone()),
             name,
             members: BTreeSet::new(),
             notes: bag.owned("notes"),
@@ -465,6 +724,47 @@ impl Builder<'_> {
             action_url: bag.owned("action_url"),
         };
         Some((group, bag.list(&format!("{word}_members"))))
+    }
+
+    /// The groups that objects join with their own `hostgroups`,
+    /// `servicegroups` or `contactgroups` setting, one entry for each
+    /// group and member. The setting is a list like any other: it takes
+    /// `*`, patterns and `!` exclusions. A list that is given and leaves
+    /// no group is an error.
+    fn joined<M: Clone>(
+        &mut self,
+        kind: ObjType,
+        asked: Asked<M>,
+        groups: &BTreeMap<String, Group<impl Ord>>,
+    ) -> Vec<(String, M, Loc)> {
+        let word = kind.keyword();
+        let universe: Vec<&str> = groups.keys().map(String::as_str).collect();
+        // A service definition for many hosts asks once for each host.
+        // Its list is worked out, and its faults reported, once.
+        let mut worked_out: BTreeMap<(Arc<PathBuf>, u32, Vec<String>), Vec<String>> =
+            BTreeMap::new();
+        let mut joined = Vec::new();
+        for (items, member, loc) in asked {
+            if items.is_empty() {
+                continue;
+            }
+            let key = (loc.file.clone(), loc.line, items.clone());
+            if !worked_out.contains_key(&key) {
+                let picked = self.pick(&items, &universe, word, &loc);
+                let kept = picked.kept();
+                if kept.is_empty() && !picked.faulty {
+                    self.error(
+                        &loc,
+                        format!("the {word}s setting '{}' leaves no {word}", items.join(",")),
+                    );
+                }
+                worked_out.insert(key.clone(), kept);
+            }
+            for group in &worked_out[&key] {
+                joined.push((group.clone(), member.clone(), loc.clone()));
+            }
+        }
+        joined
     }
 
     /// Adds the members that objects ask for themselves, then the members
@@ -525,7 +825,7 @@ impl Builder<'_> {
         }
     }
 
-    fn contactgroups(&mut self, resolved: Vec<Resolved>, asked: Vec<(String, String, Loc)>) {
+    fn contactgroups(&mut self, resolved: Vec<Resolved>, asked: Asked<String>) {
         let contacts: Vec<String> = self.out.contacts.keys().cloned().collect();
         let universe: Vec<&str> = contacts.iter().map(String::as_str).collect();
         let mut groups = BTreeMap::new();
@@ -545,13 +845,17 @@ impl Builder<'_> {
             nested.insert(group.name.clone(), subgroups);
             groups.insert(group.name.clone(), group);
         }
+        let asked = self.joined(ObjType::ContactGroup, asked, &groups);
         self.finish_groups(ObjType::ContactGroup, &mut groups, nested, asked);
         self.out.contactgroups = groups;
     }
 
-    fn hostgroups(&mut self, resolved: Vec<Resolved>, asked: Vec<(String, String, Loc)>) {
+    fn hostgroups(&mut self, resolved: Vec<Resolved>, asked: Asked<String>) {
         let hosts: Vec<String> = self.out.hosts.keys().cloned().collect();
         let universe: Vec<&str> = hosts.iter().map(String::as_str).collect();
+        let host_order = self.host_order.clone();
+        let last_first: Vec<&str> = host_order.iter().rev().map(String::as_str).collect();
+        let mut written = BTreeMap::new();
         let mut groups = BTreeMap::new();
         let mut nested = BTreeMap::new();
         for bag in resolved {
@@ -560,6 +864,19 @@ impl Builder<'_> {
                 continue;
             };
             let picked = self.pick(&bag.list("members"), &universe, "host", &bag.loc);
+            // The same members in the order they are added. `*` and a
+            // pattern add hosts last-defined first.
+            let mut own = Vec::new();
+            for item in bag.list("members") {
+                if !item.starts_with('!')
+                    && let Ok(names) = self.settings.select(&item, &last_first, false)
+                {
+                    own.extend(names.into_iter().map(String::from));
+                }
+            }
+            own.retain(|name| !picked.exclude.contains(name));
+            written.insert(group.name.clone(), own);
+            self.hostgroup_order.push(group.name.clone());
             group.members = picked
                 .include
                 .into_iter()
@@ -568,11 +885,28 @@ impl Builder<'_> {
             nested.insert(group.name.clone(), subgroups);
             groups.insert(group.name.clone(), group);
         }
+        let asked = self.joined(ObjType::HostGroup, asked, &groups);
+        let asked_in_order: Vec<(String, String)> = asked
+            .iter()
+            .map(|(group, host, _)| (group.clone(), host.clone()))
+            .collect();
+        let mut lists = BTreeMap::new();
+        for name in &self.hostgroup_order {
+            ordered_members(
+                name,
+                &nested,
+                &asked_in_order,
+                &written,
+                &mut lists,
+                &mut Vec::new(),
+            );
+        }
+        self.hostgroup_lists = lists;
         self.finish_groups(ObjType::HostGroup, &mut groups, nested, asked);
         self.out.hostgroups = groups;
     }
 
-    fn servicegroups(&mut self, resolved: Vec<Resolved>, asked: Vec<(String, ServiceId, Loc)>) {
+    fn servicegroups(&mut self, resolved: Vec<Resolved>, asked: Asked<ServiceId>) {
         let mut groups = BTreeMap::new();
         let mut nested = BTreeMap::new();
         for bag in resolved {
@@ -595,6 +929,7 @@ impl Builder<'_> {
             nested.insert(group.name.clone(), subgroups);
             groups.insert(group.name.clone(), group);
         }
+        let asked = self.joined(ObjType::ServiceGroup, asked, &groups);
         self.finish_groups(ObjType::ServiceGroup, &mut groups, nested, asked);
         self.out.servicegroups = groups;
     }
@@ -618,6 +953,16 @@ impl Builder<'_> {
                 loc,
                 format!(
                     "servicegroup '{group}': '*' cannot stand for the host in a member; only the description can be '*'"
+                ),
+            );
+            return Vec::new();
+        }
+        if !host.starts_with('!') && description.starts_with('!') {
+            self.warn(
+                loc,
+                format!(
+                    "servicegroup '{group}': the member '{host},{description}' adds nothing and takes nothing out; \
+                     Naemon accepts it without a word, and checkd does the same"
                 ),
             );
             return Vec::new();
@@ -657,7 +1002,7 @@ impl Builder<'_> {
             .filter(|(h, _)| h == host)
             .map(|(_, description)| description.as_str())
             .collect();
-        match self.settings.select(description, &on_host) {
+        match self.settings.select(description, &on_host, true) {
             Err(why) => {
                 self.error(loc, why);
                 Vec::new()
@@ -753,24 +1098,22 @@ impl Builder<'_> {
     }
 
     /// Returns the groups each host asks to be in.
-    fn hosts(&mut self, resolved: Vec<Resolved>) -> Vec<(String, String, Loc)> {
+    fn hosts(&mut self, resolved: Vec<Resolved>) -> Asked<String> {
         let mut memberships = Vec::new();
         for bag in resolved {
-            let Some(name) = bag.name("host_name") else {
-                self.error(&bag.loc, "a host needs a host_name");
+            let Some(name) = bag.literal("host_name") else {
+                self.nameless(&bag, "host", "host_name");
                 continue;
             };
             if !self.claim(ObjType::Host, &name, &bag.loc) {
                 continue;
             }
-            for group in bag.list("hostgroups") {
-                memberships.push((group, name.clone(), bag.loc.clone()));
-            }
+            memberships.push((bag.list("hostgroups"), name.clone(), bag.loc.clone()));
             let what = format!("host '{name}'");
             let host = Host {
                 name: name.clone(),
-                alias: bag.owned("alias").unwrap_or_else(|| name.clone()),
-                address: bag.name("address").unwrap_or_else(|| name.clone()),
+                alias: bag.literal("alias").unwrap_or_else(|| name.clone()),
+                address: bag.literal("address").unwrap_or_else(|| name.clone()),
                 parents: bag.list("parents"),
                 check: self.checkable(&bag, true, &what),
                 vrml_image: bag.owned("vrml_image"),
@@ -795,42 +1138,66 @@ impl Builder<'_> {
                 );
             }
             self.out.hosts.insert(name.clone(), host);
+            self.host_order.push(name.clone());
             self.host_bags.insert(name, bag);
         }
         memberships
     }
 
     /// The hosts a definition applies to, from a host list and a host
-    /// group list. `None` when neither setting is given. The second set
-    /// holds the hosts that the host list names.
+    /// group list, each host once. `None` when neither setting is given.
+    /// The second set holds the hosts that the host list names.
     ///
-    /// `lone_exclusions_ignored` is for host dependencies and host
-    /// escalations. Naemon 1.5.2 ignores a `!host` in their host list
-    /// when no host group is given with it. The same is done here, so
-    /// that the same objects come out, with a warning.
+    /// `named_hosts_stay` is for host dependencies, host escalations and
+    /// extended host info. See `host_mentions`.
     fn host_set(
         &mut self,
         bag: &Resolved,
         hosts_key: &str,
         groups_key: &str,
-        lone_exclusions_ignored: bool,
+        named_hosts_stay: bool,
     ) -> Option<(Vec<String>, BTreeSet<String>)> {
-        if !bag.is_set(hosts_key) && !bag.is_set(groups_key) {
+        let (mentions, named) = self.host_mentions(bag, hosts_key, groups_key, named_hosts_stay)?;
+        let mut all = Vec::new();
+        for host in mentions {
+            push_unique(&mut all, host);
+        }
+        Some((all, named))
+    }
+
+    /// The hosts a definition applies to, each one as often as the two
+    /// lists bring it up: `web,web` gives the members of `web` twice, and
+    /// a host that is named and is in a named group comes twice.
+    ///
+    /// With `named_hosts_stay`, a `!` takes hosts out of the host groups
+    /// only. A host that `host_name` names stays, whatever is excluded by
+    /// name or by group, so in a host list with no host group a `!host`
+    /// does nothing at all. Naemon 1.5.2 does this for host dependencies,
+    /// host escalations and extended host info. The same is done here, so
+    /// that the same objects come out, with a warning.
+    fn host_mentions(
+        &mut self,
+        bag: &Resolved,
+        hosts_key: &str,
+        groups_key: &str,
+        named_hosts_stay: bool,
+    ) -> Option<(Vec<String>, BTreeSet<String>)> {
+        if bag.text(hosts_key).is_none() && bag.text(groups_key).is_none() {
             return None;
         }
         let hosts: Vec<String> = self.out.hosts.keys().cloned().collect();
         let groups: Vec<String> = self.out.hostgroups.keys().cloned().collect();
         let mut host_items = bag.list(hosts_key);
-        if lone_exclusions_ignored
-            && !bag.is_set(groups_key)
+        if named_hosts_stay
+            && bag.text(groups_key).is_none()
             && host_items.iter().any(|item| item.starts_with('!'))
         {
             host_items.retain(|item| !item.starts_with('!'));
             self.warn(
                 &bag.loc,
                 format!(
-                    "the '!' entries of {hosts_key} have no effect: Naemon ignores them in a host dependency or \
-                     host escalation unless {groups_key} is given too, and checkd does the same"
+                    "the '!' entries of {hosts_key} have no effect: Naemon ignores them in a host dependency, \
+                     host escalation or hostextinfo unless {groups_key} is given too, and checkd does the same"
                 ),
             );
         }
@@ -853,24 +1220,102 @@ impl Builder<'_> {
         };
         let mut exclude = by_name.exclude.clone();
         exclude.extend(members(&mut by_group.exclude.iter()));
-        let mut all = by_name.include.clone();
-        for host in members(&mut by_group.include.iter()) {
-            push_unique(&mut all, host);
+        let mut all = by_name.mentions.clone();
+        let mut from_groups = members(&mut by_group.mentions.iter());
+        from_groups.retain(|host| !exclude.contains(host));
+        if named_hosts_stay {
+            let kept: BTreeSet<&String> = by_name
+                .include
+                .iter()
+                .filter(|host| exclude.contains(*host))
+                .collect();
+            if !kept.is_empty() {
+                let kept: Vec<&str> = kept.into_iter().map(String::as_str).collect();
+                self.warn(
+                    &bag.loc,
+                    format!(
+                        "{hosts_key} names '{}', which the '!' entries take out: Naemon keeps a host that \
+                         {hosts_key} names in a host dependency, host escalation or hostextinfo, and checkd \
+                         does the same",
+                        kept.join("', '")
+                    ),
+                );
+            }
+        } else {
+            all.retain(|host| !exclude.contains(host));
         }
-        all.retain(|host| !exclude.contains(host));
+        all.extend(from_groups);
         Some((all, by_name.include.into_iter().collect()))
     }
 
+    /// The host that a service definition is first worked out for: the
+    /// first host of its first host group, or with no host group the first
+    /// host of `host_name`. `None` when that host comes up a second time
+    /// in the two lists. See `services` for what it is used for.
+    fn first_host(&self, bag: &Resolved) -> Option<String> {
+        let groups: Vec<&str> = self
+            .hostgroup_order
+            .iter()
+            .rev()
+            .map(String::as_str)
+            .collect();
+        let hosts: Vec<&str> = self.host_order.iter().rev().map(String::as_str).collect();
+        let mut line: Vec<&str> = Vec::new();
+        for item in bag.list("hostgroup_name") {
+            if !item.starts_with('!')
+                && let Ok(names) = self.settings.select(&item, &groups, false)
+            {
+                for group in names {
+                    if let Some(list) = self.hostgroup_lists.get(group) {
+                        line.extend(list.iter().map(String::as_str));
+                    }
+                }
+            }
+        }
+        for item in bag.list("host_name") {
+            if !item.starts_with('!')
+                && let Ok(names) = self.settings.select(&item, &hosts, false)
+            {
+                line.extend(names);
+            }
+        }
+        let first = *line.first()?;
+        (line.iter().filter(|host| **host == first).count() == 1).then(|| first.to_string())
+    }
+
     /// Returns the groups each service asks to be in.
-    fn services(&mut self, resolved: Vec<Resolved>) -> Vec<(String, ServiceId, Loc)> {
+    ///
+    /// A service can be defined more than once for one host. A definition
+    /// that names the host in `host_name` wins over one that reaches it
+    /// through a host group, in either order and with no warning. Between
+    /// two definitions of the same sort the reference's choice follows
+    /// from how it works through them, and was found by asking it:
+    ///
+    /// - Each definition has at most one first host (see `first_host`).
+    ///   The first host is dropped if `!` takes it out again.
+    /// - For every other host of the two definitions, the earlier
+    ///   definition is kept.
+    /// - Where a host is the first host of one definition and not of the
+    ///   other, the other definition is kept.
+    /// - Where a host is the first host of both, the later definition is
+    ///   kept.
+    fn services(&mut self, resolved: Vec<Resolved>) -> Asked<ServiceId> {
         let mut chosen: BTreeMap<ServiceId, Candidate> = BTreeMap::new();
-        for bag in resolved {
+        for (index, bag) in resolved.into_iter().enumerate() {
+            let index = index as i64;
             let description = bag.name("service_description");
-            let hosts = self.host_set(&bag, "host_name", "hostgroup_name", false);
+            // `null` for both host settings leaves the service without hosts.
+            let gives_hosts =
+                bag.text("host_name").is_some() || bag.text("hostgroup_name").is_some();
+            let hosts = match (&description, gives_hosts) {
+                (Some(_), true) => self.host_set(&bag, "host_name", "hostgroup_name", false),
+                _ => None,
+            };
             let (Some(description), Some((hosts, named))) = (description, hosts) else {
-                self.error(
-                    &bag.loc,
-                    "a service needs a service_description and a host_name or hostgroup_name",
+                self.nameless(
+                    &bag,
+                    "service",
+                    "service_description and host_name or hostgroup_name",
                 );
                 continue;
             };
@@ -890,27 +1335,41 @@ impl Builder<'_> {
                     format!("service '{description}' applies to no host, so it is dropped"),
                 );
             }
+            let first_host = self.first_host(&bag);
             for host in hosts {
                 let id = (host.clone(), description.clone());
                 let candidate = Candidate {
                     bag: bag.clone(),
                     by_host_name: named.contains(&host),
+                    turn: if first_host.as_ref() == Some(&host) {
+                        (1, -index)
+                    } else {
+                        (0, index)
+                    },
                 };
-                // A definition that names the host wins over one that
-                // reaches it through a group. Otherwise the later one wins.
                 match chosen.get(&id) {
-                    Some(earlier) if earlier.by_host_name && !candidate.by_host_name => {}
-                    Some(earlier) => {
-                        if earlier.by_host_name == candidate.by_host_name {
-                            self.warn(
-                                &bag.loc,
-                                format!(
-                                    "service '{description}' on host '{host}' is also defined at {}; this later definition is used",
-                                    earlier.bag.loc
-                                ),
-                            );
+                    Some(earlier) if earlier.by_host_name != candidate.by_host_name => {
+                        if candidate.by_host_name {
+                            chosen.insert(id, candidate);
                         }
-                        chosen.insert(id, candidate);
+                    }
+                    Some(earlier) => {
+                        let later_is_used = candidate.turn < earlier.turn;
+                        self.warn(
+                            &bag.loc,
+                            format!(
+                                "service '{description}' on host '{host}' is also defined at {}; {}",
+                                earlier.bag.loc,
+                                if later_is_used {
+                                    "this later definition is used"
+                                } else {
+                                    "that earlier definition is used"
+                                }
+                            ),
+                        );
+                        if later_is_used {
+                            chosen.insert(id, candidate);
+                        }
                     }
                     None => {
                         chosen.insert(id, candidate);
@@ -940,9 +1399,7 @@ impl Builder<'_> {
                     }
                 }
             }
-            for group in bag.list("servicegroups") {
-                memberships.push((group, id.clone(), bag.loc.clone()));
-            }
+            memberships.push((bag.list("servicegroups"), id.clone(), bag.loc.clone()));
             let what = format!("service '{description}' on host '{host}'");
             let service = Service {
                 host,
@@ -967,17 +1424,36 @@ impl Builder<'_> {
         memberships
     }
 
+    /// What a service escalation, or one side of a service dependency,
+    /// gives to say which services it is about. `keys` are the settings
+    /// for hosts, host groups, service groups and descriptions.
+    fn side(&self, bag: &Resolved, keys: [&str; 4]) -> Side {
+        let [hosts, hostgroups, servicegroups, descriptions] = keys;
+        let hosts = bag.text(hosts).is_some() || bag.text(hostgroups).is_some();
+        let groups = bag.text(servicegroups).is_some();
+        match (hosts, bag.text(descriptions).is_some(), groups) {
+            (false, false, false) => Side::Nothing,
+            (false, true, false) => Side::DescriptionOnly,
+            (true, true, _) | (false, false, true) => Side::Named,
+            (true, false, _) => Side::Faulty("hosts and no service description"),
+            (false, true, true) => {
+                Side::Faulty("a service description with a service group and no host")
+            }
+        }
+    }
+
     /// The services a dependency or escalation names, from host lists,
     /// host group lists, a service group list and a description list.
-    fn service_set(
-        &mut self,
-        bag: &Resolved,
-        hosts_key: &str,
-        groups_key: &str,
-        servicegroups_key: &str,
-        descriptions_key: &str,
-    ) -> Vec<ServiceId> {
+    ///
+    /// An exclusion takes services out of the whole result, not only out
+    /// of its own list: `!group` takes out every member of that service
+    /// group, and `!description` takes that service out on each host the
+    /// definition names, also where a service group brought it in. An
+    /// excluded host does not reach into the service groups.
+    fn service_set(&mut self, bag: &Resolved, keys: [&str; 4]) -> Vec<ServiceId> {
+        let [hosts_key, groups_key, servicegroups_key, descriptions_key] = keys;
         let mut found = Vec::new();
+        let mut taken_out: BTreeSet<ServiceId> = BTreeSet::new();
         let servicegroups: Vec<String> = self.out.servicegroups.keys().cloned().collect();
         let picked = self.pick(
             &bag.list(servicegroups_key),
@@ -985,32 +1461,31 @@ impl Builder<'_> {
             "servicegroup",
             &bag.loc,
         );
-        for group in picked
-            .include
-            .iter()
-            .filter(|group| !picked.exclude.contains(*group))
-        {
-            for member in &self.out.servicegroups[group].members {
+        for group in &picked.exclude {
+            taken_out.extend(self.out.servicegroups[group].members.iter().cloned());
+        }
+        for group in picked.kept() {
+            for member in &self.out.servicegroups[&group].members {
                 push_unique(&mut found, member.clone());
             }
         }
         if let Some((hosts, _)) = self.host_set(bag, hosts_key, groups_key, false) {
             for host in hosts {
-                for description in self.descriptions_on(bag, &host, descriptions_key) {
+                let picked = self.descriptions_on(bag, &host, descriptions_key);
+                for description in picked.exclude {
+                    taken_out.insert((host.clone(), description));
+                }
+                for description in picked.include {
                     push_unique(&mut found, (host.clone(), description));
                 }
             }
         }
+        found.retain(|service| !taken_out.contains(service));
         found
     }
 
     /// Expands a description list against the services of one host.
-    fn descriptions_on(
-        &mut self,
-        bag: &Resolved,
-        host: &str,
-        descriptions_key: &str,
-    ) -> Vec<String> {
+    fn descriptions_on(&mut self, bag: &Resolved, host: &str, descriptions_key: &str) -> Picked {
         let on_host: Vec<String> = self
             .out
             .services
@@ -1020,12 +1495,114 @@ impl Builder<'_> {
             .collect();
         let universe: Vec<&str> = on_host.iter().map(String::as_str).collect();
         let what = format!("on host '{host}', service");
-        let picked = self.pick(&bag.list(descriptions_key), &universe, &what, &bag.loc);
-        picked
-            .include
-            .into_iter()
-            .filter(|description| !picked.exclude.contains(description))
-            .collect()
+        self.pick_from(
+            &bag.list(descriptions_key),
+            &universe,
+            &what,
+            &bag.loc,
+            true,
+        )
+    }
+
+    // ---- extended info ----
+
+    /// The hosts an extended-info definition names, or `None` when it is
+    /// to be skipped.
+    fn extinfo_hosts(&mut self, bag: &Resolved, hostextinfo: bool) -> Option<Vec<String>> {
+        let what = if hostextinfo {
+            "hostextinfo"
+        } else {
+            "serviceextinfo"
+        };
+        let unregistered = !bag.registered;
+        let complete = hostextinfo || bag.is_set("service_description");
+        let hosts = match self.host_set(bag, "host_name", "hostgroup_name", hostextinfo) {
+            Some((hosts, _)) if complete => hosts,
+            _ => {
+                // A template that only holds values for others is fine.
+                if !unregistered {
+                    let needs = if hostextinfo {
+                        "no host_name and no hostgroup_name"
+                    } else {
+                        "no service_description, or no host_name and no hostgroup_name"
+                    };
+                    self.warn(
+                        &bag.loc,
+                        format!("this {what} gives {needs}, so it has no effect"),
+                    );
+                }
+                return None;
+            }
+        };
+        if unregistered {
+            self.warn(
+                &bag.loc,
+                format!("'register 0' does not switch a {what} off: Naemon applies it all the same, and checkd does too"),
+            );
+        }
+        if hosts.is_empty() && !self.diags.has_errors() {
+            // Naemon refuses the one and accepts the other.
+            if hostextinfo {
+                self.error(&bag.loc, format!("this {what} applies to no host"));
+            } else {
+                self.warn(
+                    &bag.loc,
+                    format!("this {what} applies to no host, so it has no effect"),
+                );
+            }
+        }
+        Some(hosts)
+    }
+
+    /// Applies `hostextinfo` definitions: an older way to give a host its
+    /// notes, links, images and coordinates. A value the host has itself,
+    /// or from its templates, stays. Among several definitions for one
+    /// host the one read last wins, so they are applied from the end and
+    /// each fills only what is still empty.
+    fn host_extinfo(&mut self, resolved: Vec<Resolved>) {
+        for bag in resolved.into_iter().rev() {
+            let Some(hosts) = self.extinfo_hosts(&bag, true) else {
+                continue;
+            };
+            for name in hosts {
+                let Some(host) = self.out.hosts.get_mut(&name) else {
+                    continue;
+                };
+                fill_extinfo(&mut host.check, &bag);
+                fill(&mut host.vrml_image, bag.owned("vrml_image"));
+                fill(&mut host.statusmap_image, bag.owned("statusmap_image"));
+                fill(
+                    &mut host.coords_2d,
+                    bag.text("2d_coords")
+                        .and_then(|value| values::parse_coords2(value).ok()),
+                );
+                fill(
+                    &mut host.coords_3d,
+                    bag.text("3d_coords")
+                        .and_then(|value| values::parse_coords3(value).ok()),
+                );
+            }
+        }
+    }
+
+    /// The same for `serviceextinfo`. Every host named must have every
+    /// service named.
+    fn service_extinfo(&mut self, resolved: Vec<Resolved>) {
+        for bag in resolved.into_iter().rev() {
+            let Some(hosts) = self.extinfo_hosts(&bag, false) else {
+                continue;
+            };
+            for host in hosts {
+                for description in self
+                    .descriptions_on(&bag, &host, "service_description")
+                    .kept()
+                {
+                    if let Some(service) = self.out.services.get_mut(&(host.clone(), description)) {
+                        fill_extinfo(&mut service.check, &bag);
+                    }
+                }
+            }
+        }
     }
 
     // ---- dependencies ----
@@ -1061,6 +1638,10 @@ impl Builder<'_> {
 
     fn host_dependencies(&mut self, resolved: Vec<Resolved>) {
         for bag in resolved {
+            // A name that is not defined, or a pattern that is not valid,
+            // is an error anywhere else. Here Naemon prints the error,
+            // drops the dependency and accepts the configuration.
+            self.held_back = Some(Vec::new());
             let masters = self.host_set(&bag, "host_name", "hostgroup_name", true);
             let dependents = self.host_set(
                 &bag,
@@ -1068,10 +1649,21 @@ impl Builder<'_> {
                 "dependent_hostgroup_name",
                 true,
             );
-            let (Some((masters, _)), Some((dependents, _))) = (masters, dependents) else {
-                self.error(
+            let faults = self.held_back.take().unwrap_or_default();
+            if let Some(first) = faults.first() {
+                self.warn(
                     &bag.loc,
-                    "a hostdependency needs a host and a dependent host, each by name or by group",
+                    format!(
+                        "this hostdependency has no effect and is dropped: {first}. Naemon drops it and accepts \
+                         the configuration, and checkd does the same"
+                    ),
+                );
+                continue;
+            }
+            let (Some((masters, _)), Some((dependents, _))) = (masters, dependents) else {
+                self.warn(
+                    &bag.loc,
+                    "this hostdependency lacks a host or a dependent host, so it has no effect and is dropped",
                 );
                 continue;
             };
@@ -1084,44 +1676,98 @@ impl Builder<'_> {
         }
     }
 
+    /// Service dependencies. Each side names its services with hosts and
+    /// a description, with a service group, or with both. A side that
+    /// gives only a description means "on the same host as the service on
+    /// the other side". Found by asking the reference:
+    ///
+    ///   - a dependency that names no dependent service at all is refused,
+    ///     and so is one that gives only descriptions on both sides;
+    ///   - one that names no service to depend on is accepted and makes
+    ///     nothing;
+    ///   - hosts with no description are refused, and so is a description
+    ///     next to a service group with no hosts.
     fn service_dependencies(&mut self, resolved: Vec<Resolved>) {
+        const MASTER: [&str; 4] = [
+            "host_name",
+            "hostgroup_name",
+            "servicegroup_name",
+            "service_description",
+        ];
+        const DEPENDENT: [&str; 4] = [
+            "dependent_host_name",
+            "dependent_hostgroup_name",
+            "dependent_servicegroup_name",
+            "dependent_service_description",
+        ];
         for bag in resolved {
-            let masters = self.service_set(
-                &bag,
-                "host_name",
-                "hostgroup_name",
-                "servicegroup_name",
-                "service_description",
-            );
-            let elsewhere = [
-                "dependent_host_name",
-                "dependent_hostgroup_name",
-                "dependent_servicegroup_name",
-            ]
-            .iter()
-            .any(|key| bag.is_set(key));
+            let master = self.side(&bag, MASTER);
+            let dependent = self.side(&bag, DEPENDENT);
             let mut pairs = Vec::new();
-            if elsewhere {
-                let dependents = self.service_set(
-                    &bag,
-                    "dependent_host_name",
-                    "dependent_hostgroup_name",
-                    "dependent_servicegroup_name",
-                    "dependent_service_description",
-                );
-                for master in &masters {
-                    for dependent in &dependents {
-                        pairs.push((master.clone(), dependent.clone()));
+            match (master, dependent) {
+                (Side::Faulty(given), _) => {
+                    self.error(
+                        &bag.loc,
+                        format!("this servicedependency gives {given} for the service depended on"),
+                    );
+                    continue;
+                }
+                (_, Side::Faulty(given)) => {
+                    self.error(
+                        &bag.loc,
+                        format!("this servicedependency gives {given} for the dependent service"),
+                    );
+                    continue;
+                }
+                (_, Side::Nothing) => {
+                    self.error(
+                        &bag.loc,
+                        "this servicedependency names no dependent service",
+                    );
+                    continue;
+                }
+                (Side::Nothing | Side::DescriptionOnly, Side::DescriptionOnly) => {
+                    self.error(
+                        &bag.loc,
+                        "this servicedependency names no host on either side",
+                    );
+                    continue;
+                }
+                (Side::Nothing, Side::Named) => {
+                    // Looked up all the same, so that an unknown name in
+                    // it is reported.
+                    self.service_set(&bag, DEPENDENT);
+                    self.warn(
+                        &bag.loc,
+                        "this servicedependency names no service to depend on, so it has no effect and is dropped",
+                    );
+                    continue;
+                }
+                (Side::Named, Side::Named) => {
+                    let masters = self.service_set(&bag, MASTER);
+                    let dependents = self.service_set(&bag, DEPENDENT);
+                    for master in &masters {
+                        for dependent in &dependents {
+                            pairs.push((master.clone(), dependent.clone()));
+                        }
                     }
                 }
-            } else {
-                // No dependent host is named: the dependent services are
-                // on the same host as the service they depend on.
-                for master in &masters {
-                    for description in
-                        self.descriptions_on(&bag, &master.0, "dependent_service_description")
-                    {
-                        pairs.push((master.clone(), (master.0.clone(), description)));
+                (Side::Named, Side::DescriptionOnly) => {
+                    for master in self.service_set(&bag, MASTER) {
+                        for description in
+                            self.descriptions_on(&bag, &master.0, DEPENDENT[3]).kept()
+                        {
+                            pairs.push((master.clone(), (master.0.clone(), description)));
+                        }
+                    }
+                }
+                (Side::DescriptionOnly, Side::Named) => {
+                    for dependent in self.service_set(&bag, DEPENDENT) {
+                        for description in
+                            self.descriptions_on(&bag, &dependent.0, MASTER[3]).kept()
+                        {
+                            pairs.push(((dependent.0.clone(), description), dependent.clone()));
+                        }
                     }
                 }
             }
@@ -1209,13 +1855,38 @@ impl Builder<'_> {
     fn host_escalations(&mut self, resolved: Vec<Resolved>) {
         for bag in resolved {
             self.check_escalation_range(&bag);
-            let Some((hosts, _)) = self.host_set(&bag, "host_name", "hostgroup_name", true) else {
+            let Some((hosts, _)) = self.host_mentions(&bag, "host_name", "hostgroup_name", true)
+            else {
                 self.error(
                     &bag.loc,
                     "a hostescalation needs a host_name or hostgroup_name",
                 );
                 continue;
             };
+            if hosts.is_empty() && !self.diags.has_errors() {
+                self.error(&bag.loc, "this hostescalation applies to no host");
+            }
+            // One escalation each time a host comes up, as Naemon makes
+            // them. Dependencies and services are made once per host.
+            let mut times: BTreeMap<&String, usize> = BTreeMap::new();
+            for host in &hosts {
+                *times.entry(host).or_default() += 1;
+            }
+            let repeated: Vec<String> = times
+                .iter()
+                .filter(|(_, n)| **n > 1)
+                .map(|(host, n)| format!("'{host}' {n} times"))
+                .collect();
+            if !repeated.is_empty() {
+                self.warn(
+                    &bag.loc,
+                    format!(
+                        "the lists of this hostescalation bring up {}: Naemon makes one escalation each \
+                         time, and checkd does the same",
+                        repeated.join(", ")
+                    ),
+                );
+            }
             for host in hosts {
                 let target = self.host_bags.get(&host).cloned();
                 let built = self.escalation(&bag, target.as_ref(), host, schema::HOST_ESCALATION);
@@ -1227,15 +1898,35 @@ impl Builder<'_> {
     fn service_escalations(&mut self, resolved: Vec<Resolved>) {
         for bag in resolved {
             self.check_escalation_range(&bag);
-            let services = self.service_set(
-                &bag,
+            const KEYS: [&str; 4] = [
                 "host_name",
                 "hostgroup_name",
                 "servicegroup_name",
                 "service_description",
-            );
+            ];
+            // Unlike a service dependency, an escalation has no other
+            // side to take hosts from.
+            match self.side(&bag, KEYS) {
+                Side::Named => {}
+                Side::Nothing => {
+                    self.error(&bag.loc, "this serviceescalation names no service");
+                    continue;
+                }
+                Side::DescriptionOnly => {
+                    self.error(
+                        &bag.loc,
+                        "this serviceescalation gives a service description and no host",
+                    );
+                    continue;
+                }
+                Side::Faulty(given) => {
+                    self.error(&bag.loc, format!("this serviceescalation gives {given}"));
+                    continue;
+                }
+            }
+            let services = self.service_set(&bag, KEYS);
             if services.is_empty() && !self.diags.has_errors() {
-                self.warn(&bag.loc, "this serviceescalation matches no service");
+                self.error(&bag.loc, "this serviceescalation applies to no service");
             }
             for id in services {
                 let target = self.service_bags.get(&id).cloned();

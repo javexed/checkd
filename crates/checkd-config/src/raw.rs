@@ -20,10 +20,14 @@ pub enum ObjType {
     ServiceEscalation,
     HostDependency,
     HostEscalation,
+    /// Not objects of their own: they add settings to hosts and services,
+    /// and the dump never writes them.
+    HostExtInfo,
+    ServiceExtInfo,
 }
 
 impl ObjType {
-    pub const ALL: [ObjType; 12] = [
+    pub const ALL: [ObjType; 14] = [
         ObjType::Timeperiod,
         ObjType::Command,
         ObjType::ContactGroup,
@@ -36,6 +40,8 @@ impl ObjType {
         ObjType::ServiceEscalation,
         ObjType::HostDependency,
         ObjType::HostEscalation,
+        ObjType::HostExtInfo,
+        ObjType::ServiceExtInfo,
     ];
 
     /// The word after `define`.
@@ -53,7 +59,14 @@ impl ObjType {
             ObjType::ServiceEscalation => "serviceescalation",
             ObjType::HostDependency => "hostdependency",
             ObjType::HostEscalation => "hostescalation",
+            ObjType::HostExtInfo => "hostextinfo",
+            ObjType::ServiceExtInfo => "serviceextinfo",
         }
+    }
+
+    /// Whether this is one of the two extended-info types.
+    pub fn is_extinfo(self) -> bool {
+        matches!(self, ObjType::HostExtInfo | ObjType::ServiceExtInfo)
     }
 
     pub fn from_keyword(word: &str) -> Option<ObjType> {
@@ -175,7 +188,18 @@ pub fn parse_file(
         };
 
         if let Some(object) = current.as_mut() {
-            if line.starts_with('}') {
+            if line == "}" {
+                out.extend(current.take());
+            } else if let Some(rest) = line.strip_prefix('}') {
+                // Only a `;` comment may follow the brace. Naemon reads
+                // anything else as a setting called `}` and refuses it.
+                diags.error(
+                    Some(&loc),
+                    format!(
+                        "'{}' after the closing brace; only a ';' comment may follow it",
+                        rest.trim()
+                    ),
+                );
                 out.extend(current.take());
             } else if word == "define" || word.starts_with("define{") {
                 diags.error(
@@ -249,13 +273,22 @@ fn start_definition(
     } else {
         &word["define".len()..]
     };
-    let Some(name) = after.strip_suffix('{') else {
+    let Some((name, extra)) = after.split_once('{') else {
         diags.error(
             Some(loc),
             "a definition must start with 'define <type> {' on one line",
         );
         return None;
     };
+    if !extra.trim().is_empty() {
+        diags.warn(
+            Some(loc),
+            format!(
+                "'{}' after the opening brace is not read; Naemon drops it too",
+                extra.trim()
+            ),
+        );
+    }
     let name = name.trim();
     match ObjType::from_keyword(name) {
         Some(kind) => Some(RawObject {

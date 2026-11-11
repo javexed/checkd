@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Runs the Naemon oracle on the real config trees and compares checkd with it.
+#
+#   real/run [case...]
+#
+# A case is a directory under real/cases with two files written for this
+# project: `naemon.cfg`, a main config that names the tree's object files
+# under /case/tree, and `tree`, the tree's directory under real/trees.
+# An optional `extra.cfg` is copied in beside naemon.cfg, and so is
+# real/stubs/<case>.cfg as `stubs.cfg` when `real/stub` has written one:
+# it holds stand-ins for what the tree refers to and does not define.
+# With REAL_ORACLE_ONLY=1 the comparison with checkd is left out.
+#
+# For each case this builds real/work/<case>/config, asks the oracle for
+# real/work/<case>/expected, and then runs the corpus comparison on it.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+cd "$here"
+
+if [ $# -gt 0 ]; then cases=("$@"); else cases=($(ls cases)); fi
+
+for name in "${cases[@]}"; do
+    [ -f "cases/$name/naemon.cfg" ] || { echo "no case $name" >&2; exit 2; }
+    tree=$(cat "cases/$name/tree")
+    [ -d "trees/$tree" ] || { echo "$name: real/trees/$tree is missing; run real/fetch" >&2; exit 2; }
+    work="work/$name"
+    rm -rf "$work"
+    mkdir -p "$work/config/tree" "$work/expected"
+    # Only regular files and directories are copied: no .git, no links.
+    (cd "trees/$tree" && find . -name .git -prune -o -type f -print0 | cpio -0 -pdm --quiet "$here/$work/config/tree")
+    cp "cases/$name/naemon.cfg" "$work/config/naemon.cfg"
+    [ -f "cases/$name/extra.cfg" ] && cp "cases/$name/extra.cfg" "$work/config/extra.cfg"
+    if [ -f "stubs/$name.cfg" ]; then
+        cp "stubs/$name.cfg" "$work/config/stubs.cfg"
+        echo "cfg_file=/case/stubs.cfg" >> "$work/config/naemon.cfg"
+    fi
+    ../oracle/run "$work/config" "$work/expected"
+    echo "$name: naemon exit $(cat "$work/expected/verify.exit")"
+done
+
+[ -n "${REAL_ORACLE_ONLY:-}" ] && exit 0
+
+status=0
+for name in "${cases[@]}"; do
+    CHECKD_CORPUS_DIR="$here/work" CHECKD_CASE="$name" \
+        cargo test -q -p checkd-config --test corpus corpus_agrees_with_the_reference \
+        > "work/$name/compare.txt" 2>&1 && echo "$name: same" || { echo "$name: differs, see real/work/$name/compare.txt"; status=1; }
+done
+exit $status

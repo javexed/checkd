@@ -255,6 +255,7 @@ pub fn check(kind: Kind, value: &str) -> Result<Option<String>, String> {
         Kind::Opts(allowed) => Opts::parse(value, allowed).map(|_| None),
         Kind::Coords2 => parse_coords2(value).map(|_| None),
         Kind::Coords3 => parse_coords3(value).map(|_| None),
+        Kind::NoEffect => Ok(None),
     }
 }
 

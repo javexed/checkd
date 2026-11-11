@@ -22,6 +22,9 @@ pub enum Kind {
     Coords2,
     /// `x,y,z` as numbers.
     Coords3,
+    /// A setting from older Nagios versions that is read and dropped. Any
+    /// value is taken.
+    NoEffect,
 }
 
 pub struct Field {
@@ -48,6 +51,7 @@ pub const SERVICE_ESCALATION: &str = "rwuc";
 const TEMPLATE: [Field; 3] = [f("name", Text), f("use", Text), f("register", Flag)];
 
 const HOST: &[Field] = &[
+    f("failure_prediction_enabled", NoEffect),
     f("host_name", Text),
     f("alias", Text),
     f("display_name", Text),
@@ -96,6 +100,8 @@ const HOST: &[Field] = &[
 ];
 
 const SERVICE: &[Field] = &[
+    f("failure_prediction_enabled", NoEffect),
+    f("parallelize_check", NoEffect),
     f("host_name", List),
     f("hostgroup_name", List),
     f("service_description", Text),
@@ -253,6 +259,31 @@ const SERVICEESCALATION: &[Field] = &[
     f("escalation_options", Opts(SERVICE_ESCALATION)),
 ];
 
+const HOSTEXTINFO: &[Field] = &[
+    f("host_name", List),
+    f("hostgroup_name", List),
+    f("notes", Text),
+    f("notes_url", Text),
+    f("action_url", Text),
+    f("icon_image", Text),
+    f("icon_image_alt", Text),
+    f("vrml_image", Text),
+    f("statusmap_image", Text),
+    f("2d_coords", Coords2),
+    f("3d_coords", Coords3),
+];
+
+const SERVICEEXTINFO: &[Field] = &[
+    f("host_name", List),
+    f("hostgroup_name", List),
+    f("service_description", List),
+    f("notes", Text),
+    f("notes_url", Text),
+    f("action_url", Text),
+    f("icon_image", Text),
+    f("icon_image_alt", Text),
+];
+
 fn fields(kind: ObjType) -> &'static [Field] {
     match kind {
         ObjType::Timeperiod => TIMEPERIOD,
@@ -267,15 +298,44 @@ fn fields(kind: ObjType) -> &'static [Field] {
         ObjType::ServiceEscalation => SERVICEESCALATION,
         ObjType::HostDependency => HOSTDEPENDENCY,
         ObjType::HostEscalation => HOSTESCALATION,
+        ObjType::HostExtInfo => HOSTEXTINFO,
+        ObjType::ServiceExtInfo => SERVICEEXTINFO,
     }
 }
 
-/// Older or alternative names of settings, and the name used here.
+/// Older or alternative names of settings, and the name used here. Each
+/// one was seen in a published config and then tried on the reference; the
+/// corpus case `short-names` holds them.
 pub fn canonical_key(kind: ObjType, key: &str) -> &str {
     match (kind, key) {
         (ObjType::Host | ObjType::Service, "normal_check_interval") => "check_interval",
         (ObjType::Host | ObjType::Service, "retry_check_interval") => "retry_interval",
         (ObjType::Host, "obsess_over_host") => "obsess",
+        (ObjType::Host, "checks_enabled") => "active_checks_enabled",
+        (ObjType::Service, "host" | "hosts") => "host_name",
+        (ObjType::Service, "hostgroup" | "hostgroups") => "hostgroup_name",
+        (
+            ObjType::HostDependency
+            | ObjType::ServiceDependency
+            | ObjType::HostEscalation
+            | ObjType::ServiceEscalation,
+            "host",
+        ) => "host_name",
+        (
+            ObjType::HostDependency
+            | ObjType::ServiceDependency
+            | ObjType::HostEscalation
+            | ObjType::ServiceEscalation,
+            "hostgroup" | "hostgroups",
+        ) => "hostgroup_name",
+        (ObjType::HostExtInfo | ObjType::ServiceExtInfo, "hostgroup") => "hostgroup_name",
+        (ObjType::HostDependency | ObjType::ServiceDependency, "dependent_host") => {
+            "dependent_host_name"
+        }
+        (
+            ObjType::HostDependency | ObjType::ServiceDependency,
+            "dependent_hostgroup" | "dependent_hostgroups",
+        ) => "dependent_hostgroup_name",
         (ObjType::Service, "obsess_over_service") => "obsess",
         (ObjType::HostDependency | ObjType::ServiceDependency, "execution_failure_criteria") => {
             "execution_failure_options"
@@ -296,6 +356,31 @@ pub fn kind_of(kind: ObjType, key: &str) -> Option<Kind> {
         .chain(fields(kind))
         .find(|field| field.key == key)
         .map(|field| field.kind)
+}
+
+/// Whether the lines of this setting are added together when it is given
+/// more than once in one definition. For every other setting the later
+/// line counts. Found by asking the reference: the members of a group, and
+/// the option lists below. `flap_detection_options` is not one of them.
+pub fn lines_add_up(kind: ObjType, key: &str) -> bool {
+    match kind {
+        ObjType::HostGroup => matches!(key, "members" | "hostgroup_members"),
+        ObjType::ContactGroup => matches!(key, "members" | "contactgroup_members"),
+        ObjType::ServiceGroup => matches!(key, "members" | "servicegroup_members"),
+        ObjType::Host | ObjType::Service => {
+            matches!(key, "notification_options" | "stalking_options")
+        }
+        ObjType::Contact => matches!(
+            key,
+            "host_notification_options" | "service_notification_options"
+        ),
+        ObjType::HostDependency | ObjType::ServiceDependency => matches!(
+            key,
+            "execution_failure_options" | "notification_failure_options"
+        ),
+        ObjType::HostEscalation | ObjType::ServiceEscalation => key == "escalation_options",
+        _ => false,
+    }
 }
 
 /// Whether a leading `+` on this setting adds to the inherited value.

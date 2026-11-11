@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Downloads the config trees listed in sources.tsv, each at its pinned commit.
+#
+#   real/fetch [name...]
+#
+# Each tree goes to real/trees/<name>, which git ignores. A tree that is
+# already there is left alone. Nothing in a tree is run: hooks are off,
+# submodules are not fetched, and symlinks are written as plain files.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+mkdir -p "$here/trees"
+export GIT_TERMINAL_PROMPT=0
+git=(git -c core.hooksPath=/dev/null -c core.symlinks=false -c advice.detachedHead=false)
+
+grep -v '^#' "$here/sources.tsv" | while IFS=$'\t' read -r name repo commit sparse; do
+    [ -n "$name" ] || continue
+    if [ $# -gt 0 ] && ! printf '%s\n' "$@" | grep -qx -- "$name"; then
+        continue
+    fi
+    dest="$here/trees/$name"
+    if [ -e "$dest" ]; then
+        echo "$name: already there"
+        continue
+    fi
+    "${git[@]}" init -q "$dest"
+    "${git[@]}" -C "$dest" remote add origin "https://github.com/$repo.git"
+    if [ -n "$sparse" ]; then
+        "${git[@]}" -C "$dest" sparse-checkout set "$sparse"
+        "${git[@]}" -C "$dest" fetch -q --depth 1 --filter=blob:none origin "$commit"
+    else
+        "${git[@]}" -C "$dest" fetch -q --depth 1 origin "$commit"
+    fi
+    "${git[@]}" -C "$dest" checkout -q FETCH_HEAD
+    echo "$name: $repo at $commit"
+done

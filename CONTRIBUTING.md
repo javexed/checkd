@@ -15,6 +15,9 @@ nothing in this repo may be derived from their source.
   it is never vendored into this repo.
 - Settle edge cases by experiment against the oracle, and record the
   experiment as a test.
+- Config trees that other people published are local test input only
+  (`real/`). They are not committed, and nothing is copied from them. What
+  one shows goes into the corpus as a case written for this project.
 
 By contributing you confirm that your change was not written from the GPL
 source.

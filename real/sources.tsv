@@ -1,0 +1,12 @@
+# name	repository	commit	sparse path (empty: whole repository)
+fedora-infra	fedora-infra/ansible	72789a919f4a964401e17c8e3863de8affcd36b0	roles/nagios_server
+ghomem	ghomem/custom-naemon	d509a2ab1050ecc2f0b7df8de5a10669d20ccb6f	
+invadelabs	invadelabs/nagios-invadelabs	ccccf6e2e09ef173208e4afa8b42d5c465f16347	
+lokeshreddy4u	lokeshreddy4u/nagios	d568e5a65f16d2532ca9508a20991754a628f183	
+neoloc	neoloc/nagios_config_example	bc537669ac4b50aebb105c1efde3182d1443a099	
+nylex	Nylex-net/nagios-in-docker	cd9c2bb79aa52eb9dc56e58a134709002eed2399	
+openhatch	openhatch/oh-nagios	93ab66b4af645107bace8499476fdb4f815a72f5	
+sipb-noc	sipb-noc/nagios	bf27c0eff84c5d3146768a1adb824e0beda88699	
+smartsearch	SmartSearch/nagios-conf	9c78d55d141a0c2e0ed34ae6aadb676ea1669ada	
+ucb-rit	ucb-rit/service-monitoring-config	be4b7a0fb151583723a2c53eabf670e0fe6bc100	
+zulip	zulip/zulip	322bd1146209921e3e63562043574d0220b6a2f7	puppet/kandra/files/nagios4

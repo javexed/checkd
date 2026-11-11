@@ -1,0 +1,34 @@
+Reading configuration data...
+   Read main config file okay...
+   Read object config files okay...
+
+Running pre-flight check on configuration data...
+
+Checking objects...
+	Checked 4 services.
+	Checked 4 hosts.
+	Checked 5 contacts.
+	Checked 7 host groups.
+	Checked 3 service groups.
+	Checked 5 contact groups.
+	Checked 2 commands.
+	Checked 3 time periods.
+	Checked 1 host escalations.
+	Checked 0 service escalations.
+Checking for circular paths...
+	Checked 4 hosts
+	Checked 0 service dependencies
+	Checked 1 host dependencies
+	Checked 3 timeperiods
+Checking global event handlers...
+Checking global notification handlers...
+Checking obsessive compulsive processor commands...
+Checking misc settings...
+Warning: Nothing specified for illegal_macro_output_chars variable!
+
+Total Warnings: 1
+Total Errors:   0
+
+Things look okay - No serious problems were detected during the pre-flight check
+Object precache file created:
+/tmp/oracle/objects.precache

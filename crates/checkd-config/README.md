@@ -16,7 +16,7 @@ No Naemon or Nagios source was read. See
 it with the oracle's answer for that case:
 
 - **Accept or refuse.** checkd has to accept a config when Naemon exits 0
-  and refuse it when Naemon exits 1. Seven cases are listed in the test as
+  and refuse it when Naemon exits 1. Six cases are listed in the test as
   refused on purpose: for those, Naemon has to accept, checkd has to
   refuse, and checkd's error has to be the expected one. See "Where checkd
   refuses what Naemon accepts".
@@ -37,25 +37,44 @@ The comparison leaves three things out on purpose:
   order of the entries. Custom variables are sorted first.
 - **`initial_state`.** Naemon's dump writes `o` whatever was set.
 
-A second test checks 28 warnings, each at its line. Every kind of warning
+A second test checks 52 warnings, each at its line. Every kind of warning
 in the table further down has at least one.
+
+`real/run` in the repo's top directory does the same comparison for config
+trees that other people published. See [`../../real`](../../real).
 
 ## Where checkd copies a doubtful Naemon behaviour
 
-In two places Naemon 1.5.2 does something that looks like a fault. checkd
-does the same, so that the same objects come out, and warns.
+In these places Naemon 1.5.2 does something that looks like a fault, or
+like a trace of how it works inside. checkd does the same, so that the same
+objects come out, and warns. The corpus README has each rule in full, with
+the cases that show it.
 
-- **`!` in a host escalation or host dependency.** A `!host` item in
-  `host_name` or `dependent_host_name` has no effect unless the host group
-  setting beside it is given too. `host_name alpha,beta,!beta` still
+- **`!` in a host escalation, host dependency or `hostextinfo`.** A `!`
+  takes hosts out of the named host groups only. A host that `host_name` or
+  `dependent_host_name` names stays, so `host_name alpha,beta,!beta` still
   includes beta.
+- **A host escalation for a host that comes up twice.** The escalation is
+  made once each time: a host in two of the named groups gets it twice.
+- **A host dependency with an undefined name.** Naemon prints an error,
+  drops the dependency and accepts the configuration. The same fault in
+  any other object refuses it.
 - **A host pattern in the members of a service group.** With regular
   expressions on, a pair whose host half is a pattern takes every service
   on the matching hosts. The description half is not used.
+- **A service defined twice.** Which definition is kept differs from host
+  to host, by where the host stands in each definition's lists.
+- **A setting given twice.** For most settings the later line counts. For
+  group members and most option lists the lines are added together.
+- **`register 0` on an extinfo definition** does not switch it off.
+- **A definition with a template `name` and no object name** is taken for a
+  template, though it does not say `register 0`.
 
-Both are a choice that can be reversed: honouring the `!` or the
-description would be the more useful behaviour, at the price of objects
-that differ from Naemon's for the same config.
+Each one is a choice that can be reversed: the more useful behaviour is
+often plain, at the price of objects that differ from Naemon's for the same
+config. Refusing the config is the other way out, and may be the better one
+for the cases where Naemon's result is hard to predict from the file: the
+service defined twice above all.
 
 ## Warnings that Naemon does not give
 
@@ -64,11 +83,18 @@ warns.
 
 | Warning | When |
 | --- | --- |
-| A setting is given twice | The same setting, or a day of a timeperiod, twice in one definition. The later line is used. |
+| A setting is given twice | The same setting, or a day of a timeperiod, twice in one definition. The warning says whether the later line is used or the lines are added together. |
 | A setting has no value | A setting name with nothing after it. It is kept as an empty value. |
+| A setting has no effect | `failure_prediction_enabled` or `parallelize_check`, from older Nagios versions. |
+| Text after the opening brace is not read | `define host { host_name x` on one line. |
+| A definition is used as a template only | It has a template `name`, lacks its object name and does not say `register 0`. |
 | A template uses itself | Directly or through other templates. The loop adds nothing. |
-| A dependency is dropped | It names no failure states. |
+| A dependency is dropped | It names no failure states, a host dependency lacks a side, or a service dependency names nothing to depend on. |
+| A host dependency is dropped | It names an undefined host or host group. Naemon prints an error here and still accepts the configuration. |
+| A service dependency matches no pair of services | Its lists are valid and leave nothing. |
 | A service applies to no host | Its host group is empty, or `!` removed every host. |
+| An extinfo has no effect | It names no host, or its lists leave none. |
+| A member of a service group does nothing | `host,!description`. |
 | An escalation has no range | Neither `first_notification` nor `last_notification`. |
 | An escalation covers no notification | `first_notification` is after `last_notification`. |
 | A host has no `check_command` | It is never checked. |
@@ -77,11 +103,16 @@ warns.
 | A value is not a plain number | Something follows the digits, or there are no digits: `3abc`, `3 4`, `often`. The warning names the number Naemon reads, and checkd uses that number. |
 | A time is not written HH:MM-HH:MM | Minutes above 59, a single digit for the minutes, seconds, extra zeros. The warning names the times Naemon reads, and checkd uses those. |
 | `!` entries have no effect | See the section above. |
+| A named host stays | See the section above. |
+| A host escalation is made more than once | See the section above. |
 | A description is not used | See the section above. |
+| `register 0` does not switch an extinfo off | See the section above. |
 
-Naemon warns about a duplicate service, a host without contacts, a contact
-without a notification period and a deprecated main setting. checkd warns
-about those too.
+Naemon warns about a service defined twice in the same way, a host without
+contacts, a contact without a notification period, a deprecated main
+setting and an extinfo definition. checkd warns about those too. For a
+service defined once by host name and once by host group Naemon is silent,
+and checkd warns.
 
 Naemon warns when `illegal_macro_output_chars` is not set. checkd does not.
 
@@ -98,18 +129,20 @@ checkd gives an error instead.
 | `check_interval 1e400` | Stores `inf` | The same as `inf`. | `bad-number-too-large-for-interval` |
 | `max_check_attempts 99999999999` | Stores 1215752191 | The stored number is not the one written. | `bad-number-too-large` |
 | `first_notification -1` | Stores -1 | Notifications are counted from 1. What -1 does later in Naemon was not looked at. | `bad-escalation-negative-notification` |
-| `hostextinfo`, `serviceextinfo` | Applies them, with a "deprecated" warning | Not written yet. See "Not done yet". | `bad-extinfo` |
 
 Each of these is a choice that can be reversed. A config that relies on
 one of them loads in Naemon and not in checkd.
 
 ## Other differences, not measured
 
-No corpus case shows what Naemon does in these three places, so each is a
+No corpus case shows what Naemon does in these places, so each is a
 statement about checkd only.
 
 - **`cfg_dir`.** The files of a directory are read in sorted order, so the
-  result does not depend on the file system.
+  result does not depend on the file system. The order matters where two
+  files define the same service, or two extinfo definitions set the same
+  value. The twelve published trees came out the same as Naemon's. That
+  shows the order did not change the result there, not that it never does.
 - **Bytes that are not UTF-8** are replaced, with a warning.
 - **Regular expressions** use the Rust `regex` crate, not the C library.
   The two agree on the simple patterns in the corpus. They differ in less
@@ -121,8 +154,6 @@ statement about checkd only.
   supported yet".
 - `broker_module` is ignored with a warning. checkd will not load event
   broker modules.
-- `hostextinfo` and `serviceextinfo` definitions are an error: "unknown
-  object type". Naemon 1.5.2 still applies them.
 - Main config settings are read and checked for form. Nothing uses most
   of them yet.
 - Timeperiods are stored as written. Nothing works out yet whether a given

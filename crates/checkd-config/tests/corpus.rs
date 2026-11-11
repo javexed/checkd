@@ -168,9 +168,8 @@ fn difference(ours: &[Object], theirs: &[Object]) -> Vec<String> {
 /// Cases that the reference accepts and checkd refuses on purpose, each
 /// with a part of the error checkd has to give. The loader's README says
 /// why for each.
-const REFUSED_ON_PURPOSE: [(&str, &str); 7] = [
+const REFUSED_ON_PURPOSE: [(&str, &str); 6] = [
     ("bad-escalation-negative-notification", "is below zero"),
-    ("bad-extinfo", "unknown object type 'hostextinfo'"),
     ("bad-number-hex", "is not a number written in digits"),
     ("bad-number-inf", "is not a number written in digits"),
     ("bad-number-nan", "is not a number written in digits"),
@@ -244,7 +243,11 @@ fn check_case(case: &Path) -> Vec<String> {
 
 #[test]
 fn corpus_agrees_with_the_reference() {
-    let corpus = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus");
+    // `real/run` points this at the real config trees instead.
+    let corpus = match std::env::var_os("CHECKD_CORPUS_DIR") {
+        Some(dir) => PathBuf::from(dir),
+        None => Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus"),
+    };
     let only = std::env::var("CHECKD_CASE").ok();
     let mut cases: Vec<PathBuf> = fs::read_dir(&corpus)
         .expect("corpus directory")
@@ -288,7 +291,7 @@ fn corpus_agrees_with_the_reference() {
 /// part that has no effect, checkd accepts it too and says so. Each row is
 /// a case, the line of `objects.cfg` the warning points at (0 for a warning
 /// about the config as a whole), and a part of its text.
-const WARNINGS: [(&str, u32, &str); 28] = [
+const WARNINGS: &[(&str, u32, &str)] = &[
     ("bad-dependency-no-criteria", 15, "names no failure states"),
     ("bad-duplicate-service", 16, "is also defined at"),
     (
@@ -357,13 +360,109 @@ const WARNINGS: [(&str, u32, &str); 28] = [
     ),
     ("setting-twice", 8, "'alias' is given twice"),
     ("setting-twice", 25, "'check_interval' is given twice"),
+    (
+        "define-line-forms",
+        39,
+        "after the opening brace is not read",
+    ),
+    (
+        "duplicate-service-first-host",
+        62,
+        "that earlier definition is used",
+    ),
+    (
+        "duplicate-service-first-host",
+        62,
+        "this later definition is used",
+    ),
+    (
+        "duplicate-service-hostgroups",
+        93,
+        "the lines are added together",
+    ),
+    (
+        "extinfo-targets",
+        144,
+        "gives no host_name and no hostgroup_name",
+    ),
+    ("extinfo-targets", 153, "gives no service_description"),
+    ("extinfo-templates", 82, "does not switch a hostextinfo off"),
+    (
+        "extinfo-templates",
+        102,
+        "does not switch a serviceextinfo off",
+    ),
+    (
+        "hostdependency-dropped",
+        14,
+        "host 'nosuch' is not defined. Naemon drops it",
+    ),
+    (
+        "hostdependency-dropped",
+        33,
+        "hostgroup 'nosuch' is not defined. Naemon drops it",
+    ),
+    (
+        "hostdependency-one-sided",
+        16,
+        "lacks a host or a dependent host",
+    ),
+    (
+        "hostescalation-repeated-hosts",
+        21,
+        "bring up 'alpha' 2 times",
+    ),
+    (
+        "hostescalation-repeated-hosts",
+        58,
+        "'alpha' 3 times, 'beta' 2 times",
+    ),
+    ("lists-leave-nothing", 32, "matches no pair of services"),
+    (
+        "lists-leave-nothing",
+        127,
+        "adds nothing and takes nothing out",
+    ),
+    (
+        "lists-leave-nothing",
+        163,
+        "this serviceextinfo applies to no host",
+    ),
+    ("named-hosts-stay", 73, "dependent_host_name names 'alpha'"),
+    ("named-hosts-stay", 81, "host_name names 'alpha'"),
+    (
+        "regexp-hostdependency-dropped",
+        12,
+        "'*' does not stand for every name",
+    ),
+    (
+        "servicedependency-sides",
+        152,
+        "names no service to depend on",
+    ),
+    ("settings-without-effect", 9, "has no effect"),
+    (
+        "templates-nameless",
+        5,
+        "host template 'web-defaults' has no host_name",
+    ),
+    (
+        "templates-nameless",
+        20,
+        "service template 'no-hosts' has no service_description",
+    ),
+    (
+        "templates-nameless",
+        60,
+        "contact template 'pager-defaults' has no contact_name",
+    ),
 ];
 
 #[test]
 fn silent_cases_get_a_warning() {
     let corpus = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus");
     let mut missing = Vec::new();
-    for (case, line, text) in WARNINGS {
+    for &(case, line, text) in WARNINGS {
         let config = corpus.join(case).join("config");
         let options = Options {
             path_map: PathMap(vec![(PathBuf::from("/case"), config.clone())]),

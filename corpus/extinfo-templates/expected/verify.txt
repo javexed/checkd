@@ -1,0 +1,43 @@
+Reading configuration data...
+   Read main config file okay...
+WARNING: Extinfo objects are deprecated and will be removed in future versions
+WARNING: Extinfo objects are deprecated and will be removed in future versions
+WARNING: Extinfo objects are deprecated and will be removed in future versions
+WARNING: Extinfo objects are deprecated and will be removed in future versions
+WARNING: Extinfo objects are deprecated and will be removed in future versions
+WARNING: Extinfo objects are deprecated and will be removed in future versions
+WARNING: Extinfo objects are deprecated and will be removed in future versions
+WARNING: Extinfo objects are deprecated and will be removed in future versions
+WARNING: Extinfo objects are deprecated and will be removed in future versions
+   Read object config files okay...
+
+Running pre-flight check on configuration data...
+
+Checking objects...
+	Checked 3 services.
+	Checked 3 hosts.
+	Checked 1 contacts.
+	Checked 3 host groups.
+	Checked 0 service groups.
+	Checked 0 contact groups.
+	Checked 2 commands.
+	Checked 1 time periods.
+	Checked 0 host escalations.
+	Checked 0 service escalations.
+Checking for circular paths...
+	Checked 3 hosts
+	Checked 0 service dependencies
+	Checked 0 host dependencies
+	Checked 1 timeperiods
+Checking global event handlers...
+Checking global notification handlers...
+Checking obsessive compulsive processor commands...
+Checking misc settings...
+Warning: Nothing specified for illegal_macro_output_chars variable!
+
+Total Warnings: 1
+Total Errors:   0
+
+Things look okay - No serious problems were detected during the pre-flight check
+Object precache file created:
+/tmp/oracle/objects.precache

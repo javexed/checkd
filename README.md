@@ -4,12 +4,16 @@ A monitoring engine in Rust that aims to replace the Naemon / Nagios Core
 daemon while staying compatible with the Nagios ecosystem: plugins, object
 config, external commands, Livestatus and Thruk.
 
-**Status:** the config loader reads an object config. On 127 of the 134
+**Status:** the config loader reads an object config. On 266 of the 272
 cases in the corpus it agrees with Naemon Core 1.5.2: the same accept or
-refuse, and the same objects. The other seven it refuses on purpose where
-Naemon accepts. Nothing runs checks yet. The phase 1 gate is not passed: it
-calls for real config trees as well as written ones, and no real one has
-been tried.
+refuse, and the same objects. The other six it refuses on purpose where
+Naemon accepts. On twelve config trees that other people published it
+gives the same result as Naemon too, after the loader was changed to fit
+them: see [real/README.md](real/README.md). Nothing runs checks yet.
+
+The phase 1 gate has not been judged. It calls for real config trees as
+well as written ones. Twelve small published trees are a start, and no
+tree from a running installation has been tried.
 
 ## Try it
 
@@ -47,6 +51,8 @@ Phases, each with a gate that must pass before the next starts:
 - `crates/checkd`: the daemon binary.
 - `oracle/`: the Naemon test oracle, see [oracle/README.md](oracle/README.md).
 - `corpus/`: config cases, each with the oracle's expected output.
+- `real/`: the harness for published config trees. The trees themselves
+  are downloaded and stay out of git.
 
 ## Licence
 

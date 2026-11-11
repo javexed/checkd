@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""Writes stand-ins for what a real config tree refers to and does not define.
+
+    real/stub <case>...
+
+Many published trees are parts of a setup: the hosts come from a template
+engine, or the commands from a plugin package. Naemon refuses such a tree,
+and then there are no objects to compare. This runs the oracle again and
+again, reads which host, template, command, group, contact or timeperiod it
+misses, and adds an empty one to real/stubs/<case>.cfg until Naemon is
+content or reports something a stand-in cannot mend.
+
+The stubs file holds names taken from the tree, so it stays out of git like
+the trees themselves. Names are data: one with a character outside a small
+safe set is not written and ends the run.
+"""
+import os
+import re
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+SAFE = re.compile(r"^[A-Za-z0-9_.@:/+ -]+$")
+ROUNDS = 200
+
+HEAD = """# Written by real/stub. Stand-ins for what the tree does not define.
+define command {
+    command_name    checkd-stub
+    command_line    /bin/true
+}
+define timeperiod {
+    timeperiod_name checkd-stub
+    alias           checkd-stub
+    monday          00:00-24:00
+}
+define contact {
+    contact_name                    checkd-stub
+    host_notification_commands      checkd-stub
+    service_notification_commands   checkd-stub
+    host_notification_period        checkd-stub
+    service_notification_period     checkd-stub
+}
+"""
+
+CHECKABLE = """    check_command           checkd-stub
+    max_check_attempts      3
+    check_interval          5
+    retry_interval          1
+    check_period            checkd-stub
+    notification_period     checkd-stub
+    notification_interval   60
+    contacts                checkd-stub
+"""
+
+# What Naemon 1.5.2 says, and the kind of stand-in that answers it.
+PATTERNS = [
+    (r"Could not find any host matching '([^']*)'", "host"),
+    (r"Could not find any hostgroup matching '([^']*)'", "hostgroup"),
+    (r"Could not find any contactgroup matching '([^']*)'", "contactgroup"),
+    (r"Could not find any servicegroup matching '([^']*)'", "servicegroup"),
+    (r"Template '([^']*)' specified in host definition could not be found", "host-template"),
+    (r"Template '([^']*)' specified in service definition could not be found", "service-template"),
+    (r"Template '([^']*)' specified in contact definition could not be found", "contact-template"),
+    (r"[Cc]ommand '([^'!]*)[^']*' specified (?:in|for) .* (?:not defined anywhere|could not be found)", "command"),
+    (r"[Cc]ontact '([^']*)' specified in .* is not defined anywhere", "contact"),
+    (r"[Cc]ontact group '([^']*)' specified in .* is not defined anywhere", "contactgroup"),
+    (r"period '([^']*)' specified (?:in|for) .* is not defined anywhere", "timeperiod"),
+    (r"[Hh]ost '([^']*)' specified in .* (?:is )?not defined anywhere", "host"),
+    (r"'([^']*)' is not a valid parent for host", "host"),
+    (r"Could not find member group '([^']*)' specified in hostgroup", "hostgroup"),
+    (r"Could not find member group '([^']*)' specified in contactgroup", "contactgroup"),
+    (r"Could not find member group '([^']*)' specified in servicegroup", "servicegroup"),
+    (r"Failed to locate \w*period '([^']*)' for", "timeperiod"),
+    (r"Failed to locate \w*command '([^'!]*)[^']*' for", "command"),
+    (r"Failed to locate contact '([^']*)' for", "contact"),
+    (r"Failed to locate contactgroup '([^']*)' for", "contactgroup"),
+    (r"Contactgroup '([^']*)' is not defined anywhere", "contactgroup"),
+    (r"Contact '([^']*)' is not defined anywhere", "contact"),
+    (r"Hostgroup '([^']*)' is not defined anywhere", "hostgroup"),
+    (r"Servicegroup '([^']*)' is not defined anywhere", "servicegroup"),
+]
+
+# A tree with no hosts at all cannot fill a group of `*`. One host mends it.
+NO_HOSTS = "Could not expand members specified in hostgroup"
+
+
+def stand_in(kind, name):
+    if kind == "host":
+        return f"define host {{\n    host_name   {name}\n    address     192.0.2.1\n{CHECKABLE}}}\n"
+    if kind == "host-template":
+        return f"define host {{\n    name        {name}\n    register    0\n{CHECKABLE}}}\n"
+    if kind == "service-template":
+        return f"define service {{\n    name        {name}\n    register    0\n{CHECKABLE}}}\n"
+    if kind == "contact-template":
+        return (
+            f"define contact {{\n    name        {name}\n    register    0\n"
+            "    host_notification_commands      checkd-stub\n"
+            "    service_notification_commands   checkd-stub\n"
+            "    host_notification_period        checkd-stub\n"
+            "    service_notification_period     checkd-stub\n}\n"
+        )
+    if kind == "contact":
+        return (
+            f"define contact {{\n    contact_name    {name}\n"
+            "    host_notification_commands      checkd-stub\n"
+            "    service_notification_commands   checkd-stub\n"
+            "    host_notification_period        checkd-stub\n"
+            "    service_notification_period     checkd-stub\n}\n"
+        )
+    if kind == "command":
+        return f"define command {{\n    command_name    {name}\n    command_line    /bin/true\n}}\n"
+    if kind == "timeperiod":
+        return f"define timeperiod {{\n    timeperiod_name {name}\n    alias           {name}\n    monday          00:00-24:00\n}}\n"
+    return f"define {kind} {{\n    {kind}_name    {name}\n    alias   {name}\n}}\n"
+
+
+def run(case):
+    path = os.path.join(HERE, "stubs", case + ".cfg")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    made = []
+    verify = os.path.join(HERE, "work", case, "expected")
+    for _ in range(ROUNDS):
+        with open(path, "w") as out:
+            out.write(HEAD + "".join(stand_in(kind, name) for kind, name in made))
+        subprocess.run(
+            [os.path.join(HERE, "run"), case],
+            env=dict(os.environ, REAL_ORACLE_ONLY="1"),
+            stdout=subprocess.DEVNULL,
+            check=True,
+        )
+        with open(os.path.join(verify, "verify.exit")) as f:
+            if f.read().strip() == "0":
+                print(f"{case}: accepted with {len(made)} stand-ins")
+                return
+        with open(os.path.join(verify, "verify.txt"), errors="replace") as f:
+            text = f.read()
+        new = []
+        for line in text.splitlines():
+            if not line.startswith("Error"):
+                continue
+            for pattern, kind in PATTERNS:
+                found = re.search(pattern, line)
+                if found and (kind, found.group(1)) not in made + new:
+                    new.append((kind, found.group(1)))
+                    break
+        if not new and NO_HOSTS in text and ("host", "checkd-stub") not in made:
+            new.append(("host", "checkd-stub"))
+        if not new:
+            print(f"{case}: still refused after {len(made)} stand-ins; see real/work/{case}/expected/verify.txt")
+            return
+        for kind, name in new:
+            if not SAFE.match(name):
+                print(f"{case}: a {kind} name has characters that are not written out; stopped")
+                return
+        made += new
+    print(f"{case}: gave up after {ROUNDS} rounds")
+
+
+for case in sys.argv[1:]:
+    run(case)

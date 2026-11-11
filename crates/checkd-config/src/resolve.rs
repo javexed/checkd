@@ -3,7 +3,7 @@
 use std::collections::{BTreeSet, HashMap};
 
 use crate::diag::{Diagnostics, Loc};
-use crate::raw::{ObjType, RawObject};
+use crate::raw::{ObjType, RawObject, TIMEPERIOD_FIXED};
 use crate::schema;
 use crate::values::split_list;
 
@@ -14,6 +14,10 @@ use crate::values::split_list;
 pub struct Resolved {
     pub attrs: Vec<(String, String)>,
     pub loc: Loc,
+    /// The definition's own `name`, by which others `use` it.
+    pub template_name: Option<String>,
+    /// False when the definition itself says `register 0`.
+    pub registered: bool,
 }
 
 impl Resolved {
@@ -131,6 +135,37 @@ impl Resolver<'_> {
         }
     }
 
+    /// The day and date lines of a timeperiod, in the order the reference
+    /// writes them: its own in the order written, then those of each
+    /// template with that template's order turned round. A template's order
+    /// is worked out the same way, so two levels of templates turn the
+    /// order round twice.
+    fn day_lines(&self, index: usize, path: &mut Vec<usize>) -> Vec<String> {
+        if path.contains(&index) {
+            return Vec::new();
+        }
+        path.push(index);
+        let mut order: Vec<String> = Vec::new();
+        for attr in &self.objects[index].attrs {
+            let key = attr.key.as_str();
+            if !TIMEPERIOD_FIXED.contains(&key)
+                && !key.starts_with('_')
+                && !order.iter().any(|k| k == key)
+            {
+                order.push(attr.key.clone());
+            }
+        }
+        for template in self.templates(index) {
+            for key in self.day_lines(template, path).into_iter().rev() {
+                if !order.contains(&key) {
+                    order.push(key);
+                }
+            }
+        }
+        path.pop();
+        order
+    }
+
     fn resolve(&self, index: usize) -> Resolved {
         let object = &self.objects[index];
         let mut attrs: Vec<(String, String)> = Vec::new();
@@ -154,6 +189,16 @@ impl Resolver<'_> {
                 }
             }
         }
+        if self.kind == ObjType::Timeperiod {
+            // Day and date lines come in the order the reference writes
+            // them. Everything else keeps its place.
+            let order = self.day_lines(index, &mut Vec::new());
+            let (mut days, mut rest): (Vec<_>, Vec<_>) =
+                attrs.into_iter().partition(|(key, _)| order.contains(key));
+            days.sort_by_key(|(key, _)| order.iter().position(|k| k == key));
+            rest.append(&mut days);
+            attrs = rest;
+        }
         // A service template can force its check command on the services
         // that use it by writing "!" in front of it.
         if self.kind == ObjType::Service {
@@ -172,6 +217,8 @@ impl Resolver<'_> {
         Resolved {
             attrs,
             loc: object.loc.clone(),
+            template_name: object.get("name").map(String::from),
+            registered: object.get("register") != Some("0"),
         }
     }
 }
@@ -230,7 +277,9 @@ pub fn resolve(kind: ObjType, objects: &[RawObject], diags: &mut Diagnostics) ->
     }
 
     (0..objects.len())
-        .filter(|&index| objects[index].get("register") != Some("0"))
+        // The reference applies an extended-info definition even when it
+        // says `register 0`, so those are kept here too.
+        .filter(|&index| kind.is_extinfo() || objects[index].get("register") != Some("0"))
         .map(|index| resolver.resolve(index))
         .collect()
 }
