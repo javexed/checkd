@@ -157,11 +157,36 @@ turns CRITICAL: that one difference is reported, and no other.
 The gate's "beside production" has no production installation here. The
 reference stands in for it.
 
+## More tables and commands
+
+`runs/scenarios/livestatus-commands` sends the reference about 60
+commands written for this project: switches of hosts and services and of
+their groups, the global switches, changes of intervals, attempts and
+custom variables, comments deleted, downtimes of groups and of a host's
+services. At three moments it asks, with queries also written for this
+project, for the switches and `modified_attributes_list`, the comments
+and downtimes, the tables `hostsbygroup`, `servicesbygroup` and
+`servicesbyhostgroup`, and `statehist`. All 33 answers agree, and so do
+the log lines and the errors of bad commands. What the reference does:
+
+- a command marks an attribute modified only when it changes its value;
+  the mark stays when a later one sets it back;
+- `CHANGE_CUSTOM_*_VAR` changes a variable the object has, and marks the
+  object modified even when it has none of that name;
+- `DEL_ALL_*_COMMENTS` deletes the comments of downtimes too;
+- a notification held back by a command says so: "temporarily disabled
+  ... by an external command";
+- `statehist` is worked out for the window of the query's `time` filters;
+  before the first line about an object it counts as in the state that
+  line gives; a span ends at each change of state, soft ones included,
+  and at the start and end of a downtime.
+
+These queries are the project's own, so they and the reference's answers
+are in git, unlike Thruk's.
+
 ## Not done
 
-- The tables Thruk did not use on these pages: `hostsbygroup`,
-  `servicesbygroup`, `servicesbyhostgroup`, `statehist`, and the columns
-  of the 12 tables it did not ask for.
+- The columns that neither Thruk nor these queries ask for.
 - `AuthUser` (all is shown to everyone), `Wait` headers, `Localtime`.
 - Livestatus over TCP.
 - The external commands Thruk sends that are not about acknowledgements,

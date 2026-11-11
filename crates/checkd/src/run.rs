@@ -75,6 +75,11 @@ pub struct RunArgs {
     pub shadow: Option<PathBuf>,
     /// Failover, with a PostgreSQL store.
     pub failover: Option<Failover>,
+    /// Where the HTTP API listens, if anywhere.
+    pub http: Option<String>,
+    /// Where performance data are sent straight to.
+    pub perfdata_graphite: Option<String>,
+    pub perfdata_influx: Option<String>,
 }
 
 /// The options of failover. See `failover.rs`.
@@ -351,6 +356,22 @@ async fn serve(
     let mut shadow_tick = tokio::time::interval(crate::shadow::EVERY);
     let (shadow_done, mut shadow_answers) = mpsc::unbounded_channel();
     let mut lost = false;
+    let mut http = match &args.http {
+        Some(addr) => Some(crate::http::listen(addr).await?),
+        None => None,
+    };
+    let mut counts = Counts::default();
+    // Performance data straight to a metrics store.
+    let (notes_out, mut notes) = mpsc::unbounded_channel::<String>();
+    let mut targets = Vec::new();
+    if let Some(addr) = &args.perfdata_graphite {
+        targets.push(crate::perfexport::Target::graphite(addr));
+    }
+    if let Some(url) = &args.perfdata_influx {
+        targets.push(crate::perfexport::Target::influx(url)?);
+    }
+    let samples = (!targets.is_empty()).then(|| crate::perfexport::start(targets, notes_out));
+    engine.export_perfdata(samples.is_some());
     #[cfg_attr(not(feature = "postgres"), allow(unused_mut))]
     let mut held_notifications: Option<bool> = None;
     // The process group of every command that is running.
@@ -401,6 +422,11 @@ async fn serve(
                 }
                 Effect::Run(job) => jobs.push(job),
                 Effect::Perfdata { host, line } => perfdata.write(host, &line),
+                Effect::Sample { host, service, time, perfdata } => {
+                    if let Some(samples) = &samples {
+                        let _ = samples.send(crate::perfexport::Sample { host, service, time, perfdata });
+                    }
+                }
             }
         }
         // What happened is on record before anything it asks for is run.
@@ -417,6 +443,9 @@ async fn serve(
             }
         }
         for job in jobs {
+            if job.kind == JobKind::Notification {
+                counts.notifications += 1;
+            }
             let id = job.id;
             if otel::BUILT_IN {
                 let latency = match job.kind {
@@ -453,7 +482,20 @@ async fn serve(
                 engine.job_done(now(), id, result, &mut effects);
                 telemetry.job_done(id, &outcome, read);
             }
-            Some(line) = commands.recv() => engine.command(&line, now(), &mut effects),
+            Some(note) = notes.recv() => log.line(&note),
+            Some(line) = commands.recv() => {
+                counts.commands += 1;
+                engine.command(&line, now(), &mut effects);
+            }
+            Some(ask) = async { http.as_mut()?.recv().await }, if http.is_some() => {
+                let reply = answer_http(engine, &ask, &history, &program, &counts, running.len(), store_failing);
+                if ask.method == "POST" && ask.path == "/api/v1/command" && ask.authorized {
+                    counts.commands += 1;
+                    let line = format!("[{}] {}", now().div_euclid(1000), ask.body.trim());
+                    engine.command(&line, now(), &mut effects);
+                }
+                let _ = ask.reply.send(reply);
+            }
             _ = reaper.tick(), if spool.is_some() => {
                 if let Some(dir) = &spool {
                     read_spool(engine, dir, &mut effects);
@@ -480,10 +522,12 @@ async fn serve(
                         now: now(),
                         log: &history,
                         program: &program,
+                        window: None,
                     };
                     checkd_livestatus::handle(&source, &ask.text)
                 };
                 if let Some(command) = &response.command {
+                    counts.commands += 1;
                     engine.command(command, now(), &mut effects);
                 }
                 let _ = ask.reply.send(response);
@@ -579,6 +623,120 @@ impl crate::failover::futures_like::Stop for Signals<'_> {
             }
         })
     }
+}
+
+/// What the driver counts, for `/metrics`.
+#[derive(Default)]
+struct Counts {
+    commands: u64,
+    notifications: u64,
+}
+
+/// Answers a request of the HTTP API.
+fn answer_http(
+    engine: &Engine,
+    ask: &crate::http::Ask,
+    history: &[(i64, String)],
+    program: &checkd_livestatus::Program,
+    counts: &Counts,
+    running: usize,
+    store_failing: bool,
+) -> crate::http::Reply {
+    use crate::http::Reply;
+    let source = checkd_livestatus::Source {
+        engine,
+        now: now(),
+        log: history,
+        program,
+        window: None,
+    };
+    match (ask.method.as_str(), ask.path.as_str()) {
+        ("GET", "/metrics") => Reply::text(200, metrics(engine, program, counts, running, store_failing)),
+        ("POST", "/api/v1/command") => {
+            if ask.authorized {
+                Reply::json(200, "{\"accepted\":true}\n".to_string())
+            } else {
+                Reply::text(403, "commands need a token: set CHECKD_HTTP_TOKEN\n")
+            }
+        }
+        ("GET", path) if path.starts_with("/api/v1/") => {
+            let table = &path["/api/v1/".len()..];
+            if !checkd_livestatus::tables::TABLES.contains(&table) {
+                return Reply::text(404, format!("no table '{table}'\n"));
+            }
+            let request = crate::http::livestatus_request(table, &ask.query);
+            let response = checkd_livestatus::handle(&source, &request);
+            let text = String::from_utf8_lossy(&response.bytes).into_owned();
+            match crate::http::as_objects(&text) {
+                Some(json) => Reply::json(200, json),
+                None => Reply::text(400, text),
+            }
+        }
+        (_, "/metrics") | (_, "/api/v1/command") => Reply::text(405, "method not allowed\n"),
+        _ => Reply::text(404, "not found\n"),
+    }
+}
+
+/// The engine's health, in Prometheus' text format.
+fn metrics(
+    engine: &Engine,
+    program: &checkd_livestatus::Program,
+    counts: &Counts,
+    running: usize,
+    store_failing: bool,
+) -> String {
+    let (host_checks, service_checks) = engine.checks_run();
+    let mut out = String::new();
+    let mut metric = |name: &str, kind: &str, help: &str, lines: Vec<(String, f64)>| {
+        out.push_str(&format!("# HELP {name} {help}\n# TYPE {name} {kind}\n"));
+        for (labels, value) in lines {
+            out.push_str(&format!("{name}{labels} {value}\n"));
+        }
+    };
+    metric(
+        "checkd_checks_total",
+        "counter",
+        "Checks started.",
+        vec![("{kind=\"host\"}".into(), host_checks as f64), ("{kind=\"service\"}".into(), service_checks as f64)],
+    );
+    metric("checkd_commands_running", "gauge", "Commands running now.", vec![(String::new(), running as f64)]);
+    metric(
+        "checkd_checks_waiting",
+        "gauge",
+        "Checks planned and not yet started.",
+        vec![(String::new(), engine.planned_checks() as f64)],
+    );
+    let items: Vec<_> = engine.all_objects().into_iter().map(|o| engine.item(o)).filter(|i| i.checked).collect();
+    let latency = if items.is_empty() { 0.0 } else { items.iter().map(|i| i.latency).sum::<f64>() / items.len() as f64 };
+    metric(
+        "checkd_check_latency_seconds",
+        "gauge",
+        "The average latency of the last check of each host and service.",
+        vec![(String::new(), latency)],
+    );
+    metric("checkd_notifications_total", "counter", "Notification commands started.", vec![(String::new(), counts.notifications as f64)]);
+    metric("checkd_external_commands_total", "counter", "External commands taken.", vec![(String::new(), counts.commands as f64)]);
+    metric(
+        "checkd_livestatus_requests_total",
+        "counter",
+        "Livestatus requests answered.",
+        vec![(String::new(), program.requests as f64)],
+    );
+    let mut states: Vec<(String, f64)> = Vec::new();
+    for (kind, names) in [("host", &checkd_core::engine::HOST_STATES[..]), ("service", &checkd_core::engine::SERVICE_STATES[..])] {
+        for (state, name) in names.iter().enumerate() {
+            let n = engine
+                .all_objects()
+                .into_iter()
+                .filter(|o| matches!(o, checkd_core::engine::Obj::Host(_)) == (kind == "host"))
+                .filter(|o| engine.item(*o).checked && engine.item(*o).state as usize == state)
+                .count();
+            states.push((format!("{{kind=\"{kind}\",state=\"{name}\"}}"), n as f64));
+        }
+    }
+    metric("checkd_objects", "gauge", "Hosts and services by their current state.", states);
+    metric("checkd_store_failing", "gauge", "1 while the store cannot be written.", vec![(String::new(), store_failing as u8 as f64)]);
+    out
 }
 
 /// The performance data files.

@@ -198,6 +198,8 @@ pub enum Timer {
 }
 
 const REASON_OFF: &str = "Notifications are disabled for this object by its configuration.";
+const REASON_OFF_BY_COMMAND: &str =
+    "Notifications are temporarily disabled for this object by an external command.";
 const REASON_DOWNTIME: &str = "Notification blocked for object currently in a scheduled downtime.";
 const REASON_SOFT: &str = "Notifications blocked for object in a soft state.";
 const REASON_ACKED: &str = "Notification for problem blocked because it has already been acknowledged.";
@@ -357,6 +359,9 @@ impl Engine {
             Obj::Service(_) => &SERVICE_LETTERS,
         };
         if !cfg.notifications_enabled {
+            if item.modified & crate::engine::MOD_NOTIFICATIONS != 0 {
+                return Err(REASON_OFF_BY_COMMAND);
+            }
             return Err(REASON_OFF);
         }
         match kind {

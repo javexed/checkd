@@ -8,7 +8,9 @@ mod otel;
 mod otel;
 #[cfg(feature = "postgres")]
 mod failover;
+mod http;
 mod livestatus;
+mod perfexport;
 mod postgres;
 mod run;
 mod shadow;
@@ -86,6 +88,14 @@ options of run:
   --isolated keep|hold  when neither the database nor the other node
                         answers: go on notifying (keep), or hold
                         notifications back (hold)
+  --http <addr>         answer the HTTP API and /metrics at this address;
+                        commands need the token in CHECKD_HTTP_TOKEN
+  --perfdata-graphite <host:port>
+                        send the performance data of results to Graphite
+  --perfdata-influx <url>
+                        send them to InfluxDB, as line protocol posted to
+                        this http:// URL; CHECKD_INFLUX_TOKEN is sent when
+                        set
   --otlp-endpoint <url> send metrics and traces about checkd itself to
                         the OpenTelemetry collector at this http:// URL,
                         as OTLP over HTTP; without it the URL in
@@ -121,6 +131,8 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
     let (mut log_file, mut seconds, mut first_checks, mut start_at) = (None, None, None, None);
     let mut otlp_endpoint = None;
     let (mut store, mut import, mut livestatus, mut shadow) = (None, None, None, None);
+    let mut http = None;
+    let (mut perfdata_graphite, mut perfdata_influx) = (None, None);
     let mut failover = run::Failover {
         lease: 15.0,
         peer_listen: "0.0.0.0:6558".into(),
@@ -136,6 +148,9 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
             "--import-retention" => import = Some(PathBuf::from(value("a file name")?)),
             "--livestatus" => livestatus = Some(PathBuf::from(value("a socket path")?)),
             "--shadow" => shadow = Some(PathBuf::from(value("a socket path")?)),
+            "--http" => http = Some(value("an address")?),
+            "--perfdata-graphite" => perfdata_graphite = Some(value("host:port")?),
+            "--perfdata-influx" => perfdata_influx = Some(value("a URL")?),
             "--failover" => failover.node = value("the name of this node")?,
             "--lease" => {
                 let text = value("a number of seconds")?;
@@ -197,6 +212,9 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
         import,
         livestatus,
         shadow,
+        http,
+        perfdata_graphite,
+        perfdata_influx,
         failover: (!failover.node.is_empty()).then(|| {
             if failover.advertise.is_empty() {
                 failover.advertise = failover.node.clone();

@@ -1,0 +1,111 @@
+[1794433173] Naemon 1.5.2 starting... (PID=23)
+[1794433173] Local time is Wed Nov 11 21:39:33 UTC 2026
+[1794433173] LOG VERSION: 2.0
+[1794433173] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794433173] nerd: Channel hostchecks registered successfully
+[1794433173] nerd: Channel servicechecks registered successfully
+[1794433173] nerd: Fully initialized and ready to rock!
+[1794433173] Successfully launched command file worker with pid 30
+[1794433173] Reading all config object data
+[1794433173] Loading neb modules
+[1794433173] livestatus: Naemon Livestatus 1.5.1.source, Socket: '/tmp/oracle/live'
+[1794433173] livestatus: Finished initialization. Further log messages go to /tmp/oracle/livestatus.log
+[1794433173] Event broker module '/usr/lib/naemon/naemon-livestatus/livestatus.so' initialized successfully.
+[1794433173] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794433173] INITIAL HOST STATE: app;UP;HARD;1;
+[1794433173] INITIAL HOST STATE: db;UP;HARD;1;
+[1794433173] INITIAL HOST STATE: web;UP;HARD;1;
+[1794433173] INITIAL SERVICE STATE: app;api;OK;HARD;1;(null)
+[1794433173] INITIAL SERVICE STATE: db;query;OK;HARD;1;(null)
+[1794433173] INITIAL SERVICE STATE: web;disk;OK;HARD;1;(null)
+[1794433173] INITIAL SERVICE STATE: web;http;OK;HARD;1;(null)
+[1794433173] TIMEPERIOD TRANSITION: lsalways;-1;1
+[1794433173] Naemon successfully initialized (PID=23)
+[1794433173] SERVICE ALERT: app;api;UNKNOWN;SOFT;1;app-api call 1 gives 3
+[1794433173] SERVICE ALERT: web;disk;WARNING;SOFT;1;web-disk is 1 at second 0
+[1794433174] SERVICE ALERT: web;http;WARNING;SOFT;1;web-http call 2 gives 1
+[1794433174] SERVICE ALERT: app;api;UNKNOWN;HARD;2;app-api call 2 gives 3
+[1794433174] SERVICE CONTACT NOTIFICATION SUPPRESSED: ann;app;api;Notifications are disabled for this object by its configuration.
+[1794433174] SERVICE NOTIFICATION SUPPRESSED: app;api;No notification sent, because no contacts were found for notification purposes.
+[1794433174] SERVICE ALERT: web;disk;WARNING;HARD;2;web-disk is 1 at second 1
+[1794433174] SERVICE NOTIFICATION SUPPRESSED: web;disk;No notification sent, because no contacts were found for notification purposes.
+[1794433175] SERVICE ALERT: web;http;CRITICAL;HARD;2;web-http call 3 gives 2
+[1794433175] SERVICE NOTIFICATION SUPPRESSED: web;http;No notification sent, because no contacts were found for notification purposes.
+[1794433176] SERVICE ALERT: web;http;OK;HARD;2;web-http call 4 gives 0
+[1794433176] SERVICE NOTIFICATION SUPPRESSED: web;http;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794433177] EXTERNAL COMMAND: DISABLE_SVC_EVENT_HANDLER;web;http
+[1794433177] EXTERNAL COMMAND: DISABLE_HOST_EVENT_HANDLER;db
+[1794433177] EXTERNAL COMMAND: DISABLE_SVC_FLAP_DETECTION;web;disk
+[1794433177] EXTERNAL COMMAND: DISABLE_HOST_FLAP_DETECTION;app
+[1794433177] EXTERNAL COMMAND: DISABLE_PASSIVE_SVC_CHECKS;db;query
+[1794433177] EXTERNAL COMMAND: DISABLE_PASSIVE_HOST_CHECKS;web
+[1794433177] EXTERNAL COMMAND: DISABLE_HOST_SVC_NOTIFICATIONS;app
+[1794433177] EXTERNAL COMMAND: DISABLE_HOST_SVC_CHECKS;db
+[1794433177] EXTERNAL COMMAND: CHANGE_NORMAL_SVC_CHECK_INTERVAL;web;http;5
+[1794433177] EXTERNAL COMMAND: CHANGE_RETRY_SVC_CHECK_INTERVAL;web;http;3
+[1794433177] EXTERNAL COMMAND: CHANGE_MAX_SVC_CHECK_ATTEMPTS;web;http;4
+[1794433177] EXTERNAL COMMAND: CHANGE_NORMAL_HOST_CHECK_INTERVAL;web;7
+[1794433177] EXTERNAL COMMAND: CHANGE_MAX_HOST_CHECK_ATTEMPTS;app;5
+[1794433177] SERVICE NOTIFICATION SUPPRESSED: app;api;Notifications are temporarily disabled for this object by an external command.
+[1794433177] EXTERNAL COMMAND: CHANGE_CUSTOM_SVC_VAR;web;http;_OWNER;ann
+[1794433177] EXTERNAL COMMAND: CHANGE_CUSTOM_HOST_VAR;web;_RACK;r12
+[1794433178] EXTERNAL COMMAND: ADD_HOST_COMMENT;web;1;ann;first host comment
+[1794433178] EXTERNAL COMMAND: ADD_HOST_COMMENT;web;1;bob;second host comment
+[1794433178] EXTERNAL COMMAND: ADD_SVC_COMMENT;web;http;0;ann;first service comment
+[1794433178] EXTERNAL COMMAND: ADD_SVC_COMMENT;web;http;1;bob;second service comment
+[1794433179] EXTERNAL COMMAND: DISABLE_EVENT_HANDLERS;
+[1794433179] EXTERNAL COMMAND: DISABLE_FLAP_DETECTION;
+[1794433179] EXTERNAL COMMAND: STOP_ACCEPTING_PASSIVE_SVC_CHECKS;
+[1794433179] EXTERNAL COMMAND: STOP_ACCEPTING_PASSIVE_HOST_CHECKS;
+[1794433180] EXTERNAL COMMAND: SCHEDULE_HOSTGROUP_HOST_DOWNTIME;backend;1794433181;1794436773;1;0;0;ann;group host downtime
+[1794433180] EXTERNAL COMMAND: SCHEDULE_HOSTGROUP_SVC_DOWNTIME;www;1794433181;1794436773;1;0;0;ann;group service downtime
+[1794433180] EXTERNAL COMMAND: SCHEDULE_SERVICEGROUP_SVC_DOWNTIME;user-facing;1794433182;1794436773;1;0;0;bob;servicegroup downtime
+[1794433180] EXTERNAL COMMAND: SCHEDULE_HOST_SVC_DOWNTIME;app;1794433182;1794436773;1;0;0;bob;host's services downtime
+[1794433181] HOST DOWNTIME ALERT: app;STARTED; Host has entered a period of scheduled downtime
+[1794433181] HOST CONTACT NOTIFICATION SUPPRESSED: ann;app;Notifications are disabled for this object by its configuration.
+[1794433181] HOST NOTIFICATION SUPPRESSED: app;No notification sent, because no contacts were found for notification purposes.
+[1794433181] HOST DOWNTIME ALERT: db;STARTED; Host has entered a period of scheduled downtime
+[1794433181] HOST NOTIFICATION SUPPRESSED: db;No notification sent, because no contacts were found for notification purposes.
+[1794433181] SERVICE DOWNTIME ALERT: web;http;STARTED; Service has entered a period of scheduled downtime
+[1794433181] SERVICE NOTIFICATION SUPPRESSED: web;http;No notification sent, because no contacts were found for notification purposes.
+[1794433181] SERVICE DOWNTIME ALERT: web;disk;STARTED; Service has entered a period of scheduled downtime
+[1794433181] SERVICE NOTIFICATION SUPPRESSED: web;disk;Notification blocked for object currently in a scheduled downtime.
+[1794433182] SERVICE DOWNTIME ALERT: app;api;STARTED; Service has entered a period of scheduled downtime
+[1794433182] SERVICE DOWNTIME ALERT: db;query;STARTED; Service has entered a period of scheduled downtime
+[1794433182] SERVICE NOTIFICATION SUPPRESSED: db;query;No notification sent, because no contacts were found for notification purposes.
+[1794433192] EXTERNAL COMMAND: STOP_EXECUTING_SVC_CHECKS;
+[1794433192] EXTERNAL COMMAND: STOP_EXECUTING_HOST_CHECKS;
+[1794433197] EXTERNAL COMMAND: DEL_ALL_HOST_COMMENTS;web
+[1794433197] EXTERNAL COMMAND: DEL_ALL_SVC_COMMENTS;web;http
+[1794433197] EXTERNAL COMMAND: ENABLE_SVC_EVENT_HANDLER;web;http
+[1794433197] EXTERNAL COMMAND: ENABLE_EVENT_HANDLERS;
+[1794433197] EXTERNAL COMMAND: ENABLE_FLAP_DETECTION;
+[1794433197] EXTERNAL COMMAND: START_ACCEPTING_PASSIVE_SVC_CHECKS;
+[1794433197] EXTERNAL COMMAND: START_ACCEPTING_PASSIVE_HOST_CHECKS;
+[1794433197] EXTERNAL COMMAND: ENABLE_HOST_SVC_CHECKS;db
+[1794433197] EXTERNAL COMMAND: ENABLE_HOST_SVC_NOTIFICATIONS;app
+[1794433197] EXTERNAL COMMAND: ENABLE_HOSTGROUP_SVC_NOTIFICATIONS;www
+[1794433197] EXTERNAL COMMAND: DISABLE_HOSTGROUP_HOST_NOTIFICATIONS;www
+[1794433197] EXTERNAL COMMAND: DISABLE_SERVICEGROUP_SVC_NOTIFICATIONS;user-facing
+[1794433197] EXTERNAL COMMAND: ENABLE_SERVICEGROUP_HOST_NOTIFICATIONS;user-facing
+[1794433197] EXTERNAL COMMAND: DISABLE_HOSTGROUP_SVC_CHECKS;backend
+[1794433197] EXTERNAL COMMAND: DISABLE_SERVICEGROUP_SVC_CHECKS;user-facing
+[1794433197] EXTERNAL COMMAND: ENABLE_PASSIVE_SVC_CHECKS;db;query
+[1794433197] EXTERNAL COMMAND: ENABLE_PASSIVE_HOST_CHECKS;web
+[1794433197] Warning: External command parse error [1794433197] DISABLE_SVC_CHECK;nosuch;svc (Failed validation of service as type service (argument 0))
+[1794433197] External command error: Failed validation of service as type service (argument 0)
+[1794433197] Warning: External command parse error [1794433197] CHANGE_NORMAL_SVC_CHECK_INTERVAL;web;http;notanumber (Couldn't parse timestamp argument check_interval (argument 1): No digits found in ulong 'notanumber')
+[1794433197] External command error: Couldn't parse timestamp argument check_interval (argument 1): No digits found in ulong 'notanumber'
+[1794433197] Warning: External command parse error [1794433197] NO_SUCH_COMMAND_AT_ALL (Unknown command 'NO_SUCH_COMMAND_AT_ALL')
+[1794433197] External command error: Unknown command 'NO_SUCH_COMMAND_AT_ALL'
+[1794433217] EXTERNAL COMMAND: DISABLE_NOTIFICATIONS;
+[1794433217] EXTERNAL COMMAND: ENABLE_NOTIFICATIONS;
+[1794433217] EXTERNAL COMMAND: DISABLE_HOST_CHECK;web
+[1794433217] EXTERNAL COMMAND: ENABLE_HOST_CHECK;web
+[1794433223] Caught 'Terminated', shutting down...
+[1794433223] livestatus: deinitializing
+[1794433223] Retention data successfully saved.
+[1794433223] Successfully shutdown... (PID=23)
+[1794433223] Event broker module 'NERD' deinitialized successfully.
+[1794433223] livestatus: Logfile cache: flushing complete cache.
+[1794433223] Event broker module '/usr/lib/naemon/naemon-livestatus/livestatus.so' deinitialized successfully.

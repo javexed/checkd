@@ -20,17 +20,27 @@
 //!   fail without a word: an acknowledgement of a host or service that
 //!   has no hard problem.
 
-use crate::engine::{Effect, Engine, Ms, Obj};
+use crate::engine::{
+    Effect, Engine, Ms, Obj, MOD_ACTIVE_CHECKS, MOD_CUSTOM_VARIABLE, MOD_EVENT_HANDLER, MOD_FLAP_DETECTION,
+    MOD_MAX_ATTEMPTS, MOD_NORMAL_INTERVAL, MOD_NOTIFICATIONS, MOD_PASSIVE_CHECKS, MOD_RETRY_INTERVAL,
+};
 use crate::notify::Kind;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Arg {
     Host,
     Service,
+    HostGroup,
+    ServiceGroup,
     Int,
     Bool,
+    /// A count of interval units, with the name the reference gives it in
+    /// its error.
+    Interval(&'static str),
     /// A text that takes the rest of the line.
     Text,
+    /// A text that is one field.
+    Word,
 }
 
 use Arg::*;
@@ -67,6 +77,61 @@ const COMMANDS: &[(&str, &[Arg])] = &[
     ("DISABLE_SVC_CHECK", &[Service]),
     ("ENABLE_HOST_CHECK", &[Host]),
     ("DISABLE_HOST_CHECK", &[Host]),
+    ("ENABLE_SVC_EVENT_HANDLER", &[Service]),
+    ("DISABLE_SVC_EVENT_HANDLER", &[Service]),
+    ("ENABLE_HOST_EVENT_HANDLER", &[Host]),
+    ("DISABLE_HOST_EVENT_HANDLER", &[Host]),
+    ("ENABLE_SVC_FLAP_DETECTION", &[Service]),
+    ("DISABLE_SVC_FLAP_DETECTION", &[Service]),
+    ("ENABLE_HOST_FLAP_DETECTION", &[Host]),
+    ("DISABLE_HOST_FLAP_DETECTION", &[Host]),
+    ("ENABLE_PASSIVE_SVC_CHECKS", &[Service]),
+    ("DISABLE_PASSIVE_SVC_CHECKS", &[Service]),
+    ("ENABLE_PASSIVE_HOST_CHECKS", &[Host]),
+    ("DISABLE_PASSIVE_HOST_CHECKS", &[Host]),
+    ("ENABLE_HOST_SVC_CHECKS", &[Host]),
+    ("DISABLE_HOST_SVC_CHECKS", &[Host]),
+    ("ENABLE_HOST_SVC_NOTIFICATIONS", &[Host]),
+    ("DISABLE_HOST_SVC_NOTIFICATIONS", &[Host]),
+    ("ENABLE_HOSTGROUP_SVC_NOTIFICATIONS", &[HostGroup]),
+    ("DISABLE_HOSTGROUP_SVC_NOTIFICATIONS", &[HostGroup]),
+    ("ENABLE_HOSTGROUP_HOST_NOTIFICATIONS", &[HostGroup]),
+    ("DISABLE_HOSTGROUP_HOST_NOTIFICATIONS", &[HostGroup]),
+    ("ENABLE_HOSTGROUP_SVC_CHECKS", &[HostGroup]),
+    ("DISABLE_HOSTGROUP_SVC_CHECKS", &[HostGroup]),
+    ("ENABLE_HOSTGROUP_HOST_CHECKS", &[HostGroup]),
+    ("DISABLE_HOSTGROUP_HOST_CHECKS", &[HostGroup]),
+    ("ENABLE_SERVICEGROUP_SVC_NOTIFICATIONS", &[ServiceGroup]),
+    ("DISABLE_SERVICEGROUP_SVC_NOTIFICATIONS", &[ServiceGroup]),
+    ("ENABLE_SERVICEGROUP_HOST_NOTIFICATIONS", &[ServiceGroup]),
+    ("DISABLE_SERVICEGROUP_HOST_NOTIFICATIONS", &[ServiceGroup]),
+    ("ENABLE_SERVICEGROUP_SVC_CHECKS", &[ServiceGroup]),
+    ("DISABLE_SERVICEGROUP_SVC_CHECKS", &[ServiceGroup]),
+    ("ENABLE_SERVICEGROUP_HOST_CHECKS", &[ServiceGroup]),
+    ("DISABLE_SERVICEGROUP_HOST_CHECKS", &[ServiceGroup]),
+    ("ENABLE_EVENT_HANDLERS", &[]),
+    ("DISABLE_EVENT_HANDLERS", &[]),
+    ("ENABLE_FLAP_DETECTION", &[]),
+    ("DISABLE_FLAP_DETECTION", &[]),
+    ("START_ACCEPTING_PASSIVE_SVC_CHECKS", &[]),
+    ("STOP_ACCEPTING_PASSIVE_SVC_CHECKS", &[]),
+    ("START_ACCEPTING_PASSIVE_HOST_CHECKS", &[]),
+    ("STOP_ACCEPTING_PASSIVE_HOST_CHECKS", &[]),
+    ("CHANGE_NORMAL_SVC_CHECK_INTERVAL", &[Service, Interval("check_interval")]),
+    ("CHANGE_RETRY_SVC_CHECK_INTERVAL", &[Service, Interval("retry_interval")]),
+    ("CHANGE_NORMAL_HOST_CHECK_INTERVAL", &[Host, Interval("check_interval")]),
+    ("CHANGE_RETRY_HOST_CHECK_INTERVAL", &[Host, Interval("retry_interval")]),
+    ("CHANGE_MAX_SVC_CHECK_ATTEMPTS", &[Service, Int]),
+    ("CHANGE_MAX_HOST_CHECK_ATTEMPTS", &[Host, Int]),
+    ("CHANGE_CUSTOM_SVC_VAR", &[Service, Word, Text]),
+    ("CHANGE_CUSTOM_HOST_VAR", &[Host, Word, Text]),
+    ("DEL_ALL_HOST_COMMENTS", &[Host]),
+    ("DEL_ALL_SVC_COMMENTS", &[Service]),
+    ("SCHEDULE_HOSTGROUP_HOST_DOWNTIME", &[HostGroup, Int, Int, Bool, Int, Int, Text, Text]),
+    ("SCHEDULE_HOSTGROUP_SVC_DOWNTIME", &[HostGroup, Int, Int, Bool, Int, Int, Text, Text]),
+    ("SCHEDULE_SERVICEGROUP_SVC_DOWNTIME", &[ServiceGroup, Int, Int, Bool, Int, Int, Text, Text]),
+    ("SCHEDULE_SERVICEGROUP_HOST_DOWNTIME", &[ServiceGroup, Int, Int, Bool, Int, Int, Text, Text]),
+    ("SCHEDULE_HOST_SVC_DOWNTIME", &[Host, Int, Int, Bool, Int, Int, Text, Text]),
     ("STOP_EXECUTING_SVC_CHECKS", &[]),
     ("START_EXECUTING_SVC_CHECKS", &[]),
     ("STOP_EXECUTING_HOST_CHECKS", &[]),
@@ -75,10 +140,20 @@ const COMMANDS: &[(&str, &[Arg])] = &[
     ("SEND_CUSTOM_SVC_NOTIFICATION", &[Service, Int, Text, Text]),
 ];
 
+#[derive(Clone, Copy)]
+enum Switch {
+    Notifications,
+    ActiveChecks,
+    PassiveChecks,
+    EventHandler,
+    FlapDetection,
+}
+
 /// One parsed argument.
 #[derive(Clone, Debug)]
 enum Value {
     Obj(Obj),
+    Group(Vec<Obj>),
     Int(i64),
     Text(String),
 }
@@ -100,6 +175,12 @@ impl Value {
         match self {
             Value::Text(text) => text,
             _ => "",
+        }
+    }
+    fn group(&self) -> Vec<Obj> {
+        match self {
+            Value::Group(members) => members.clone(),
+            _ => Vec::new(),
         }
     }
 }
@@ -195,6 +276,42 @@ impl Engine {
                         }
                     }
                 }
+                HostGroup => {
+                    let name = fields[at];
+                    at += 1;
+                    let Some(group) = self.objects.hostgroups.get(name) else {
+                        return Err(format!("Failed validation of hostgroup as type hostgroup (argument {n})"));
+                    };
+                    let mut members: Vec<Obj> = group.members.iter().filter_map(|h| self.host(h)).collect();
+                    members.sort();
+                    Value::Group(members)
+                }
+                ServiceGroup => {
+                    let name = fields[at];
+                    at += 1;
+                    let Some(group) = self.objects.servicegroups.get(name) else {
+                        return Err(format!("Failed validation of servicegroup as type servicegroup (argument {n})"));
+                    };
+                    let members: Vec<Obj> = group.members.iter().filter_map(|(h, d)| self.service(h, d)).collect();
+                    Value::Group(members)
+                }
+                Interval(label) => {
+                    let text = fields[at].trim();
+                    at += 1;
+                    match text.parse::<f64>() {
+                        Ok(number) => Value::Int(number as i64),
+                        Err(_) => {
+                            return Err(format!(
+                                "Couldn't parse timestamp argument {label} (argument {n}): No digits found in ulong '{text}'"
+                            ));
+                        }
+                    }
+                }
+                Word => {
+                    let value = fields[at].to_string();
+                    at += 1;
+                    Value::Text(value)
+                }
                 Int | Bool => {
                     let text = fields[at].trim();
                     at += 1;
@@ -216,6 +333,28 @@ impl Engine {
         }
         fields.clear();
         Ok(values)
+    }
+
+    /// Turns one of an object's switches on or off, and marks it changed
+    /// when that changes its value: as the reference does, a switch that is
+    /// set to what it is already is not marked.
+    fn switch(&mut self, obj: Obj, what: Switch, on: bool) {
+        let item = self.item_mut(obj);
+        let (value, bit) = match what {
+            Switch::Notifications => (&mut item.cfg.notifications_enabled, MOD_NOTIFICATIONS),
+            Switch::ActiveChecks => (&mut item.cfg.active_checks_enabled, MOD_ACTIVE_CHECKS),
+            Switch::PassiveChecks => (&mut item.cfg.passive_checks_enabled, MOD_PASSIVE_CHECKS),
+            Switch::EventHandler => (&mut item.cfg.event_handler_enabled, MOD_EVENT_HANDLER),
+            Switch::FlapDetection => (&mut item.cfg.flap_detection_enabled, MOD_FLAP_DETECTION),
+        };
+        if *value != on {
+            *value = on;
+            item.modified |= bit;
+        }
+        if matches!(what, Switch::ActiveChecks) && on && self.item(obj).next_check.is_none() {
+            let at = self.item(obj).last_check.max(self.start);
+            self.check_at(obj, at, false);
+        }
     }
 
     /// Carries out a command. False when it failed.
@@ -274,12 +413,9 @@ impl Engine {
                 let id = v[0].int().max(0) as u64;
                 self.comments.remove(&id).is_some()
             }
-            "ENABLE_HOST_NOTIFICATIONS" | "ENABLE_SVC_NOTIFICATIONS" => {
-                self.item_mut(v[0].obj()).cfg.notifications_enabled = true;
-                true
-            }
-            "DISABLE_HOST_NOTIFICATIONS" | "DISABLE_SVC_NOTIFICATIONS" => {
-                self.item_mut(v[0].obj()).cfg.notifications_enabled = false;
+            "ENABLE_HOST_NOTIFICATIONS" | "ENABLE_SVC_NOTIFICATIONS" | "DISABLE_HOST_NOTIFICATIONS"
+            | "DISABLE_SVC_NOTIFICATIONS" => {
+                self.switch(v[0].obj(), Switch::Notifications, name.starts_with("ENABLE"));
                 true
             }
             "ENABLE_NOTIFICATIONS" => {
@@ -304,13 +440,145 @@ impl Engine {
                 true
             }
             "ENABLE_SVC_CHECK" | "ENABLE_HOST_CHECK" | "DISABLE_SVC_CHECK" | "DISABLE_HOST_CHECK" => {
-                let on = name.starts_with("ENABLE");
-                let obj = v[0].obj();
-                self.item_mut(obj).cfg.active_checks_enabled = on;
-                if on && self.item(obj).next_check.is_none() {
-                    self.check_at(obj, now, false);
+                self.switch(v[0].obj(), Switch::ActiveChecks, name.starts_with("ENABLE"));
+                true
+            }
+            "ENABLE_SVC_EVENT_HANDLER" | "DISABLE_SVC_EVENT_HANDLER" | "ENABLE_HOST_EVENT_HANDLER"
+            | "DISABLE_HOST_EVENT_HANDLER" => {
+                self.switch(v[0].obj(), Switch::EventHandler, name.starts_with("ENABLE"));
+                true
+            }
+            "ENABLE_SVC_FLAP_DETECTION" | "DISABLE_SVC_FLAP_DETECTION" | "ENABLE_HOST_FLAP_DETECTION"
+            | "DISABLE_HOST_FLAP_DETECTION" => {
+                self.switch(v[0].obj(), Switch::FlapDetection, name.starts_with("ENABLE"));
+                true
+            }
+            "ENABLE_PASSIVE_SVC_CHECKS" | "DISABLE_PASSIVE_SVC_CHECKS" | "ENABLE_PASSIVE_HOST_CHECKS"
+            | "DISABLE_PASSIVE_HOST_CHECKS" => {
+                self.switch(v[0].obj(), Switch::PassiveChecks, name.starts_with("ENABLE"));
+                true
+            }
+            "ENABLE_HOST_SVC_CHECKS" | "DISABLE_HOST_SVC_CHECKS" | "ENABLE_HOST_SVC_NOTIFICATIONS"
+            | "DISABLE_HOST_SVC_NOTIFICATIONS" => {
+                let what = if name.ends_with("CHECKS") { Switch::ActiveChecks } else { Switch::Notifications };
+                if let Obj::Host(at) = v[0].obj() {
+                    for obj in self.services_of(at) {
+                        self.switch(obj, what, name.starts_with("ENABLE"));
+                    }
                 }
                 true
+            }
+            _ if name.contains("GROUP_") && (name.starts_with("ENABLE_") || name.starts_with("DISABLE_")) => {
+                // ENABLE_HOSTGROUP_SVC_NOTIFICATIONS and the like.
+                let what = if name.ends_with("CHECKS") { Switch::ActiveChecks } else { Switch::Notifications };
+                let on = name.starts_with("ENABLE");
+                let services = name.contains("_SVC_");
+                let mut targets: Vec<Obj> = Vec::new();
+                for obj in v[0].group() {
+                    match (obj, services) {
+                        (Obj::Host(at), true) => targets.extend(self.services_of(at)),
+                        (Obj::Service(at), false) => targets.push(Obj::Host(self.services[at].host)),
+                        (other, _) => targets.push(other),
+                    }
+                }
+                targets.dedup();
+                for obj in targets {
+                    self.switch(obj, what, on);
+                }
+                true
+            }
+            "ENABLE_EVENT_HANDLERS" | "DISABLE_EVENT_HANDLERS" => {
+                self.settings.enable_event_handlers = name.starts_with("ENABLE");
+                true
+            }
+            "ENABLE_FLAP_DETECTION" | "DISABLE_FLAP_DETECTION" => {
+                self.settings.enable_flap_detection = name.starts_with("ENABLE");
+                true
+            }
+            "START_ACCEPTING_PASSIVE_SVC_CHECKS" | "STOP_ACCEPTING_PASSIVE_SVC_CHECKS" => {
+                self.settings.accept_passive_service_checks = name.starts_with("START");
+                true
+            }
+            "START_ACCEPTING_PASSIVE_HOST_CHECKS" | "STOP_ACCEPTING_PASSIVE_HOST_CHECKS" => {
+                self.settings.accept_passive_host_checks = name.starts_with("START");
+                true
+            }
+            "CHANGE_NORMAL_SVC_CHECK_INTERVAL" | "CHANGE_NORMAL_HOST_CHECK_INTERVAL" => {
+                let obj = v[0].obj();
+                let item = self.item_mut(obj);
+                item.cfg.check_interval = v[1].int() as f64;
+                item.modified |= MOD_NORMAL_INTERVAL;
+                self.reset_intervals(obj);
+                true
+            }
+            "CHANGE_RETRY_SVC_CHECK_INTERVAL" | "CHANGE_RETRY_HOST_CHECK_INTERVAL" => {
+                let obj = v[0].obj();
+                let item = self.item_mut(obj);
+                item.cfg.retry_interval = v[1].int() as f64;
+                item.modified |= MOD_RETRY_INTERVAL;
+                self.reset_intervals(obj);
+                true
+            }
+            "CHANGE_MAX_SVC_CHECK_ATTEMPTS" | "CHANGE_MAX_HOST_CHECK_ATTEMPTS" => {
+                let item = self.item_mut(v[0].obj());
+                item.cfg.max_check_attempts = v[1].int().max(1) as u32;
+                item.modified |= MOD_MAX_ATTEMPTS;
+                true
+            }
+            "CHANGE_CUSTOM_SVC_VAR" | "CHANGE_CUSTOM_HOST_VAR" => {
+                // Only a variable the object has is changed; the command
+                // counts as a change all the same.
+                let item = self.item_mut(v[0].obj());
+                let wanted = v[1].text().trim_start_matches('_').to_string();
+                if let Some(var) = item.cfg.custom.iter_mut().find(|(n, _)| n.eq_ignore_ascii_case(&wanted)) {
+                    var.1 = v[2].text().to_string();
+                }
+                item.modified |= MOD_CUSTOM_VARIABLE;
+                true
+            }
+            "DEL_ALL_HOST_COMMENTS" | "DEL_ALL_SVC_COMMENTS" => {
+                let obj = v[0].obj();
+                self.comments.retain(|_, c| c.obj != obj);
+                true
+            }
+            "SCHEDULE_HOSTGROUP_HOST_DOWNTIME" | "SCHEDULE_HOSTGROUP_SVC_DOWNTIME" | "SCHEDULE_SERVICEGROUP_SVC_DOWNTIME"
+            | "SCHEDULE_SERVICEGROUP_HOST_DOWNTIME" | "SCHEDULE_HOST_SVC_DOWNTIME" => {
+                let services = name.contains("_SVC_DOWNTIME");
+                let members = match &v[0] {
+                    Value::Obj(obj) => vec![*obj],
+                    _ => v[0].group(),
+                };
+                let mut targets: Vec<Obj> = Vec::new();
+                for obj in members {
+                    match (obj, services) {
+                        (Obj::Host(at), true) => targets.extend(self.services_of(at)),
+                        (Obj::Service(at), false) => {
+                            let host = Obj::Host(self.services[at].host);
+                            if !targets.contains(&host) {
+                                targets.push(host);
+                            }
+                        }
+                        (other, _) => targets.push(other),
+                    }
+                }
+                let mut all = true;
+                for obj in targets {
+                    all &= self
+                        .schedule_downtime(
+                            obj,
+                            v[1].int(),
+                            v[2].int(),
+                            v[3].int() != 0,
+                            v[4].int().max(0) as u64,
+                            v[5].int(),
+                            v[6].text(),
+                            v[7].text(),
+                            now,
+                            out,
+                        )
+                        .is_ok();
+                }
+                all
             }
             "STOP_EXECUTING_SVC_CHECKS" | "START_EXECUTING_SVC_CHECKS" => {
                 self.settings.execute_service_checks = name.starts_with("START");

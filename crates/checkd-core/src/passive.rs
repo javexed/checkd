@@ -102,6 +102,21 @@ impl Engine {
     /// The line for the performance data file after a result, if one is
     /// written.
     pub(crate) fn perfdata(&mut self, obj: Obj, now: Ms, out: &mut Vec<Effect>) {
+        if self.export && self.item(obj).cfg.process_perf_data {
+            let perfdata = self.item(obj).output.perfdata.clone();
+            if !perfdata.is_empty() {
+                let (host, service) = match obj {
+                    Obj::Host(at) => (self.hosts[at].name.clone(), String::new()),
+                    Obj::Service(at) => (self.services[at].host_name.clone(), self.services[at].description.clone()),
+                };
+                out.push(Effect::Sample {
+                    host,
+                    service,
+                    time: now.div_euclid(1000),
+                    perfdata,
+                });
+            }
+        }
         if !self.settings.process_performance_data || !self.item(obj).cfg.process_perf_data {
             return;
         }

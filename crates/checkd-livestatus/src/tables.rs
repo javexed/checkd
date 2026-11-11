@@ -12,6 +12,7 @@ use checkd_core::notify::{Comment, Downtime};
 use crate::value::Value;
 
 /// What an answer is made from: the engine, the time, and the log.
+#[derive(Clone, Copy)]
 pub struct Source<'a> {
     pub engine: &'a Engine,
     pub now: Ms,
@@ -19,6 +20,8 @@ pub struct Source<'a> {
     pub log: &'a [(i64, String)],
     /// Facts of the program that runs the engine.
     pub program: &'a Program,
+    /// For `statehist`: the time the query's filters ask about.
+    pub window: Option<crate::statehist::Window>,
 }
 
 /// Facts of the program, for the `status` table.
@@ -31,10 +34,32 @@ pub struct Program {
     pub connections: u64,
 }
 
+/// The names of the attributes a command can change, in the reference's
+/// order.
+const MODIFIED: &[(u32, &str)] = &[
+    (1, "notifications_enabled"),
+    (2, "active_checks_enabled"),
+    (4, "passive_checks_enabled"),
+    (8, "event_handler_enabled"),
+    (16, "flap_detection_enabled"),
+    (1024, "normal_check_interval"),
+    (2048, "retry_check_interval"),
+    (4096, "max_check_attempts"),
+    (32768, "custom_variable"),
+];
+
 #[derive(Clone, Debug)]
 pub enum Row {
     Host(usize),
     Service(usize),
+    /// A host in one of its host groups.
+    HostInGroup(usize, String),
+    /// A service in one of its service groups, or in one of its host's
+    /// host groups.
+    ServiceInGroup(usize, String),
+    ServiceInHostGroup(usize, String),
+    /// A span of one state of a host (service `None`) or service.
+    StateSpan(Span),
     Status,
     HostGroup(String),
     ServiceGroup(String),
@@ -62,6 +87,10 @@ pub const TABLES: &[&str] = &[
     "downtimes",
     "log",
     "columns",
+    "hostsbygroup",
+    "servicesbygroup",
+    "servicesbyhostgroup",
+    "statehist",
 ];
 
 /// The rows of a table, in the order the reference gives them.
@@ -95,6 +124,46 @@ pub fn rows(source: &Source, table: &str) -> Option<Vec<Row>> {
         // Newest first.
         "log" => (0..source.log.len()).rev().map(Row::Log).collect(),
         "columns" => COLUMNS.iter().map(|&(t, n, ty)| Row::Column(t, n, ty)).collect(),
+        "hostsbygroup" => {
+            let mut out = Vec::new();
+            for (name, group) in &objects.hostgroups {
+                let mut members: Vec<usize> = group.members.iter().filter_map(|h| index_of_host(engine, h)).collect();
+                members.sort_by(|a, b| engine.hosts()[*a].name.cmp(&engine.hosts()[*b].name));
+                out.extend(members.into_iter().map(|at| Row::HostInGroup(at, name.clone())));
+            }
+            out
+        }
+        "servicesbygroup" => {
+            let mut out = Vec::new();
+            for (name, group) in &objects.servicegroups {
+                let mut members: Vec<usize> = group
+                    .members
+                    .iter()
+                    .filter_map(|(h, d)| engine.services().iter().position(|s| &s.host_name == h && &s.description == d))
+                    .collect();
+                members.sort_by_key(|at| (engine.services()[*at].host_name.clone(), engine.services()[*at].description.clone()));
+                out.extend(members.into_iter().map(|at| Row::ServiceInGroup(at, name.clone())));
+            }
+            out
+        }
+        "servicesbyhostgroup" => {
+            let mut out = Vec::new();
+            for (name, group) in &objects.hostgroups {
+                let mut hosts: Vec<usize> = group.members.iter().filter_map(|h| index_of_host(engine, h)).collect();
+                hosts.sort_by(|a, b| engine.hosts()[*a].name.cmp(&engine.hosts()[*b].name));
+                for host in hosts {
+                    // A host's own services: in the reverse order of names.
+                    let mut services = engine.hosts()[host].services.clone();
+                    services.sort_by(|a, b| engine.services()[*b].description.cmp(&engine.services()[*a].description));
+                    out.extend(services.into_iter().map(|at| Row::ServiceInHostGroup(at, name.clone())));
+                }
+            }
+            out
+        }
+        "statehist" => crate::statehist::spans(source, &crate::statehist::Window::all())
+            .into_iter()
+            .map(Row::StateSpan)
+            .collect(),
         _ => return None,
     })
 }
@@ -167,6 +236,19 @@ pub fn get(source: &Source, row: &Row, column: &str) -> Option<Value> {
             downtime_column(source, downtime, column)
         }
         Row::Log(at) => log_column(source, *at, column),
+        Row::HostInGroup(at, group) => match column.strip_prefix("hostgroup_") {
+            Some(rest) => hostgroup(source, group, rest),
+            None => host(source, *at, column),
+        },
+        Row::ServiceInGroup(at, group) => match column.strip_prefix("servicegroup_") {
+            Some(rest) => servicegroup(source, group, rest),
+            None => service(source, *at, column),
+        },
+        Row::ServiceInHostGroup(at, group) => match column.strip_prefix("hostgroup_") {
+            Some(rest) => hostgroup(source, group, rest),
+            None => service(source, *at, column),
+        },
+        Row::StateSpan(span) => crate::statehist::column(source, span, column),
         Row::Column(table, name, ty) => Some(match column {
             "table" => Value::str(*table),
             "name" => Value::str(*name),
@@ -176,6 +258,12 @@ pub fn get(source: &Source, row: &Row, column: &str) -> Option<Value> {
         }),
     }
 }
+
+fn index_of_host(engine: &Engine, name: &str) -> Option<usize> {
+    engine.hosts().iter().position(|h| h.name == name)
+}
+
+pub use crate::statehist::Span;
 
 fn names(engine: &Engine, obj: Obj) -> (String, String) {
     match obj {
@@ -305,7 +393,13 @@ fn common(source: &Source, obj: Obj, item: &Item, column: &str) -> Option<Value>
         "long_plugin_output" => Value::str(&item.output.long),
         "low_flap_threshold" => Value::Float(cfg.low_flap_threshold),
         "max_check_attempts" => Value::Int(cfg.max_check_attempts as i64),
-        "modified_attributes_list" => Value::List(Vec::new()),
+        "modified_attributes" => Value::Int(item.modified as i64),
+        "modified_attributes_list" => Value::strs(
+            MODIFIED
+                .iter()
+                .filter(|(bit, _)| item.modified & bit != 0)
+                .map(|(_, name)| name.to_string()),
+        ),
         "next_check" => s(item.next_check.unwrap_or(0)),
         "notes" => opt(&cfg.notes),
         "notes_expanded" => expand(&cfg.notes),

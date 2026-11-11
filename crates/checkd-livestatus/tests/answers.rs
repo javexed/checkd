@@ -163,23 +163,46 @@ fn same(a: &Json, b: &Json) -> bool {
     }
 }
 
-fn scenario() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../runs/scenarios/livestatus-thruk")
+/// The scenarios that ask Livestatus queries: those with an `ask` file.
+fn scenarios() -> Vec<(String, PathBuf)> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../runs/scenarios");
+    let mut list: Vec<(String, PathBuf)> = std::fs::read_dir(&root)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| (e.file_name().to_string_lossy().into_owned(), e.path()))
+        .filter(|(_, p)| p.join("ask").exists())
+        .collect();
+    list.sort();
+    list
 }
 
 #[test]
 fn answers() {
     let Ok(real) = std::env::var("CHECKD_REAL") else { return };
-    let dir = scenario();
-    let queries = dir.join("queries");
-    let reference = dir.join("expected/answers");
-    let ours = Path::new(&real).join("livestatus-thruk/out/answers");
-    if !queries.is_dir() || !reference.is_dir() {
-        println!("livestatus answers: no recorded queries; see livestatus/README.md");
-        return;
-    }
     let mut problems = Vec::new();
     let mut compared = 0;
+    for (scenario, dir) in scenarios() {
+        compare_scenario(&scenario, &dir, Path::new(&real), &mut problems, &mut compared);
+    }
+    for problem in &problems {
+        println!("  {problem}");
+    }
+    println!("livestatus answers: {compared} compared, {} differ", problems.len());
+    assert!(problems.is_empty());
+}
+
+fn compare_scenario(scenario: &str, dir: &Path, real: &Path, problems: &mut Vec<String>, compared: &mut usize) {
+    let queries = dir.join("queries");
+    let reference = dir.join("expected/answers");
+    let ours = real.join(scenario).join("out/answers");
+    if !queries.is_dir() || !reference.is_dir() {
+        println!("{scenario}: no queries; see livestatus/README.md");
+        return;
+    }
+    if !ours.is_dir() {
+        return;
+    }
     let mut seconds: Vec<_> = std::fs::read_dir(&reference).unwrap().flatten().map(|e| e.file_name()).collect();
     seconds.sort();
     for second in seconds {
@@ -188,13 +211,13 @@ fn answers() {
         for name in names {
             let query = std::fs::read_to_string(queries.join(&name)).unwrap_or_default();
             let (table, columns) = answer_columns(&query);
-            let label = format!("{}/{}", second.to_string_lossy(), name.to_string_lossy());
+            let label = format!("{scenario} {}/{}", second.to_string_lossy(), name.to_string_lossy());
             let Some(want) = read_answer(&reference.join(&second).join(&name)) else { continue };
             let Some(have) = read_answer(&ours.join(&second).join(&name)) else {
                 problems.push(format!("{label}: checkd gave no answer"));
                 continue;
             };
-            compared += 1;
+            *compared += 1;
             if want.code != have.code {
                 problems.push(format!("{label}: status {} where the reference gave {}", have.code, want.code));
                 continue;
@@ -251,9 +274,4 @@ fn answers() {
             }
         }
     }
-    for problem in &problems {
-        println!("  {problem}");
-    }
-    println!("livestatus answers: {compared} compared, {} differ", problems.len());
-    assert!(problems.is_empty());
 }

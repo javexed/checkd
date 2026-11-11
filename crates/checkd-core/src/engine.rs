@@ -123,6 +123,9 @@ pub enum Effect {
     /// A line for the performance data file of hosts (`host` true) or of
     /// services.
     Perfdata { host: bool, line: String },
+    /// A result's performance data, for a metrics store: with the export on
+    /// only. `service` is empty for a host; `time` in seconds.
+    Sample { host: String, service: String, time: i64, perfdata: String },
 }
 
 /// The state of one host or service, and the settings its checks go by.
@@ -172,7 +175,20 @@ pub struct Item {
     pub due_at: Ms,
     /// Whether the last result was a passive one.
     pub passive_result: bool,
+    /// What commands changed, as the bits `MOD_*`: shown by Livestatus,
+    /// and kept even when a later command sets the value back.
+    pub modified: u32,
 }
+
+pub const MOD_NOTIFICATIONS: u32 = 1;
+pub const MOD_ACTIVE_CHECKS: u32 = 2;
+pub const MOD_PASSIVE_CHECKS: u32 = 4;
+pub const MOD_EVENT_HANDLER: u32 = 8;
+pub const MOD_FLAP_DETECTION: u32 = 16;
+pub const MOD_NORMAL_INTERVAL: u32 = 1024;
+pub const MOD_RETRY_INTERVAL: u32 = 2048;
+pub const MOD_MAX_ATTEMPTS: u32 = 4096;
+pub const MOD_CUSTOM_VARIABLE: u32 = 32768;
 
 impl Item {
     fn new(cfg: &Checkable, state: u8, settings: &Settings) -> Item {
@@ -217,6 +233,7 @@ impl Item {
             forced: false,
             due_at: 0,
             passive_result: false,
+            modified: 0,
             cfg: cfg.clone(),
         }
     }
@@ -313,6 +330,8 @@ pub struct Engine {
     pub(crate) timer_seq: u64,
     host_checks_run: u64,
     service_checks_run: u64,
+    /// Whether results give `Effect::Sample`.
+    pub(crate) export: bool,
 }
 
 impl Engine {
@@ -497,6 +516,7 @@ impl Engine {
             timer_seq: 0,
             host_checks_run: 0,
             service_checks_run: 0,
+            export: false,
             objects,
             settings,
             zone,
@@ -522,6 +542,23 @@ impl Engine {
         &self.settings
     }
 
+    /// Sets an object's check intervals and attempts from its settings, as
+    /// a command that changes them asks.
+    pub(crate) fn reset_intervals(&mut self, obj: Obj) {
+        let length = self.settings.interval_length;
+        let item = self.item_mut(obj);
+        item.check_ms = (item.cfg.check_interval * length * 1000.0).round() as Ms;
+        item.retry_ms = (item.cfg.retry_interval * length * 1000.0).round() as Ms;
+    }
+
+    /// A host's services, in the reverse order of their names, as the
+    /// reference goes through them.
+    pub(crate) fn services_of(&self, host: usize) -> Vec<Obj> {
+        let mut list = self.hosts[host].services.clone();
+        list.sort_by(|a, b| self.services[*b].description.cmp(&self.services[*a].description));
+        list.into_iter().map(Obj::Service).collect()
+    }
+
     /// Turns notifications on or off for all, as `ENABLE_NOTIFICATIONS`
     /// does.
     pub fn set_notifications(&mut self, on: bool) {
@@ -532,6 +569,16 @@ impl Engine {
     pub fn quiet(&mut self) {
         self.settings.enable_notifications = false;
         self.settings.enable_event_handlers = false;
+    }
+
+    /// Has every result give its performance data as `Effect::Sample`.
+    pub fn export_perfdata(&mut self, on: bool) {
+        self.export = on;
+    }
+
+    /// How many checks are planned.
+    pub fn planned_checks(&self) -> usize {
+        self.all_objects().into_iter().filter(|o| self.item(*o).next_check.is_some()).count()
     }
 
     /// The configuration the engine was made from.

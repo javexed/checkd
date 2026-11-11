@@ -730,6 +730,7 @@ fn play(dir: &Path, expected: &Expected) -> Result<Played, String> {
                     text,
                 }),
                 Effect::Perfdata { host, line } => perfdata[(!host) as usize].push(line),
+                Effect::Sample { .. } => {}
                 Effect::Run(job) => {
                     let before = plugins.calls.len();
                     let problems = plugins.problems.len();

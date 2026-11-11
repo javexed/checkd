@@ -1,0 +1,4 @@
+GET status
+Columns: enable_event_handlers enable_flap_detection enable_notifications accept_passive_service_checks accept_passive_host_checks execute_service_checks execute_host_checks
+OutputFormat: json
+ResponseHeader: fixed16

@@ -29,7 +29,7 @@ fn make_columns() {
     engine.command("[1800000000] SCHEDULE_HOST_DOWNTIME;app;1800000000;1800003600;1;0;0;ann;b", now, &mut out);
     let program = Program::default();
     let log = vec![(1800000000, "SERVICE ALERT: web;disk;OK;HARD;1;x".to_string())];
-    let source = Source { engine: &engine, now, log: &log, program: &program };
+    let source = Source { engine: &engine, now, log: &log, program: &program, window: None };
     let mut lines = Vec::new();
     for row in body.split("],\n[") {
         let fields: Vec<String> = row

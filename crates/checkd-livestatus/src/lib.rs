@@ -12,6 +12,7 @@
 mod columns;
 pub mod json;
 pub mod request;
+pub mod statehist;
 pub mod tables;
 pub mod value;
 
@@ -65,6 +66,17 @@ fn respond(code: u16, body: String, fixed16: bool, keep_alive: bool) -> Response
 type Failure = (u16, String);
 
 fn answer(source: &Source, query: &Query) -> Result<String, Failure> {
+    // The state history is worked out for the time the filters ask about.
+    let windowed;
+    let source = if query.table == "statehist" {
+        windowed = Source {
+            window: Some(window_of(query.filter.as_ref(), source.now.div_euclid(1000))),
+            ..*source
+        };
+        &windowed
+    } else {
+        source
+    };
     let rows = tables::rows(source, &query.table)
         .ok_or_else(|| (404, format!("Invalid GET request, no such table '{}'", query.table)))?;
     let columns: Vec<String> = if query.columns.is_empty() && query.stats.is_empty() {
@@ -120,6 +132,32 @@ fn all_columns(source: &Source, table: &str, row: Option<&Row>) -> Vec<String> {
 
 /// Whether a table has a column. A table without rows is asked through a
 /// row it could have.
+/// The time a query's `time` filters keep: from the lower bound to the
+/// upper, less a second for `<`.
+fn window_of(filter: Option<&Filter>, now: i64) -> statehist::Window {
+    let mut window = statehist::Window { from: 0, until: now };
+    let walk = |f: &Filter, w: &mut statehist::Window| {
+        if let Filter::Cmp { column, op, value } = f {
+            if column == "time" {
+                let n: i64 = value.trim().parse().unwrap_or(0);
+                match op {
+                    Op::GreaterOrEqual => w.from = w.from.max(n),
+                    Op::Greater => w.from = w.from.max(n + 1),
+                    Op::Less => w.until = w.until.min(n - 1),
+                    Op::LessOrEqual => w.until = w.until.min(n),
+                    _ => {}
+                }
+            }
+        }
+    };
+    match filter {
+        Some(Filter::And(parts)) => parts.iter().for_each(|p| walk(p, &mut window)),
+        Some(other) => walk(other, &mut window),
+        None => {}
+    }
+    window
+}
+
 /// Whether a filter keeps the services of one host only, by its name.
 fn pinned_host(filter: Option<&Filter>) -> bool {
     match filter {

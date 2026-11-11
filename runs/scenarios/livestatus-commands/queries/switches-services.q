@@ -1,0 +1,4 @@
+GET services
+Columns: host_name description active_checks_enabled accept_passive_checks event_handler_enabled flap_detection_enabled notifications_enabled check_interval retry_interval max_check_attempts custom_variable_names custom_variable_values modified_attributes_list scheduled_downtime_depth
+OutputFormat: json
+ResponseHeader: fixed16

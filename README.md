@@ -47,6 +47,10 @@ PostgreSQL database fail over: the standby took over 14 seconds after the
 leader was killed, and the kill and partition tests showed one leader at
 a time: see [docs/failover.md](docs/failover.md).
 
+Beyond parity: an HTTP API on the Livestatus tables, with commands
+behind a token, `/metrics` for Prometheus, and performance data sent
+straight to Graphite or InfluxDB: see [docs/api.md](docs/api.md).
+
 It answers Livestatus at the socket of a config's Livestatus
 `broker_module` line. The 108 queries Thruk was seen sending for 54 of
 its pages are answered as the reference answers them, value by value,
@@ -98,6 +102,9 @@ it makes when it is not there.
                            socket of a Livestatus broker_module line
     --shadow <socket>      run beside the engine whose Livestatus socket
                            this is, send nothing, and report differences
+    --http <addr>          the HTTP API and /metrics, see docs/api.md
+    --perfdata-graphite <host:port>, --perfdata-influx <url>
+                           send performance data to a metrics store
     --otlp-endpoint <url>  see below
 
     target/debug/checkd state sqlite:/path/to/checkd.sqlite
@@ -157,7 +164,8 @@ Phases, each with a gate that must pass before the next starts:
   see [runs/README.md](runs/README.md).
 - `livestatus/`: recording what Thruk asks, and rendering Thruk's pages
   against both engines, see [livestatus/README.md](livestatus/README.md).
-- `docs/`: [the store](docs/store.md), [failover](docs/failover.md).
+- `docs/`: [the store](docs/store.md), [failover](docs/failover.md),
+  [the HTTP API, metrics and perfdata export](docs/api.md).
 - `real/`: the harness for config trees that other people wrote. The
   trees themselves are downloaded and stay out of git.
 
