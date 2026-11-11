@@ -1,0 +1,16 @@
+5 PROCESS_SERVICE_CHECK_RESULT;a;ps;2;passive critical|load=5;1;2
+6 PROCESS_SERVICE_CHECK_RESULT;a;ps;2;passive critical again
+7 PROCESS_SERVICE_CHECK_RESULT;a;ps;2;passive third
+8 PROCESS_SERVICE_CHECK_RESULT;a;ps;0;passive ok
+9 PROCESS_SERVICE_CHECK_RESULT;a;pact;1;passive on an active one
+10 PROCESS_SERVICE_CHECK_RESULT;a;pnot;2;passive not accepted
+11 PROCESS_HOST_CHECK_RESULT;ph;1;host down passive
+12 PROCESS_HOST_CHECK_RESULT;ph;2;host unreachable passive
+13 PROCESS_HOST_CHECK_RESULT;ph;0;host up passive
+14 PROCESS_HOST_CHECK_RESULT;ph2;1;active host down passive
+15 PROCESS_SERVICE_CHECK_RESULT;a;pperf;0;with perf|time=0.5s;1;2;0;10 size=3B
+16 PROCESS_SERVICE_CHECK_RESULT;a;ps;7;out of range
+17 PROCESS_SERVICE_CHECK_RESULT;a;nosuch;2;no such service
+18 PROCESS_HOST_CHECK_RESULT;ph;3;host code three
+15 SPOOL cspool1
+26 SPOOL cspool2

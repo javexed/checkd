@@ -1,0 +1,18 @@
+### Active Check Result File ###
+file_time=1794428125
+
+### Naemon Service Check Result ###
+# Time: now
+host_name=a
+service_description=ps
+check_type=1
+check_options=0
+scheduled_check=0
+reschedule_check=0
+latency=0.0
+start_time=1794428125.0
+finish_time=1794428125.1
+early_timeout=0
+exited_ok=1
+return_code=1
+output=from the spool|spooled=1

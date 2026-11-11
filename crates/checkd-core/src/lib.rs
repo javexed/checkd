@@ -16,6 +16,7 @@ pub mod commands;
 pub mod macros;
 pub mod notify;
 pub mod output;
+pub mod passive;
 pub mod retention;
 pub mod settings;
 pub mod snapshot;

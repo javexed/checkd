@@ -6,3 +6,8 @@
 /runs/real-work
 /runs/otel-work
 /runs/store-work
+/livestatus/recorded
+/runs/scenarios/livestatus-thruk/queries
+/runs/scenarios/livestatus-thruk/expected/answers
+/livestatus/rendered
+/runs/shadow-work

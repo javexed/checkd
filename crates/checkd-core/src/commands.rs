@@ -55,6 +55,22 @@ const COMMANDS: &[(&str, &[Arg])] = &[
     ("DISABLE_SVC_NOTIFICATIONS", &[Service]),
     ("ENABLE_NOTIFICATIONS", &[]),
     ("DISABLE_NOTIFICATIONS", &[]),
+    ("PROCESS_SERVICE_CHECK_RESULT", &[Service, Int, Text]),
+    ("PROCESS_HOST_CHECK_RESULT", &[Host, Int, Text]),
+    ("SCHEDULE_SVC_CHECK", &[Service, Int]),
+    ("SCHEDULE_FORCED_SVC_CHECK", &[Service, Int]),
+    ("SCHEDULE_HOST_CHECK", &[Host, Int]),
+    ("SCHEDULE_FORCED_HOST_CHECK", &[Host, Int]),
+    ("SCHEDULE_HOST_SVC_CHECKS", &[Host, Int]),
+    ("SCHEDULE_FORCED_HOST_SVC_CHECKS", &[Host, Int]),
+    ("ENABLE_SVC_CHECK", &[Service]),
+    ("DISABLE_SVC_CHECK", &[Service]),
+    ("ENABLE_HOST_CHECK", &[Host]),
+    ("DISABLE_HOST_CHECK", &[Host]),
+    ("STOP_EXECUTING_SVC_CHECKS", &[]),
+    ("START_EXECUTING_SVC_CHECKS", &[]),
+    ("STOP_EXECUTING_HOST_CHECKS", &[]),
+    ("START_EXECUTING_HOST_CHECKS", &[]),
     ("SEND_CUSTOM_HOST_NOTIFICATION", &[Host, Int, Text, Text]),
     ("SEND_CUSTOM_SVC_NOTIFICATION", &[Service, Int, Text, Text]),
 ];
@@ -123,9 +139,12 @@ impl Engine {
             }
         };
         if self.settings.log_external_commands {
-            out.push(Effect::Log(format!("EXTERNAL COMMAND: {text}")));
+            // The reference writes the `;` after the name even when no
+            // arguments follow.
+            out.push(Effect::Log(format!("EXTERNAL COMMAND: {name};{args}")));
         }
-        if !self.carry_out(name, &values, now, out) {
+        let stamp: i64 = stamp.parse().unwrap_or(now.div_euclid(1000));
+        if !self.carry_out(name, &values, stamp * 1000, now, out) {
             out.push(Effect::Log(format!("Error: External command failed -> {text}")));
         }
     }
@@ -200,8 +219,11 @@ impl Engine {
     }
 
     /// Carries out a command. False when it failed.
-    fn carry_out(&mut self, name: &str, v: &[Value], now: Ms, out: &mut Vec<Effect>) -> bool {
+    fn carry_out(&mut self, name: &str, v: &[Value], stamp: Ms, now: Ms, out: &mut Vec<Effect>) -> bool {
         match name {
+            "PROCESS_SERVICE_CHECK_RESULT" | "PROCESS_HOST_CHECK_RESULT" => {
+                self.passive_result(v[0].obj(), v[1].int(), v[2].text(), stamp, now, out)
+            }
             "ACKNOWLEDGE_HOST_PROBLEM" | "ACKNOWLEDGE_SVC_PROBLEM" => {
                 let obj = v[0].obj();
                 self.acknowledge(
@@ -266,6 +288,36 @@ impl Engine {
             }
             "DISABLE_NOTIFICATIONS" => {
                 self.settings.enable_notifications = false;
+                true
+            }
+            "SCHEDULE_SVC_CHECK" | "SCHEDULE_FORCED_SVC_CHECK" | "SCHEDULE_HOST_CHECK"
+            | "SCHEDULE_FORCED_HOST_CHECK" => {
+                self.check_at(v[0].obj(), v[1].int() * 1000, name.contains("FORCED"));
+                true
+            }
+            "SCHEDULE_HOST_SVC_CHECKS" | "SCHEDULE_FORCED_HOST_SVC_CHECKS" => {
+                if let Obj::Host(at) = v[0].obj() {
+                    for service in self.hosts[at].services.clone() {
+                        self.check_at(Obj::Service(service), v[1].int() * 1000, name.contains("FORCED"));
+                    }
+                }
+                true
+            }
+            "ENABLE_SVC_CHECK" | "ENABLE_HOST_CHECK" | "DISABLE_SVC_CHECK" | "DISABLE_HOST_CHECK" => {
+                let on = name.starts_with("ENABLE");
+                let obj = v[0].obj();
+                self.item_mut(obj).cfg.active_checks_enabled = on;
+                if on && self.item(obj).next_check.is_none() {
+                    self.check_at(obj, now, false);
+                }
+                true
+            }
+            "STOP_EXECUTING_SVC_CHECKS" | "START_EXECUTING_SVC_CHECKS" => {
+                self.settings.execute_service_checks = name.starts_with("START");
+                true
+            }
+            "STOP_EXECUTING_HOST_CHECKS" | "START_EXECUTING_HOST_CHECKS" => {
+                self.settings.execute_host_checks = name.starts_with("START");
                 true
             }
             "SEND_CUSTOM_HOST_NOTIFICATION" | "SEND_CUSTOM_SVC_NOTIFICATION" => {

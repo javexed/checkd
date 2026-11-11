@@ -17,10 +17,16 @@
 //! - an execution dependency holds it back: it is put off by the check
 //!   interval.
 //!
-//! After a result the next check is one interval after the start of the
-//! last one: the retry interval while the object is in a soft problem
-//! state, the check interval otherwise. An object is never checked twice
-//! at once (see the README of `runs/` for where the reference differs).
+//! After a result the next check is one interval after the last one was
+//! due, and the time it took to start, at most a millisecond: the retry
+//! interval while the object is in a soft problem state, the check
+//! interval otherwise. So checks keep their place and drift as the
+//! reference's do. A check that started more than a second late counts
+//! from its start. An object is never checked twice at once (see the
+//! README of `runs/` for where the reference differs). A passive result
+//! leaves the planned check where it is, unless it leaves a soft problem.
+//! Checks a command forces run whatever the check period, the cache and
+//! the dependencies say, in the order they were asked for.
 //!
 //! A host is also checked on demand. That moves its waiting check to
 //! now; it does nothing while a check of the host is running. It happens
@@ -72,6 +78,8 @@ pub enum JobKind {
     HostHandler,
     ServiceHandler,
     Notification,
+    /// The command that processes a performance data file.
+    PerfdataProcessing,
 }
 
 /// A command for the driver to run.
@@ -112,6 +120,9 @@ pub enum Effect {
     /// A line for the log. The driver puts the time in front.
     Log(String),
     Run(Job),
+    /// A line for the performance data file of hosts (`host` true) or of
+    /// services.
+    Perfdata { host: bool, line: String },
 }
 
 /// The state of one host or service, and the settings its checks go by.
@@ -152,6 +163,15 @@ pub struct Item {
     pub problem_id: String,
     pub last_problem_id: String,
     pub notice: NoticeState,
+    /// When the last result came in. 0 before the first.
+    pub last_update: Ms,
+    /// The waiting check was forced by a command: it runs whatever the
+    /// check period, the cache horizon and the dependencies say.
+    pub forced: bool,
+    /// When the check that ran last was due.
+    pub due_at: Ms,
+    /// Whether the last result was a passive one.
+    pub passive_result: bool,
 }
 
 impl Item {
@@ -193,6 +213,10 @@ impl Item {
                 next: Some(0),
                 ..NoticeState::default()
             },
+            last_update: 0,
+            forced: false,
+            due_at: 0,
+            passive_result: false,
             cfg: cfg.clone(),
         }
     }
@@ -287,6 +311,8 @@ pub struct Engine {
     pub(crate) next_downtime: u64,
     pub(crate) timers: BTreeSet<(Ms, u64, Timer)>,
     pub(crate) timer_seq: u64,
+    host_checks_run: u64,
+    service_checks_run: u64,
 }
 
 impl Engine {
@@ -368,13 +394,14 @@ impl Engine {
                 _ => 0,
             };
             hosts[host].services.push(services.len());
+            let item = Item::new(&service.check, state, &settings);
             services.push(ServiceEntry {
                 host,
                 host_name: service.host.clone(),
                 description: service.description.clone(),
                 groups: Vec::new(),
                 volatile: service.is_volatile,
-                item: Item::new(&service.check, state, &settings),
+                item,
             });
         }
         for group in objects.servicegroups.values() {
@@ -468,6 +495,8 @@ impl Engine {
             next_downtime: 0,
             timers: BTreeSet::new(),
             timer_seq: 0,
+            host_checks_run: 0,
+            service_checks_run: 0,
             objects,
             settings,
             zone,
@@ -491,6 +520,49 @@ impl Engine {
 
     pub fn settings(&self) -> &Settings {
         &self.settings
+    }
+
+    /// Shadow mode: no notifications are sent and no event handlers run.
+    pub fn quiet(&mut self) {
+        self.settings.enable_notifications = false;
+        self.settings.enable_event_handlers = false;
+    }
+
+    /// The configuration the engine was made from.
+    pub fn objects(&self) -> &Objects {
+        &self.objects
+    }
+
+    pub fn comments(&self) -> impl Iterator<Item = &crate::notify::Comment> {
+        self.comments.values()
+    }
+
+    pub fn downtimes(&self) -> impl Iterator<Item = &crate::notify::Downtime> {
+        self.downtimes.values()
+    }
+
+    /// When the engine started, in milliseconds since the epoch.
+    pub fn start_time(&self) -> Ms {
+        self.start
+    }
+
+    /// Whether a timeperiod is valid at a second. A period that is not
+    /// there never is; no period at all always is.
+    pub fn in_period(&self, period: Option<&str>, second: i64) -> bool {
+        match period {
+            None => true,
+            Some(name) => self.periods().is_valid(name, second),
+        }
+    }
+
+    /// How many host checks and service checks were started.
+    pub fn checks_run(&self) -> (u64, u64) {
+        (self.host_checks_run, self.service_checks_run)
+    }
+
+    /// The contacts and runtime switches of notifications, by name.
+    pub fn contact_names(&self) -> impl Iterator<Item = &str> {
+        self.contacts.iter().map(|c| c.cfg.name.as_str())
     }
 
     pub fn hosts(&self) -> &[HostEntry] {
@@ -553,6 +625,14 @@ impl Engine {
         on && item.cfg.active_checks_enabled && item.cfg.check_command.is_some()
     }
 
+    /// Whether the object has checks planned: its active checks are on
+    /// and it has a check command. While checks are stopped for all hosts
+    /// or services, they are planned and passed over when they come up.
+    fn is_planned(&self, obj: Obj) -> bool {
+        let cfg = &self.item(obj).cfg;
+        cfg.active_checks_enabled && cfg.check_command.is_some()
+    }
+
     /// The command line of the object's check as it would be now.
     pub fn check_line(&self, obj: Obj, now: Ms) -> Option<String> {
         let command = self.item(obj).cfg.check_command.clone()?;
@@ -563,6 +643,7 @@ impl Engine {
     /// asked for, and every object that is checked gets its first check.
     /// The first checks are spread over each object's check interval.
     pub fn start(&mut self, out: &mut Vec<Effect>) {
+        self.plan_perfdata_processing();
         if self.settings.log_initial_states {
             for at in 0..self.hosts.len() {
                 let obj = Obj::Host(at);
@@ -583,7 +664,7 @@ impl Engine {
         let count = self.hosts.len().max(1) as Ms;
         for at in 0..self.hosts.len() {
             let obj = Obj::Host(at);
-            if self.is_checked(obj) {
+            if self.is_planned(obj) {
                 let spread = self.hosts[at].item.check_ms * at as Ms / count;
                 self.schedule(obj, start + spread);
             }
@@ -591,11 +672,31 @@ impl Engine {
         let count = self.services.len().max(1) as Ms;
         for at in 0..self.services.len() {
             let obj = Obj::Service(at);
-            if self.is_checked(obj) {
+            if self.is_planned(obj) {
                 let spread = self.services[at].item.check_ms * at as Ms / count;
                 self.schedule(obj, start + spread);
             }
         }
+    }
+
+    /// Moves an object's waiting check to a time, as a command asks. A
+    /// check that is not forced does not move to a later time than the one
+    /// it has.
+    pub(crate) fn check_at(&mut self, obj: Obj, at: Ms, forced: bool) {
+        if self.item(obj).cfg.check_command.is_none() {
+            return;
+        }
+        if !forced {
+            if let Some(next) = self.item(obj).next_check {
+                if next <= at {
+                    return;
+                }
+            }
+        }
+        // Checks a command asks for are made in the order they were
+        // asked for.
+        self.schedule_ranked(obj, at, Some(1));
+        self.item_mut(obj).forced = forced;
     }
 
     /// Moves the waiting check of an object. For runs that have to follow
@@ -651,6 +752,12 @@ impl Engine {
     }
 
     fn schedule(&mut self, obj: Obj, at: Ms) {
+        self.schedule_ranked(obj, at, None);
+    }
+
+    /// Plans a check. `rank` puts checks due at one moment in order;
+    /// without it a service goes before a host.
+    fn schedule_ranked(&mut self, obj: Obj, at: Ms, rank: Option<u8>) {
         self.asked += 1;
         let asked = self.asked;
         let item = self.item_mut(obj);
@@ -660,10 +767,10 @@ impl Engine {
         // A service and its host that are due at one moment: the service
         // goes first, so that its result is read while the host still
         // counts as it did. The reference's log shows that order.
-        let rank = match obj {
+        let rank = rank.unwrap_or(match obj {
             Obj::Service(_) => 0,
             Obj::Host(_) => 1,
-        };
+        });
         self.queue.push(Reverse((at, rank, asked, obj, generation)));
     }
 
@@ -673,13 +780,31 @@ impl Engine {
 
     /// A check's time has come.
     fn due(&mut self, obj: Obj, at: Ms, now: Ms, out: &mut Vec<Effect>) {
-        if !self.is_checked(obj) || self.item(obj).running {
+        // Checks stopped for all hosts or all services: this one is
+        // passed over and comes up again an interval on.
+        let stopped = match obj {
+            Obj::Host(_) => !self.settings.execute_host_checks,
+            Obj::Service(_) => !self.settings.execute_service_checks,
+        };
+        let cfg = &self.item(obj).cfg;
+        let forced = self.item(obj).forced;
+        if stopped && !forced && cfg.active_checks_enabled && cfg.check_command.is_some() {
+            let item = self.item(obj);
+            let wait = first_set(item.check_ms, item.retry_ms);
+            if wait > 0 {
+                self.schedule(obj, now + wait);
+            }
+            return;
+        }
+        let can = self.item(obj).cfg.active_checks_enabled && self.item(obj).cfg.check_command.is_some();
+        if !(self.is_checked(obj) || (forced && can)) || self.item(obj).running {
             return;
         }
         let second = now.div_euclid(1000);
+        let forced = std::mem::take(&mut self.item_mut(obj).forced);
         let item = self.item(obj);
 
-        if let Some(period) = &item.cfg.check_period {
+        if let Some(period) = item.cfg.check_period.as_ref().filter(|_| !forced) {
             let periods = self.periods();
             if !periods.is_valid(period, second) {
                 if let Some(next) = periods.next_valid(period, second) {
@@ -693,7 +818,7 @@ impl Engine {
             Obj::Host(_) => self.settings.cached_host_check_horizon,
             Obj::Service(_) => self.settings.cached_service_check_horizon,
         };
-        if item.checked && second - item.last_check.div_euclid(1000) < horizon {
+        if !forced && item.checked && second - item.last_check.div_euclid(1000) < horizon {
             let wait = match obj {
                 Obj::Host(_) => first_set(item.retry_ms, item.check_ms),
                 Obj::Service(_) => first_set(item.check_ms, item.retry_ms),
@@ -704,7 +829,7 @@ impl Engine {
             return;
         }
 
-        if self.held_back(obj, second, 0) {
+        if !forced && self.held_back(obj, second, 0) {
             let wait = first_set(item.check_ms, item.retry_ms);
             if wait > 0 {
                 self.schedule(obj, now + wait);
@@ -723,7 +848,13 @@ impl Engine {
         let timeout = if own > 0 { own } else { timeout } as Ms * 1000;
         let item = self.item_mut(obj);
         item.running = true;
-        item.latency = (now - at).max(0) as f64 / 1000.0;
+        // A check a command forced has no latency.
+        item.latency = if forced { 0.0 } else { (now - at).max(0) as f64 / 1000.0 };
+        item.due_at = at;
+        match obj {
+            Obj::Host(_) => self.host_checks_run += 1,
+            Obj::Service(_) => self.service_checks_run += 1,
+        }
         self.run(obj, kind, line, timeout, now, out);
     }
 
@@ -800,10 +931,12 @@ impl Engine {
         match (job.kind, job.obj) {
             (JobKind::ServiceCheck, Obj::Service(at)) => {
                 let (state, output) = self.read_result(&job, &result, out);
+                self.services[at].item.passive_result = false;
                 self.service_result(at, state, output, job.started, now, out);
             }
             (JobKind::HostCheck, Obj::Host(at)) => {
                 let (state, output) = self.read_result(&job, &result, out);
+                self.hosts[at].item.passive_result = false;
                 // Codes 0 and 1 mean the host is there.
                 self.host_result(at, state <= 1, output, job.started, now, out);
             }
@@ -873,7 +1006,7 @@ impl Engine {
         }
     }
 
-    fn service_result(
+    pub(crate) fn service_result(
         &mut self,
         at: usize,
         new: u8,
@@ -907,9 +1040,12 @@ impl Engine {
         item.running = false;
         item.checked = true;
         item.last_check = started;
+        item.last_update = now;
         item.execution_time = (now - started) as f64 / 1000.0;
         item.last_state = was;
         item.output = output;
+        // The state it leaves was last found now too.
+        item.last_time[was as usize] = now;
         item.last_time[new as usize] = now;
 
         // `step` is a move in the state machine: it is logged as an alert
@@ -1008,6 +1144,7 @@ impl Engine {
         if ask_host {
             self.check_host_now(host, now, true);
         }
+        self.perfdata(obj, now, out);
         self.schedule_next(obj, started, now);
     }
 
@@ -1020,7 +1157,6 @@ impl Engine {
         now: Ms,
         out: &mut Vec<Effect>,
     ) {
-        let obj = Obj::Host(at);
         let parents = &self.hosts[at].parents;
         let cut_off = !parents.is_empty() && parents.iter().all(|&p| self.hosts[p].item.state != 0);
         let new: u8 = if up {
@@ -1030,6 +1166,24 @@ impl Engine {
         } else {
             1
         };
+        self.host_state(at, new, false, output, started, now, out);
+    }
+
+    /// What a result does to a host whose new state is known. A passive
+    /// result is hard at once unless `passive_host_checks_are_soft`.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn host_state(
+        &mut self,
+        at: usize,
+        new: u8,
+        passive: bool,
+        output: Output,
+        started: Ms,
+        now: Ms,
+        out: &mut Vec<Effect>,
+    ) {
+        let obj = Obj::Host(at);
+        let passive_hard = passive && !self.settings.passive_host_checks_are_soft;
         let log_retries = self.settings.log_host_retries;
 
         let item = &mut self.hosts[at].item;
@@ -1040,9 +1194,11 @@ impl Engine {
         item.running = false;
         item.checked = true;
         item.last_check = started;
+        item.last_update = now;
         item.execution_time = (now - started) as f64 / 1000.0;
         item.last_state = was;
         item.output = output;
+        item.last_time[was as usize] = now;
         item.last_time[new as usize] = now;
 
         let mut step = false;
@@ -1077,10 +1233,18 @@ impl Engine {
             step = new != was;
             item.attempt = 1;
         }
+        if passive_hard {
+            step = new != was;
+            item.hard = true;
+            item.attempt = 1;
+        }
         item.state = new;
+        // A host's state counts as changed when its hard state does.
+        if item.hard && item.last_hard_state != new {
+            item.last_state_change = now;
+        }
 
         if new != was {
-            item.last_state_change = now;
             self.problem_ids(obj, was, new);
         }
         if step {
@@ -1135,6 +1299,7 @@ impl Engine {
                 self.check_host_now(other, now, false);
             }
         }
+        self.perfdata(obj, now, out);
         self.schedule_next(obj, started, now);
     }
 
@@ -1288,10 +1453,15 @@ impl Engine {
     }
 
     fn schedule_next(&mut self, obj: Obj, started: Ms, now: Ms) {
-        if !self.is_checked(obj) {
+        if !self.is_planned(obj) {
             return;
         }
         let item = self.item(obj);
+        // A passive result leaves the planned active check where it is,
+        // unless it leaves the object in a soft problem, which is retried.
+        if item.passive_result && !item.soft_problem() && item.next_check.is_some() {
+            return;
+        }
         let wait = if item.soft_problem() {
             first_set(item.retry_ms, item.check_ms)
         } else {
@@ -1305,7 +1475,14 @@ impl Engine {
             item.next_check = None;
             return;
         }
-        let mut at = started + wait;
+        // The next check is planned from when the last one was due, and the
+        // time the check took to start, but at most the millisecond the
+        // reference takes, when it started within a second of being due.
+        // So checks drift as the reference's do, and not by however late
+        // checkd itself was.
+        let late = started - item.due_at;
+        let base = if (0..1000).contains(&late) { item.due_at + late.min(1) } else { started };
+        let mut at = base + wait;
         if at <= now {
             at = now + wait;
         }

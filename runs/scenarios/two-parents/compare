@@ -1,0 +1,6 @@
+
+# Open: host q is passed over at second 31 by its cache horizon and planned
+# again a retry interval on. checkd checks it then, at 47; the reference
+# does not, in its recording, and what it does instead was not settled.
+# Seen in real runs only, where the times are the real ones.
+ignore-real q a host passed over by its cache horizon: open, see the comment

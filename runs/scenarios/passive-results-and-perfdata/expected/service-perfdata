@@ -1,0 +1,11 @@
+[SERVICEPERFDATA]	1794429115	a	ps	0.000	0.272	passive critical	load=5;1;2
+[SERVICEPERFDATA]	1794429116	a	ps	0.000	0.272	passive critical again	
+[SERVICEPERFDATA]	1794429117	a	ps	0.000	0.273	passive third	
+[SERVICEPERFDATA]	1794429118	a	ps	0.000	0.273	passive ok	
+[SERVICEPERFDATA]	1794429119	a	pact	0.000	0.273	passive on an active one	
+[SERVICEPERFDATA]	1794429120	a	pact	0.003	0.000	pact is 0 at second 10	
+[SERVICEPERFDATA]	1794429125	a	pperf	0.000	0.272	with perf	time=0.5s;1;2;0;10 size=3B
+[SERVICEPERFDATA]	1794429126	a	ps	0.000	0.272	out of range	
+[SERVICEPERFDATA]	1794429130	a	ps	0.000	0.000	from the spool	spooled=1
+[SERVICEPERFDATA]	1794429140	a	pact	0.000	0.000	spooled active	
+[SERVICEPERFDATA]	1794429141	a	pact	0.002	0.001	pact is 0 at second 31	

@@ -60,6 +60,34 @@ pub struct Settings {
     pub notification_timeout: u32,
     pub check_external_commands: bool,
     pub log_external_commands: bool,
+    /// Switches the engine does not act on yet, kept to be shown.
+    pub process_performance_data: bool,
+    pub check_service_freshness: bool,
+    pub check_host_freshness: bool,
+    pub obsess_over_services: bool,
+    pub obsess_over_hosts: bool,
+    pub accept_passive_service_checks: bool,
+    pub accept_passive_host_checks: bool,
+    pub passive_host_checks_are_soft: bool,
+    pub log_passive_checks: bool,
+    /// Seconds between reads of the check result directory.
+    pub check_result_reaper_frequency: u32,
+    pub check_result_path: Option<String>,
+    /// Host performance data: then service performance data.
+    pub perfdata: [Perfdata; 2],
+}
+
+/// Where the performance data of hosts or of services goes.
+#[derive(Clone, Debug, Default)]
+pub struct Perfdata {
+    pub file: Option<String>,
+    /// With `\t` already a tab.
+    pub template: String,
+    /// `a` append, `w` write anew at start, `p` a pipe.
+    pub mode: char,
+    /// Seconds between runs of the processing command; 0 for never.
+    pub processing_interval: u32,
+    pub processing_command: Option<String>,
 }
 
 impl Default for Settings {
@@ -96,6 +124,18 @@ impl Default for Settings {
             notification_timeout: 30,
             check_external_commands: true,
             log_external_commands: true,
+            process_performance_data: false,
+            check_service_freshness: true,
+            check_host_freshness: false,
+            obsess_over_services: false,
+            obsess_over_hosts: false,
+            accept_passive_service_checks: true,
+            accept_passive_host_checks: true,
+            passive_host_checks_are_soft: false,
+            log_passive_checks: true,
+            check_result_reaper_frequency: 10,
+            check_result_path: None,
+            perfdata: [Perfdata::default(), Perfdata::default()],
         }
     }
 }
@@ -113,9 +153,7 @@ const NOT_YET: &[(&str, &str)] = &[
     ("enable_environment_macros", "0"),
     ("check_service_freshness", "0"),
     ("check_host_freshness", "0"),
-    ("process_performance_data", "0"),
     ("translate_passive_host_checks", "0"),
-    ("passive_host_checks_are_soft", "0"),
 ];
 
 impl Settings {
@@ -174,6 +212,36 @@ impl Settings {
         s.notification_timeout = num("notification_timeout", 30.0) as u32;
         s.check_external_commands = flag("check_external_commands", s.check_external_commands);
         s.log_external_commands = flag("log_external_commands", s.log_external_commands);
+        s.process_performance_data = flag("process_performance_data", s.process_performance_data);
+        s.check_service_freshness = flag("check_service_freshness", s.check_service_freshness);
+        s.check_host_freshness = flag("check_host_freshness", s.check_host_freshness);
+        s.obsess_over_services = flag("obsess_over_services", s.obsess_over_services);
+        s.obsess_over_hosts = flag("obsess_over_hosts", s.obsess_over_hosts);
+        s.accept_passive_service_checks = flag("accept_passive_service_checks", s.accept_passive_service_checks);
+        s.accept_passive_host_checks = flag("accept_passive_host_checks", s.accept_passive_host_checks);
+        s.passive_host_checks_are_soft = flag("passive_host_checks_are_soft", s.passive_host_checks_are_soft);
+        s.log_passive_checks = flag("log_passive_checks", s.log_passive_checks);
+        s.check_result_reaper_frequency = num("check_result_reaper_frequency", 10.0).max(1.0) as u32;
+        s.check_result_path = text("check_result_path").filter(|v| !v.is_empty());
+        for (place, kind, default) in [
+            (0, "host", "[HOSTPERFDATA]\\t$TIMET$\\t$HOSTNAME$\\t$HOSTEXECUTIONTIME$\\t$HOSTOUTPUT$\\t$HOSTPERFDATA$"),
+            (
+                1,
+                "service",
+                "[SERVICEPERFDATA]\\t$TIMET$\\t$HOSTNAME$\\t$SERVICEDESC$\\t$SERVICEEXECUTIONTIME$\\t$SERVICELATENCY$\\t$SERVICEOUTPUT$\\t$SERVICEPERFDATA$",
+            ),
+        ] {
+            let template = text(&format!("{kind}_perfdata_file_template")).unwrap_or_else(|| default.to_string());
+            s.perfdata[place] = Perfdata {
+                file: text(&format!("{kind}_perfdata_file")).filter(|v| !v.is_empty()),
+                template: template.replace("\\t", "\t"),
+                mode: text(&format!("{kind}_perfdata_file_mode"))
+                    .and_then(|m| m.trim().chars().next())
+                    .unwrap_or('a'),
+                processing_interval: num(&format!("{kind}_perfdata_file_processing_interval"), 0.0).max(0.0) as u32,
+                processing_command: text(&format!("{kind}_perfdata_file_processing_command")).filter(|v| !v.is_empty()),
+            };
+        }
 
         let mut warnings = Vec::new();
         for (name, quiet) in NOT_YET {

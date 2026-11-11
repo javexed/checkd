@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Records the Livestatus queries that Thruk sends for its pages.
+#
+#   livestatus/record-thruk
+#
+# An OMD Labs site (Naemon, its Livestatus module and Thruk) runs in a
+# container without a network, with the objects of site/objects.cfg. The
+# commands in site/commands are sent once its checks have run, and then
+# each page in `pages` is rendered with Thruk's own `thruk url`. The
+# Livestatus module, in its debug mode, logs every query it is sent.
+#
+# Written to livestatus/recorded/ (not in git, like the published config
+# trees): for each page its address (<n>.page) and the lines the module
+# logged for it (<n>.log), and the versions. `livestatus/templates` makes
+# query templates of them.
+# The image is the OMD Labs image of real/omd, pinned by digest.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(dirname "$here")
+image=consol/omd-labs-debian@sha256:e140902ba2bc2ba042836c5137fefab56d4b70716aae5d21f51a2afaf6fcb73f
+out=$here/recorded
+rm -rf "$out"
+mkdir -p "$out"
+
+docker run --rm --network none --entrypoint /bin/bash \
+    -v "$here/site:/site:ro" -v "$here/pages:/pages:ro" -v "$root/runs/lib/plugins:/plugins:ro" \
+    -v "$out:/out" "$image" -c '
+set -eu
+site=/omd/sites/demo
+mkdir -p /case/plugins /case/state
+cp /plugins/* /case/plugins/
+date +%s%N > /case/state/start
+chown -R demo /case/state
+cp /site/objects.cfg $site/etc/naemon/conf.d/checkd-livestatus.cfg
+chown demo $site/etc/naemon/conf.d/checkd-livestatus.cfg
+sed -i "s|^broker_module=./lib/naemon/livestatus.o ./tmp/run/live\$|& debug=1|" \
+    $site/etc/naemon/naemon.d/livestatus.cfg
+su - demo -c "omd start" > /out/start.txt 2>&1
+sleep 30
+now=$(date +%s)
+grep -v "^#" /site/commands | sed "s/{now}/$now/g; s/{now+3600}/$((now + 3600))/g" | while read -r line; do
+    printf "[%d] %s\n" "$now" "$line" > $site/tmp/run/naemon.cmd
+done
+sleep 5
+log=$site/var/naemon/livestatus.log
+n=0
+grep -v "^#" /pages | while read -r page; do
+    n=$((n + 1))
+    page=$(printf "%s" "$page" | sed "s/WEB/web/g; s/DB/db/g; s/APP/app/g")
+    before=$(wc -l < $log)
+    su - demo -c "thruk url \"$page\"" > /dev/null 2>&1 || echo "page $n failed: $page" >> /out/failed.txt
+    printf "%s\n" "$page" > /out/$n.page
+    tail -n +$((before + 1)) $log | grep "\] Query: " > /out/$n.log || true
+done
+su - demo -c "omd stop" > /dev/null 2>&1 || true
+dpkg -l | awk "/naemon-livestatus|omd-labs/{print \$2, \$3}" > /out/versions.txt
+chown -R '"$(id -u):$(id -g)"' /out
+'
+pages=$(ls "$out"/*.page | wc -l)
+queries=$(cat "$out"/*.log | grep -c '\] Query: GET ' || true)
+echo "livestatus/recorded: $pages pages, $queries queries"
+[ -f "$out/failed.txt" ] && cat "$out/failed.txt"
+exit 0

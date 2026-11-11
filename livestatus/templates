@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""Makes query templates of the queries Thruk was recorded sending.
+
+    python3 -I livestatus/templates
+
+Reads livestatus/recorded/<n>.log and writes runs/scenarios/livestatus-thruk/queries/<n>-<m>.q,
+one query to a file, each once. A number that is a time near the moment
+the query was sent is written as {now-N} or {now+N}, N seconds from it,
+so that the query can be sent again at another time. The templates are
+made from what Thruk sent, so they stay out of git with the recordings.
+"""
+import calendar
+import os
+import re
+import sys
+import time
+
+here = os.path.dirname(os.path.abspath(__file__))
+src = os.path.join(here, 'recorded')
+dst = os.path.join(os.path.dirname(here), 'runs', 'scenarios', 'livestatus-thruk', 'queries')
+os.makedirs(dst, exist_ok=True)
+for name in os.listdir(dst):
+    os.remove(os.path.join(dst, name))
+
+line_re = re.compile(r'^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\.\d+\]\[[^]]*\] Query: (.*)$')
+seen = set()
+written = 0
+for page in sorted((int(f[:-4]) for f in os.listdir(src) if f.endswith('.log'))):
+    queries = []
+    for line in open(os.path.join(src, f'{page}.log'), encoding='utf-8', errors='replace'):
+        m = line_re.match(line.rstrip('\n'))
+        if not m:
+            continue
+        stamp = calendar.timegm(time.strptime(m.group(1), '%Y-%m-%d %H:%M:%S'))
+        text = m.group(2)
+        if text.startswith('GET '):
+            queries.append((stamp, [text]))
+        elif queries:
+            queries[-1][1].append(text)
+    for n, (stamp, lines) in enumerate(queries, 1):
+        def relative(match):
+            value = int(match.group(0))
+            delta = value - stamp
+            if abs(delta) > 10 * 365 * 86400:
+                return match.group(0)
+            if delta == 0:
+                return '{now}'
+            return '{now%+d}' % delta
+        text = '\n'.join(re.sub(r'\b1\d{9}\b', relative, l) for l in lines) + '\n'
+        if text in seen:
+            continue
+        seen.add(text)
+        with open(os.path.join(dst, f'{page:03d}-{n:03d}.q'), 'w') as f:
+            f.write(text)
+        written += 1
+print(f'runs/scenarios/livestatus-thruk/queries: {written} queries')

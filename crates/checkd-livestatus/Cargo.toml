@@ -1,0 +1,11 @@
+[package]
+name = "checkd-livestatus"
+version = "0.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "The Livestatus query language of checkd"
+
+[dependencies]
+checkd-config = { path = "../checkd-config" }
+checkd-core = { path = "../checkd-core" }
+regex = "1.13.1"

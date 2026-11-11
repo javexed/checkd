@@ -1,0 +1,13 @@
+[HOSTPERFDATA]	1794429110	a	0.002	a is 0 at second 0	
+[HOSTPERFDATA]	1794429115	a	0.003	a is 0 at second 5	
+[HOSTPERFDATA]	1794429116	a	0.002	a is 0 at second 6	
+[HOSTPERFDATA]	1794429117	a	0.003	a is 0 at second 7	
+[HOSTPERFDATA]	1794429119	a	0.002	a is 0 at second 9	
+[HOSTPERFDATA]	1794429121	ph	0.000	host down passive	
+[HOSTPERFDATA]	1794429122	ph	0.000	host unreachable passive	
+[HOSTPERFDATA]	1794429123	ph	0.000	host up passive	
+[HOSTPERFDATA]	1794429124	ph2	0.000	active host down passive	
+[HOSTPERFDATA]	1794429126	a	0.002	a is 0 at second 16	
+[HOSTPERFDATA]	1794429130	a	0.002	a is 0 at second 20	
+[HOSTPERFDATA]	1794429139	ph2	0.002	ph2 is 0 at second 29	
+[HOSTPERFDATA]	1794429140	a	0.002	a is 0 at second 30	

@@ -71,7 +71,16 @@ feed() {
             tries=$((tries + 1))
         done
         now=$(date +%s%N)
-        printf '[%d] %s\n' $((now / 1000000000)) "$text" > "$work/naemon.cmd"
+        case $text in
+            "SPOOL "*)
+                # A check result file, dropped where NRDP and the like
+                # drop theirs, with its .ok marker.
+                name=${text#SPOOL }
+                cp "/in/spool/$name" "$work/checkresults/$name"
+                : > "$work/checkresults/$name.ok"
+                ;;
+            *) printf '[%d] %s\n' $((now / 1000000000)) "$text" > "$work/naemon.cmd" ;;
+        esac
         printf '%d %s\n' $(( (now - start) / 1000000 )) "$text" >> /out/commands
     done
 }
@@ -93,6 +102,39 @@ if [ -n "${2:-}" ]; then
     watcher=$!
 fi
 
+# Livestatus: with /in/ask, the reference loads its Livestatus module, and
+# at each second /in/ask lists every query of /in/queries is put to it.
+# In a query, {now} stands for the time it is sent and {now-N} for N
+# seconds before. The answers go to /out/answers/<second>/<query>.
+asker=
+if [ -f /in/ask ] && [ -d /in/queries ]; then
+    echo "broker_module=/usr/lib/naemon/naemon-livestatus/livestatus.so $work/live" >> /case/naemon.cfg
+    rm -rf /out/answers
+    (
+        start=$(cat /case/state/start)
+        grep -v '^#' /in/ask | while read -r at; do
+            now=$(date +%s%N)
+            wait=$(( at * 1000 - (now - start) / 1000000 ))
+            [ "$wait" -gt 0 ] && sleep "$(printf '%d.%03d' $((wait / 1000)) $((wait % 1000)))"
+            mkdir -p "/out/answers/$at"
+            for query in /in/queries/*; do
+                name=$(basename "$query")
+                second=$(date +%s)
+                awk -v now="$second" '{
+                    while (match($0, /\{now(-[0-9]+)?\}/)) {
+                        n = substr($0, RSTART + 4, RLENGTH - 5)
+                        $0 = substr($0, 1, RSTART - 1) (now + n) substr($0, RSTART + RLENGTH)
+                    }
+                    print
+                }' "$query" > "/tmp/q-$name"
+                printf '\n' >> "/tmp/q-$name"
+                unixcat "$work/live" < "/tmp/q-$name" > "/out/answers/$at/$name" 2>&1 || true
+            done
+        done
+    ) &
+    asker=$!
+fi
+
 rm -f /out/commands
 feeder=
 if [ -f /in/commands ]; then
@@ -103,6 +145,7 @@ set +e
 timeout -s TERM "$seconds" naemon /case/naemon.cfg > /out/stdout.txt 2>&1
 [ -n "$feeder" ] && kill "$feeder" 2>/dev/null
 [ -n "$watcher" ] && kill "$watcher" 2>/dev/null
+[ -n "$asker" ] && kill "$asker" 2>/dev/null
 set -e
 
 [ -f "$work/naemon.log" ] && cp "$work/naemon.log" /out/naemon.log
@@ -110,4 +153,7 @@ set -e
 cp /case/state/start /out/start
 [ -f "$work/status.dat" ] && cp "$work/status.dat" /out/status.dat
 [ -f "$work/retention.dat" ] && cp "$work/retention.dat" /out/retention.dat
+for f in host-perfdata service-perfdata; do
+    if [ -f "$work/$f" ]; then cp "$work/$f" "/out/$f"; fi
+done
 naemon --version | head -n 1 > /out/oracle.version

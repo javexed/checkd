@@ -5,15 +5,19 @@ scripted runs", and the phase 3 gate "the same notifications as Naemon on
 the scripted runs, and state survives a kill on both stores". This
 directory holds those runs and what compares them.
 
-- `scenarios/`: 58 small configs written for this project, each with a
+- `scenarios/`: 60 small configs written for this project, each with a
   recording of what the reference did on it. Seven of them are about
   notifications, acknowledgements and downtimes, and send the reference
-  external commands.
+  external commands; `livestatus-thruk` puts Thruk's Livestatus queries
+  to it (see `../livestatus/README.md`); `passive-results-and-perfdata`
+  gives it passive results and check result files and has it write
+  performance data files.
 - `lib/plugins/`: the scripted check plugins the configs call.
 - `real`, `real-entry.sh`: runs checkd itself on the scenarios.
 - `otel`: shows that an OpenTelemetry collector takes what checkd sends.
 - `store/`: kills checkd and starts it again, on SQLite and on
   PostgreSQL, and looks at what it kept.
+- `shadow/`: checkd in shadow mode beside the reference.
 - `timeperiods/`: timeperiods against the reference, see
   [timeperiods/README.md](timeperiods/README.md).
 
@@ -30,6 +34,8 @@ The reference is Naemon Core 1.5.2, as packaged, in the oracle image
         expected/start                      when the run began, ns since 1970
         expected/oracle.version             the reference's version
         commands                            external commands, where there are any
+        spool/                              check result files the commands drop
+        ask, queries/                       Livestatus queries and when to ask them
         expected/commands                   the commands as they were sent
         compare                             what is not compared, and why
 
@@ -39,7 +45,9 @@ seconds given and copies out what it wrote. A scenario's `commands` file
 has one external command to a line, `<second> <command>`, where `{+N}`
 stands for the start of the run plus N seconds. The commands are written
 to the reference's command file at their seconds, and
-`expected/commands` records, to the millisecond, when each went. The recordings here were made
+`expected/commands` records, to the millisecond, when each went. `SPOOL
+<file>` is not a command: it drops `spool/<file>` into the check result
+directory, with its `.ok` file. The recordings here were made
 that way and copied in by hand. Nothing checks that a recording is still
 what the reference would do today; to see, record it again and compare.
 
@@ -78,7 +86,7 @@ result 2 ms after the check was started. The second form shows both
 sides in full.
 
 Five scenarios need real programs or a real shell and are not played
-here (`skip` in their `compare` file). The other 53 are.
+here (`skip` in their `compare` file). The other 55 are.
 
 ### In real time
 
@@ -87,7 +95,8 @@ here (`skip` in their `compare` file). The other 53 are.
 This runs the `checkd` binary on each scenario inside the oracle image,
 where the reference made its recordings: the same shell, the same paths,
 the same plugins. Nothing of the reference is run. Each run takes as long
-as the reference's did, eight at a time, about thirteen minutes for all 58.
+as the reference's did, eight at a time, about thirteen minutes for all 60.
+At the end it compares the Livestatus answers of `livestatus-thruk`.
 What a run wrote stays in `runs/real-work/<scenario>`.
 
 One scenario is not compared here (`skip-real`): two results that depend
@@ -120,6 +129,9 @@ are compared per contact and kind, without the object they name. A
 contact gets one such line for a reason, about whichever object comes
 first, and when several are due in one millisecond which comes first is
 not the same from run to run.
+
+**Performance data**, where the reference wrote any: the lines of the
+host and service files, as a set, without times and measured values.
 
 **Plugin calls.** Per key, the calls in order, each with what the plugin
 was called with or returned. Notification commands in the scenarios are
@@ -201,6 +213,13 @@ before or after one result. That lets through any single call that
 differs between two that agree. The number of calls and their times are
 still compared.
 
+## Open
+
+- In `two-parents`, host `q` is passed over at second 31 by its cache
+  horizon and planned again a retry interval on. checkd checks it then,
+  at second 47; the reference, in its recording, does not. The real run
+  leaves `q`'s calls out (`ignore-real`) until this is settled.
+
 ## Where checkd does not do what the reference did
 
 Each of these is written down in the scenario's `compare` file. They were
@@ -241,10 +260,9 @@ on the simulated clock they are what the test makes them.
 
 ## What the scenarios do not cover
 
-- Phase 4 and later: passive results, the Livestatus commands, the
-  external commands that are not about notifications, acknowledgements,
-  downtimes and comments. The `$TOTAL...UNHANDLED$` macros are not
-  compared.
+- The external commands beyond notifications, acknowledgements,
+  downtimes, comments, checks and passive results. The
+  `$TOTAL...UNHANDLED$` macros are not compared.
 - Of notifications: custom notifications, triggered downtimes, downtimes
   of a host's children, comments' own commands, global notification
   handlers, notification dependencies, an acknowledgement's notification

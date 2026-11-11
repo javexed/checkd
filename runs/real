@@ -58,3 +58,5 @@ export here root work image
 printf '%s\n' "${names[@]}" | xargs -P "$jobs" -I{} bash -c 'one {}'
 
 CHECKD_REAL=$work cargo test --quiet -p checkd-core --test scenarios real -- --nocapture
+# The Livestatus answers, where a scenario asked for them.
+CHECKD_REAL=$work cargo test --quiet -p checkd-livestatus --test answers answers -- --nocapture

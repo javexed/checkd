@@ -1,0 +1,11 @@
+10 ACKNOWLEDGE_SVC_PROBLEM;web;disk;2;0;1;ann;looking at the disk
+10 SCHEDULE_HOST_DOWNTIME;app;{+10};{+3600};1;0;0;ann;patching
+10 ADD_SVC_COMMENT;db;query;1;ann;slow at night
+# No checks run while the queries are asked, at seconds 20 and 40, so
+# that the answers do not depend on which side of a result they fall.
+17 STOP_EXECUTING_SVC_CHECKS
+17 STOP_EXECUTING_HOST_CHECKS
+23 START_EXECUTING_SVC_CHECKS
+23 START_EXECUTING_HOST_CHECKS
+37 STOP_EXECUTING_SVC_CHECKS
+37 STOP_EXECUTING_HOST_CHECKS

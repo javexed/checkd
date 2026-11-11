@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+"""Compares the pages Thruk made against Naemon and against checkd.
+
+    python3 -I livestatus/compare-pages livestatus/rendered
+
+Before they are compared, both sides lose what is bound to differ:
+
+- times, dates, durations and numbers that are times;
+- the program's name, version and process id, and Thruk's own
+  per-request values (tokens, timings);
+- the order of keys in the JavaScript objects Thruk writes into a page,
+  which is not the same from one rendering to the next;
+- in Thruk's REST answers (/thruk/r/...), the values that are measured or
+  that move while checks are stopped, as in the Livestatus answer test,
+  and log lines that are each program's own messages.
+
+Prints, for each page that differs, the first lines that do.
+"""
+import difflib
+import json
+import os
+import re
+import sys
+
+out = sys.argv[1]
+SUBS = [
+    (re.compile(r'\b1\d{9}(\.\d+)?\b'), 'TIME'),
+    (re.compile(r'\b1\d{12}\b'), 'TIME'),
+    (re.compile(r'\b\d{4}-\d\d-\d\d[ T]\d\d:\d\d:\d\d\b'), 'DATE'),
+    (re.compile(r'\b\d\d-\d\d-\d{4} \d\d:\d\d:\d\d\b'), 'DATE'),
+    (re.compile(r'\b\d\d:\d\d:\d\d\b'), 'CLOCK'),
+    (re.compile(r'\b\d+d \d+h \d+m \d+s\b'), 'DURATION'),
+    (re.compile(r'\b\d+(\.\d+)?\s*(seconds?|sec|ms)\b'), 'SECONDS'),
+    (re.compile(r'Livestatus [^"<]*|(Naemon|naemon) ?\d+\.\d+\.\d+|checkd \d+\.\d+\.\d+|1\.5\.1\.source-naemon'), 'PROGRAM'),
+    (re.compile(r'PID=?\s*\d+|pid \d+'), 'PID'),
+    (re.compile(r'(token|CSRFtoken|csrf)["=: ]+[A-Za-z0-9_-]+'), 'TOKEN'),
+    (re.compile(r'\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d+\b'), 'DAY'),
+    # Short durations: 16s, 1m 3s.
+    (re.compile(r'>(\d+[dhm] )*\d+s<'), '>DURATION<'),
+    (re.compile(r'^\s*(\d+[dhm] )*\d+s\s*$'), 'DURATION'),
+    (re.compile(r'\(for [^)]*\)'), '(for DURATION)'),
+    # Availability over a time that grows with each second.
+    (re.compile(r'\b\d+\.\d{3}%'), 'PCT'),
+    (re.compile(r'1\.5\.[12]( \(PROGRAM\))?'), 'PROGRAM'),
+    # Rates, which the program counts.
+    (re.compile(r'\b\d+\.\d\d /sec\b'), 'RATE'),
+    # What the time-based plugins print: the second of the run they ran in.
+    (re.compile(r' at second \d+'), ' at second N'),
+    # The averages of the performance line of the tactical overview.
+    (re.compile(r"type=4'>[\d.]+ / [\d.]+ / "), "type=4'>AVG / AVG / "),
+]
+MASKED = {'execution_time', 'latency', 'last_update', 'next_check', 'is_executing', 'check_options',
+          'nagios_pid', 'program_version', 'livestatus_version', 'data_source_version',
+          'data_src_version', 'version', 'requests', 'requests_rate', 'connections',
+          'connections_rate', 'host_checks', 'host_checks_rate', 'service_checks',
+          'service_checks_rate', 'log_messages', 'log_messages_rate', 'cached_log_messages',
+          'neb_callbacks', 'neb_callbacks_rate', 'forks', 'forks_rate', 'program_start',
+          'menuState', 'server_time_unix_millis'}
+KINDS = ('HOST ALERT', 'SERVICE ALERT', 'INITIAL HOST STATE', 'INITIAL SERVICE STATE',
+         'HOST NOTIFICATION', 'SERVICE NOTIFICATION', 'HOST DOWNTIME ALERT', 'SERVICE DOWNTIME ALERT',
+         'HOST FLAPPING ALERT', 'SERVICE FLAPPING ALERT', 'EXTERNAL COMMAND',
+         'HOST NOTIFICATION SUPPRESSED', 'SERVICE NOTIFICATION SUPPRESSED',
+         'HOST CONTACT NOTIFICATION SUPPRESSED', 'SERVICE CONTACT NOTIFICATION SUPPRESSED')
+JSVAR = re.compile(r'^(\s*var\s+(\w+)\s*=\s*)(\{.*\}|\[.*\]);\s*$')
+
+
+def masked(key):
+    return key in MASKED or (key.startswith('host_') and key[5:] in MASKED)
+
+
+def mask(value):
+    if isinstance(value, dict):
+        return {k: ('MASKED' if masked(k) else mask(v)) for k, v in value.items()}
+    if isinstance(value, list):
+        items = [mask(v) for v in value]
+        if items and all(isinstance(v, dict) and 'type' in v and 'message' in v for v in items):
+            # A contact's line about a notification it was not sent names
+            # whichever object came first in a second: left out.
+            items = [v for v in items if str(v.get('type', '')).startswith(KINDS)
+                     and 'CONTACT NOTIFICATION SUPPRESSED' not in str(v.get('type', ''))]
+            for v in items:
+                v['time'] = 'TIME'
+                v['message'] = re.sub(r'^\[\d+\] ', '', str(v['message']))
+            items.sort(key=lambda v: json.dumps(v, sort_keys=True))
+        return items
+    return value
+
+
+def clean_text(text):
+    lines = []
+    for line in text.splitlines():
+        m = JSVAR.match(line)
+        if m:
+            if masked(m.group(2)):
+                continue
+            try:
+                line = m.group(1) + json.dumps(mask(json.loads(m.group(3))), sort_keys=True)
+            except ValueError:
+                pass
+        for pattern, word in SUBS:
+            line = pattern.sub(word, line)
+        # Thruk writes the parts of its own filters in an order of its own.
+        if 'has_been_checked' in line and ('/thruk/r/csv/' in line or ' and ' in line):
+            continue
+        # The process id of the program, on a line of its own.
+        if re.fullmatch(r'\s*\d+\s*', line) and lines and 'PID' in lines[-1]:
+            line = 'PID'
+        if line.strip():
+            lines.append(line.strip())
+    # Thruk writes hidden form fields in an order of its own each time.
+    out, block = [], []
+    for line in lines + ['']:
+        if line.startswith('<input type="hidden"'):
+            block.append(line)
+            continue
+        out.extend(sorted(block))
+        block = []
+        if line:
+            out.append(line)
+    return out
+
+
+def clean(text, page):
+    if page.startswith('/thruk/r/'):
+        try:
+            data = mask(json.loads(text))
+            text = json.dumps(data, sort_keys=True, indent=1)
+            for pattern, word in SUBS:
+                text = pattern.sub(word, text)
+            return text.splitlines()
+        except ValueError:
+            pass
+    return clean_text(text)
+
+
+pages = sorted(int(f[:-5]) for f in os.listdir(os.path.join(out, 'naemon')) if f.endswith('.html'))
+same = differ = 0
+for n in pages:
+    page = open(os.path.join(out, 'naemon', f'{n}.page')).read().strip()
+    a = open(os.path.join(out, 'naemon', f'{n}.html'), encoding='utf-8', errors='replace').read()
+    b_path = os.path.join(out, 'checkd', f'{n}.html')
+    b = open(b_path, encoding='utf-8', errors='replace').read() if os.path.exists(b_path) else ''
+    ca, cb = clean(a, page), clean(b, page)
+    if ca == cb and ca:
+        same += 1
+        continue
+    differ += 1
+    print(f'{n} {page}: {len(ca)} lines against Naemon, {len(cb)} against checkd')
+    shown = 0
+    for line in difflib.unified_diff(ca, cb, 'naemon', 'checkd', n=0, lineterm=''):
+        if line.startswith(('---', '+++', '@@')):
+            continue
+        print('   ', line[:220])
+        shown += 1
+        if shown >= 6:
+            break
+print(f'{same} pages the same, {differ} differ')

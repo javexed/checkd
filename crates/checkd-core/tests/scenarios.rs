@@ -37,6 +37,8 @@ const TRACE: Ms = 1;
 const LATE: Ms = 40;
 /// or this much earlier.
 const EARLY: Ms = 3;
+/// How long after its second the reaper reads the check result files.
+const REAPER: Ms = 10;
 
 #[derive(Default)]
 struct Compare {
@@ -399,6 +401,9 @@ struct Expected {
     /// The external commands sent during the run: milliseconds after the
     /// start, and the command without its time.
     commands: Vec<(Ms, String)>,
+    /// The lines of the host and of the service performance data file,
+    /// where the run wrote them.
+    perfdata: [Vec<String>; 2],
     /// The second in which the reference was told to stop.
     stopped: i64,
 }
@@ -449,11 +454,13 @@ fn read_run(dir: &Path) -> Option<Expected> {
             Some((at.parse().ok()?, text.to_string()))
         })
         .collect();
+    let perfdata = ["host-perfdata", "service-perfdata"].map(|name| read(name).lines().map(str::to_string).collect());
     Some(Expected {
         start_ns,
         lines,
         calls,
         commands,
+        perfdata,
         stopped,
     })
 }
@@ -566,6 +573,7 @@ fn by_key(calls: &[Call], ignore: &BTreeSet<String>) -> BTreeMap<String, Vec<Cal
 struct Played {
     lines: Vec<Line>,
     calls: Vec<Call>,
+    perfdata: [Vec<String>; 2],
     problems: Vec<String>,
     end: Ms,
     start: Ms,
@@ -709,6 +717,8 @@ fn play(dir: &Path, expected: &Expected) -> Result<Played, String> {
         .map(|(at, text)| (start + at, text.clone()))
         .collect();
     let mut lines = Vec::new();
+    let mut perfdata: [Vec<String>; 2] = [Vec::new(), Vec::new()];
+    let mut spooled: Vec<(Ms, String)> = Vec::new();
     let mut waiting: BinaryHeap<Reverse<(Ms, usize, u64)>> = BinaryHeap::new();
     let mut results: BTreeMap<u64, JobResult> = BTreeMap::new();
     let mut now = start;
@@ -719,6 +729,7 @@ fn play(dir: &Path, expected: &Expected) -> Result<Played, String> {
                     second: now.div_euclid(1000),
                     text,
                 }),
+                Effect::Perfdata { host, line } => perfdata[(!host) as usize].push(line),
                 Effect::Run(job) => {
                     let before = plugins.calls.len();
                     let problems = plugins.problems.len();
@@ -763,7 +774,8 @@ fn play(dir: &Path, expected: &Expected) -> Result<Played, String> {
         let done = waiting.peek().map(|Reverse((at, _, _))| *at);
         let timer = engine.next_wakeup();
         let command = commands.front().map(|(at, _)| *at);
-        let next = [wake, done, timer, command].into_iter().flatten().min();
+        let reaped = spooled.first().map(|(at, _)| *at);
+        let next = [wake, done, timer, command, reaped].into_iter().flatten().min();
         let Some(next) = next else { break };
         if next > end {
             break;
@@ -771,7 +783,19 @@ fn play(dir: &Path, expected: &Expected) -> Result<Played, String> {
         now = next.max(now);
         if command == Some(next) {
             let (_, text) = commands.pop_front().unwrap();
-            engine.command(&format!("[{}] {text}", now.div_euclid(1000)), now, &mut effects);
+            if let Some(name) = text.strip_prefix("SPOOL ") {
+                // A check result file is read at the reaper's next round.
+                let every = engine.settings().check_result_reaper_frequency as Ms * 1000;
+                let round = start + ((now - start) / every + 1) * every + REAPER;
+                let text = std::fs::read_to_string(dir.join("spool").join(name)).unwrap_or_default();
+                spooled.push((round, text));
+                spooled.sort_by_key(|(at, _)| *at);
+            } else {
+                engine.command(&format!("[{}] {text}", now.div_euclid(1000)), now, &mut effects);
+            }
+        } else if spooled.first().is_some_and(|(at, _)| *at == next) {
+            let (_, text) = spooled.remove(0);
+            engine.check_result_file(&text, now, &mut effects);
         } else if done == Some(next) {
             let Reverse((_, _, id)) = waiting.pop().unwrap();
             let result = results.remove(&id).unwrap();
@@ -784,6 +808,7 @@ fn play(dir: &Path, expected: &Expected) -> Result<Played, String> {
     Ok(Played {
         lines,
         calls: plugins.calls,
+        perfdata,
         problems: plugins.problems,
         end,
         start,
@@ -896,10 +921,49 @@ fn watched_alike(want: &[Call], have: &[Call]) -> bool {
     true
 }
 
+/// A performance data line without the times and measured values in it:
+/// numbers of ten digits and numbers with a fraction of three digits.
+fn plain_perfdata(line: &str) -> String {
+    line.split('\t')
+        .map(|field| {
+            let digits = field.chars().all(|c| c.is_ascii_digit());
+            let measured = field.split_once('.').is_some_and(|(a, b)| {
+                !a.is_empty() && a.chars().all(|c| c.is_ascii_digit()) && b.len() == 3 && b.chars().all(|c| c.is_ascii_digit())
+            });
+            if (digits && field.len() == 10) || measured { "N" } else { field }
+        })
+        .collect::<Vec<_>>()
+        .join("\t")
+}
+
 /// What the two sides do not agree on.
 fn differences(compare: &Compare, expected: &Expected, played: &Played, verbose: bool) -> Vec<String> {
     let mut out = Vec::new();
     out.extend(played.problems.iter().cloned());
+
+    // Performance data lines, where the reference wrote any: as a set,
+    // with times and measured values taken out.
+    for (place, name) in ["host", "service"].iter().enumerate() {
+        let want = &expected.perfdata[place];
+        if want.is_empty() {
+            continue;
+        }
+        let plain = |lines: &[String]| -> Vec<String> {
+            let mut out: Vec<String> = lines.iter().map(|l| plain_perfdata(l)).collect();
+            out.sort();
+            out
+        };
+        let (want, have) = (plain(want), plain(&played.perfdata[place]));
+        if want != have {
+            let missing: Vec<&String> = want.iter().filter(|l| !have.contains(l)).take(2).collect();
+            let extra: Vec<&String> = have.iter().filter(|l| !want.contains(l)).take(2).collect();
+            out.push(format!(
+                "{name} performance data: {} lines where the reference wrote {}; only the reference: {missing:?}; only checkd: {extra:?}",
+                have.len(),
+                want.len()
+            ));
+        }
+    }
 
     // A line's time is known to the second only.
     let rel_to = |start: Ms| move |second: i64| second * 1000 - start + 500;
@@ -1159,6 +1223,7 @@ fn real() {
         let played = Played {
             lines: run.lines,
             calls: run.calls,
+            perfdata: run.perfdata,
             problems: Vec::new(),
             end: start + ran * 1000 + 30,
             start,

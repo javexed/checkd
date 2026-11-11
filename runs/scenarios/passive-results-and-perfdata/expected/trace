@@ -1,0 +1,22 @@
+9 a 0
+5004 a 0
+6003 a 0
+7004 n-ann-a-ps t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=706366e4-8bd0-40b7-971c-c099e31d3306|dt=0|hdt=0|ack=/|o=passive third
+7005 a 0
+8005 n-ann-a-ps t=RECOVERY|s=OK|st=HARD|a=3|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=33d45adb-7f50-49e0-acc5-ed3a78c84b23|dt=0|hdt=0|ack=/|o=passive ok
+8006 perfproc 1794429118
+9004 a 0
+10004 pact 0
+11003 n-ann-ph t=PROBLEM|s=DOWN|st=HARD|a=1|n=1|hn=1|esc=0|rcp=ann|au=|co=|id=7998630e-9dff-4b8e-a55d-6f0a0db91295|dt=0|ack=/|o=host down passive
+12003 n-ann-ph t=PROBLEM|s=UNREACHABLE|st=HARD|a=1|n=2|hn=2|esc=0|rcp=ann|au=|co=|id=dbe81199-aaeb-4333-ae37-18bbd34927e7|dt=0|ack=/|o=host unreachable passive
+13003 n-ann-ph t=RECOVERY|s=UP|st=HARD|a=1|n=3|hn=3|esc=0|rcp=ann|au=|co=|id=8bbbd024-2e83-4ed5-8297-a9b77c2a344a|dt=0|ack=/|o=host up passive
+14003 n-ann-ph2 t=PROBLEM|s=DOWN|st=HARD|a=1|n=1|hn=1|esc=0|rcp=ann|au=|co=|id=9c3f9e9c-b15f-4fd5-a599-06c16d08792e|dt=0|ack=/|o=active host down passive
+16003 a 0
+16005 perfproc 1794429126
+20009 a 0
+24006 perfproc 1794429134
+29009 ph2 0
+29012 n-ann-ph2 t=RECOVERY|s=UP|st=HARD|a=1|n=2|hn=2|esc=0|rcp=ann|au=|co=|id=ed63fff1-25ee-4797-b96c-2a3fd3092583|dt=0|ack=/|o=ph2 is 0 at second 29
+30010 a 0
+31011 pact 0
+32007 perfproc 1794429142

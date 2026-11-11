@@ -1,0 +1,91 @@
+//! The Livestatus server: a Unix socket that answers Livestatus requests
+//! from the engine's state.
+//!
+//! Each connection is read in a task of its own. A request, the lines up
+//! to an empty line or the end of what the client sent, goes to the
+//! engine's loop, which answers it between events and hands a `COMMAND`
+//! to the engine. With `KeepAlive: on` the connection waits for the next
+//! request; otherwise it is closed after the answer.
+
+use std::path::{Path, PathBuf};
+
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::UnixListener;
+use tokio::sync::{mpsc, oneshot};
+
+/// A request from a client, and where its answer goes.
+pub struct Ask {
+    pub text: String,
+    pub reply: oneshot::Sender<checkd_livestatus::Response>,
+}
+
+/// The socket path of a Livestatus `broker_module` line, if the line is
+/// one: `broker_module=/usr/lib/.../livestatus.o /var/run/live debug=1`.
+pub fn socket_of_broker_module(line: &str) -> Option<PathBuf> {
+    let mut words = line.split_whitespace();
+    let module = words.next()?;
+    let name = Path::new(module).file_name()?.to_string_lossy().to_lowercase();
+    if !name.starts_with("livestatus") {
+        return None;
+    }
+    words.find(|w| !w.contains('=')).map(PathBuf::from)
+}
+
+/// Starts listening. Requests come out of the answer's receiver.
+pub fn listen(path: &Path) -> Result<mpsc::UnboundedReceiver<Ask>, String> {
+    if path.exists() {
+        std::fs::remove_file(path).map_err(|err| format!("cannot remove the old socket {}: {err}", path.display()))?;
+    }
+    let listener = UnixListener::bind(path)
+        .map_err(|err| format!("cannot make the Livestatus socket {}: {err}", path.display()))?;
+    let (asks, inbox) = mpsc::unbounded_channel();
+    tokio::spawn(async move {
+        loop {
+            let Ok((stream, _)) = listener.accept().await else { continue };
+            let asks = asks.clone();
+            tokio::spawn(async move {
+                let (read, mut write) = stream.into_split();
+                let mut reader = BufReader::new(read);
+                loop {
+                    let mut text = String::new();
+                    let mut ended = false;
+                    loop {
+                        let mut line = String::new();
+                        match reader.read_line(&mut line).await {
+                            Ok(0) | Err(_) => {
+                                ended = true;
+                                break;
+                            }
+                            Ok(_) => {
+                                if line.trim_end_matches(['\n', '\r']).is_empty() {
+                                    if text.is_empty() {
+                                        continue;
+                                    }
+                                    break;
+                                }
+                                text.push_str(&line);
+                            }
+                        }
+                    }
+                    if text.trim().is_empty() {
+                        return;
+                    }
+                    let (reply, answer) = oneshot::channel();
+                    if asks.send(Ask { text, reply }).is_err() {
+                        return;
+                    }
+                    let Ok(response) = answer.await else { return };
+                    if write.write_all(&response.bytes).await.is_err() {
+                        return;
+                    }
+                    let _ = write.flush().await;
+                    if !response.keep_alive || ended {
+                        let _ = write.shutdown().await;
+                        return;
+                    }
+                }
+            });
+        }
+    });
+    Ok(inbox)
+}

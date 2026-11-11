@@ -192,6 +192,9 @@ pub enum Timer {
     DowntimeEnd(u64),
     /// A flexible downtime that was not set off in its window.
     DowntimeExpire(u64),
+    /// The processing command of the host (0) or service (1) performance
+    /// data file.
+    PerfdataProcessing(u8),
 }
 
 const REASON_OFF: &str = "Notifications are disabled for this object by its configuration.";
@@ -206,6 +209,8 @@ const REASON_PERIOD: &str =
     "Notification blocked by timeperiod; notifications should not be sent out at this time.";
 const REASON_HOST: &str =
     "Notification blocked for service because its associated host is either down or unreachable.";
+const REASON_HOST_DOWNTIME: &str =
+    "Notification blocked for service because its associated host is currently in a scheduled downtime.";
 const REASON_DELAY: &str = "Notification blocked because first_notification_delay is configured and not enough time has elapsed since the object changed to a non-UP/non-OK state (or since program start).";
 const REASON_ONCE: &str = "Re-notification blocked for this problem.";
 const REASON_TOO_SOON: &str =
@@ -406,7 +411,7 @@ impl Engine {
                 return Err(REASON_HOST);
             }
             if self.hosts[host].item.notice.downtime_depth > 0 {
-                return Err(REASON_DOWNTIME);
+                return Err(REASON_HOST_DOWNTIME);
             }
         }
         let item = self.item(obj);
@@ -893,6 +898,7 @@ impl Engine {
                         self.stop_downtime(id, false, now, out);
                     }
                 }
+                Timer::PerfdataProcessing(place) => self.process_perfdata(place, at, now, out),
             }
         }
     }

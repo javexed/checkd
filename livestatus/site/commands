@@ -1,0 +1,3 @@
+ACKNOWLEDGE_SVC_PROBLEM;web;disk;2;0;1;ann;looking at the disk
+SCHEDULE_HOST_DOWNTIME;app;{now};{now+3600};1;0;0;ann;patching
+ADD_SVC_COMMENT;db;query;1;ann;slow at night

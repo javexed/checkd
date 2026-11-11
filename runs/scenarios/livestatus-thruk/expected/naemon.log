@@ -1,0 +1,64 @@
+[1794425034] Naemon 1.5.2 starting... (PID=23)
+[1794425034] Local time is Wed Nov 11 19:23:54 UTC 2026
+[1794425034] LOG VERSION: 2.0
+[1794425034] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794425034] nerd: Channel hostchecks registered successfully
+[1794425034] nerd: Channel servicechecks registered successfully
+[1794425034] nerd: Fully initialized and ready to rock!
+[1794425034] Successfully launched command file worker with pid 30
+[1794425034] Reading all config object data
+[1794425034] Loading neb modules
+[1794425034] livestatus: Naemon Livestatus 1.5.1.source, Socket: '/tmp/oracle/live'
+[1794425034] livestatus: Finished initialization. Further log messages go to /tmp/oracle/livestatus.log
+[1794425034] Event broker module '/usr/lib/naemon/naemon-livestatus/livestatus.so' initialized successfully.
+[1794425034] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794425034] INITIAL HOST STATE: app;UP;HARD;1;
+[1794425034] INITIAL HOST STATE: db;UP;HARD;1;
+[1794425034] INITIAL HOST STATE: web;UP;HARD;1;
+[1794425034] INITIAL SERVICE STATE: app;api;OK;HARD;1;(null)
+[1794425034] INITIAL SERVICE STATE: db;query;OK;HARD;1;(null)
+[1794425034] INITIAL SERVICE STATE: web;disk;OK;HARD;1;(null)
+[1794425034] INITIAL SERVICE STATE: web;http;OK;HARD;1;(null)
+[1794425034] TIMEPERIOD TRANSITION: lsalways;-1;1
+[1794425034] Naemon successfully initialized (PID=23)
+[1794425034] SERVICE ALERT: app;api;UNKNOWN;SOFT;1;app-api call 1 gives 3
+[1794425034] SERVICE ALERT: web;disk;WARNING;SOFT;1;web-disk is 1 at second 0
+[1794425035] SERVICE ALERT: web;http;WARNING;SOFT;1;web-http call 2 gives 1
+[1794425035] SERVICE ALERT: app;api;UNKNOWN;HARD;2;app-api call 2 gives 3
+[1794425035] SERVICE CONTACT NOTIFICATION SUPPRESSED: ann;app;api;Notifications are disabled for this object by its configuration.
+[1794425035] SERVICE NOTIFICATION SUPPRESSED: app;api;No notification sent, because no contacts were found for notification purposes.
+[1794425035] SERVICE ALERT: web;disk;WARNING;HARD;2;web-disk is 1 at second 1
+[1794425035] SERVICE NOTIFICATION SUPPRESSED: web;disk;No notification sent, because no contacts were found for notification purposes.
+[1794425036] SERVICE ALERT: web;http;CRITICAL;HARD;2;web-http call 3 gives 2
+[1794425036] SERVICE NOTIFICATION SUPPRESSED: web;http;No notification sent, because no contacts were found for notification purposes.
+[1794425037] SERVICE ALERT: web;http;OK;HARD;2;web-http call 4 gives 0
+[1794425037] SERVICE NOTIFICATION SUPPRESSED: web;http;Notification blocked for RECOVERY because no notification was sent out for the original problem.
+[1794425044] EXTERNAL COMMAND: ACKNOWLEDGE_SVC_PROBLEM;web;disk;2;0;1;ann;looking at the disk
+[1794425044] EXTERNAL COMMAND: SCHEDULE_HOST_DOWNTIME;app;1794425044;1794428634;1;0;0;ann;patching
+[1794425044] HOST DOWNTIME ALERT: app;STARTED; Host has entered a period of scheduled downtime
+[1794425044] HOST CONTACT NOTIFICATION SUPPRESSED: ann;app;Notifications are disabled for this object by its configuration.
+[1794425044] HOST NOTIFICATION SUPPRESSED: app;No notification sent, because no contacts were found for notification purposes.
+[1794425044] EXTERNAL COMMAND: ADD_SVC_COMMENT;db;query;1;ann;slow at night
+[1794425044] SERVICE NOTIFICATION SUPPRESSED: app;api;Notification blocked for service because its associated host is currently in a scheduled downtime.
+[1794425044] SERVICE ALERT: db;query;CRITICAL;SOFT;1;db-query is 2 at second 10
+[1794425044] SERVICE NOTIFICATION SUPPRESSED: web;disk;Notification for problem blocked because it has already been acknowledged.
+[1794425045] SERVICE ALERT: db;query;CRITICAL;HARD;2;db-query is 2 at second 11
+[1794425045] SERVICE NOTIFICATION SUPPRESSED: db;query;No notification sent, because no contacts were found for notification purposes.
+[1794425051] EXTERNAL COMMAND: STOP_EXECUTING_SVC_CHECKS;
+[1794425051] EXTERNAL COMMAND: STOP_EXECUTING_HOST_CHECKS;
+[1794425057] EXTERNAL COMMAND: START_EXECUTING_SVC_CHECKS;
+[1794425057] EXTERNAL COMMAND: START_EXECUTING_HOST_CHECKS;
+[1794425057] HOST ALERT: db;DOWN;SOFT;1;db is 2 at second 23
+[1794425058] HOST NOTIFICATION SUPPRESSED: db;Notifications blocked for object in a soft state.
+[1794425058] SERVICE NOTIFICATION SUPPRESSED: db;query;Notification blocked for service because its associated host is either down or unreachable.
+[1794425058] HOST ALERT: db;DOWN;HARD;2;db is 2 at second 24
+[1794425058] HOST NOTIFICATION SUPPRESSED: db;No notification sent, because no contacts were found for notification purposes.
+[1794425071] EXTERNAL COMMAND: STOP_EXECUTING_SVC_CHECKS;
+[1794425071] EXTERNAL COMMAND: STOP_EXECUTING_HOST_CHECKS;
+[1794425084] Caught 'Terminated', shutting down...
+[1794425084] livestatus: deinitializing
+[1794425084] Retention data successfully saved.
+[1794425084] Successfully shutdown... (PID=23)
+[1794425084] Event broker module 'NERD' deinitialized successfully.
+[1794425084] livestatus: Logfile cache: flushing complete cache.
+[1794425084] Event broker module '/usr/lib/naemon/naemon-livestatus/livestatus.so' deinitialized successfully.

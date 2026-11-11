@@ -61,9 +61,48 @@ feed() {
         done
         now=$(date +%s%N)
         stamp=$(( (start_at + (now - start) / 1000000) / 1000 ))
-        printf '[%d] %s\n' "$stamp" "$text" > "$work/naemon.cmd"
+        case $text in
+            "SPOOL "*)
+                name=${text#SPOOL }
+                cp "/in/spool/$name" "$work/checkresults/$name"
+                : > "$work/checkresults/$name.ok"
+                ;;
+            *) printf '[%d] %s\n' "$stamp" "$text" > "$work/naemon.cmd" ;;
+        esac
     done < /in/expected/commands
 }
+# Livestatus, as oracle/play-entry.sh does it for the reference: the same
+# broker_module line, and the queries of /in/queries at the seconds of
+# /in/ask, with checkd's time for {now}.
+asker=
+if [ -f /in/ask ] && [ -d /in/queries ]; then
+    echo "broker_module=/usr/lib/naemon/naemon-livestatus/livestatus.so $work/live" >> /case/naemon.cfg
+    rm -rf /out/answers
+    (
+        start=$(cat /case/state/start)
+        grep -v '^#' /in/ask | while read -r at; do
+            now=$(date +%s%N)
+            wait=$(( at * 1000 - (now - start) / 1000000 ))
+            [ "$wait" -gt 0 ] && sleep "$(printf '%d.%03d' $((wait / 1000)) $((wait % 1000)))"
+            mkdir -p "/out/answers/$at"
+            for query in /in/queries/*; do
+                name=$(basename "$query")
+                now=$(date +%s%N)
+                second=$(( (start_at + (now - start) / 1000000) / 1000 ))
+                awk -v now="$second" '{
+                    while (match($0, /\{now(-[0-9]+)?\}/)) {
+                        n = substr($0, RSTART + 4, RLENGTH - 5)
+                        $0 = substr($0, 1, RSTART - 1) (now + n) substr($0, RSTART + RLENGTH)
+                    }
+                    print
+                }' "$query" > "/tmp/q-$name"
+                printf '\n' >> "/tmp/q-$name"
+                unixcat "$work/live" < "/tmp/q-$name" > "/out/answers/$at/$name" 2>&1 || true
+            done
+        done
+    ) &
+    asker=$!
+fi
 feeder=
 if [ -f /in/expected/commands ]; then
     feed &
@@ -75,8 +114,12 @@ set +e
 timeout -s TERM "$seconds" /checkd run --start-at "$start_at" \
     --first-checks /plan/firsts ${CHECKD_OPTIONS:-} /case/naemon.cfg > /out/stdout.txt 2>&1
 [ -n "$feeder" ] && kill "$feeder" 2>/dev/null
+[ -n "$asker" ] && kill "$asker" 2>/dev/null
 set -e
 
 [ -f "$work/naemon.log" ] && cp "$work/naemon.log" /out/naemon.log
 [ -f /case/state/trace ] && cp /case/state/trace /out/trace
 cp /case/state/start /out/start
+for f in host-perfdata service-perfdata; do
+    if [ -f "$work/$f" ]; then cp "$work/$f" "/out/$f"; fi
+done

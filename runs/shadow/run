@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Shadow mode against the reference.
+#
+#   runs/shadow/run
+#
+# The reference runs on runs/shadow/case with its Livestatus module, and
+# checkd runs beside it in shadow mode, on the same config, for 150
+# seconds, in the oracle image without a network. checkd must report that
+# it compared every host and service, and no difference.
+#
+# Then the same again, but checkd is given case/objects-changed.cfg, where
+# one service is OK for good where the case's turns CRITICAL at second 25.
+# checkd must report that difference, and only that one.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(cd "$here/../.." && pwd)
+work=$root/runs/shadow-work
+core=$(sed -n 's/^ARG NAEMON_CORE_VERSION=//p' "$root/oracle/Dockerfile")
+inputs=$(cat "$root/oracle/Dockerfile" "$root/oracle/entry.sh" | sha256sum | cut -c1-12)
+image="checkd-oracle:naemon-${core}-${inputs}"
+
+cd "$root"
+cargo build --quiet -p checkd
+failed=0
+for kind in same changed; do
+    out=$work/$kind
+    rm -rf "$out"
+    mkdir -p "$out"
+    other=
+    [ "$kind" = changed ] && other=objects-changed.cfg
+    docker run --rm --network none --user "$(id -u):$(id -g)" \
+        -v "$here/case:/in:ro" -v "$root/runs/lib:/shared:ro" -v "$root/target/debug/checkd:/checkd:ro" \
+        -v "$here/entry.sh:/shadow-entry:ro" -v "$out:/out" \
+        --entrypoint sh "$image" /shadow-entry 150 $other
+    rounds=$(grep -c 'SHADOW: 8 hosts and services compared' "$out/checkd.log" || true)
+    differences=$(grep 'SHADOW DIFFERENCE' "$out/checkd.log" | sed 's/^\[[0-9]*\] //' || true)
+    case $kind in
+        same)
+            if [ "$rounds" -ge 5 ] && [ -z "$differences" ]; then
+                echo "same config: $rounds rounds compared all 8 hosts and services, no difference"
+            else
+                echo "same config: $rounds full rounds; differences: ${differences:-none}"
+                failed=1
+            fi
+            ;;
+        changed)
+            if [ "$(printf '%s\n' "$differences" | grep -c .)" = 1 ] \
+                && printf '%s' "$differences" | grep -q '^SHADOW DIFFERENCE: store;disk: production CRITICAL [A-Z]*, checkd OK HARD'; then
+                echo "changed config: reported $differences"
+            else
+                echo "changed config: differences: ${differences:-none}"
+                failed=1
+            fi
+            ;;
+    esac
+done
+exit $failed

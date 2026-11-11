@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# Renders Thruk's pages against Naemon and against checkd, and compares
+# them: the phase 4 gate, "Thruk's pages work unchanged".
+#
+#   livestatus/thruk-pages
+#
+# An OMD Labs site runs in a container without a network, with the objects
+# of site/objects.cfg. First its own Naemon runs; then Naemon is stopped
+# and checkd runs on the site's merged configuration, with its Livestatus
+# socket where the site's Livestatus module had it. Checks are off in the
+# site's main config; each run starts the scripted plugins' clock again,
+# has every host and service checked once, by a forced check, at second 2,
+# sends the commands of site/commands at second 10, and renders every page
+# of `pages` with Thruk's own `thruk url`. So both engines make the same
+# checks, and nothing changes while the pages are made.
+#
+# The pages are compared after times, durations, and the name, version and
+# process id of the program are taken out. What each run gave stays in
+# livestatus/rendered/ (not in git: the pages are Thruk's).
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(dirname "$here")
+image=consol/omd-labs-debian@sha256:e140902ba2bc2ba042836c5137fefab56d4b70716aae5d21f51a2afaf6fcb73f
+out=$here/rendered
+rm -rf "$out"
+mkdir -p "$out/naemon" "$out/checkd"
+
+cd "$root"
+cargo build --quiet -p checkd
+
+docker run --rm --network none --entrypoint /bin/bash \
+    -v "$here/site:/site:ro" -v "$here/pages:/pages:ro" -v "$root/runs/lib/plugins:/plugins:ro" \
+    -v "$root/target/debug/checkd:/checkd:ro" -v "$out:/out" "$image" -c '
+set -eu
+site=/omd/sites/demo
+mkdir -p /case/plugins /case/state
+cp /plugins/* /case/plugins/
+chown -R demo /case/state
+cp /site/objects.cfg $site/etc/naemon/conf.d/checkd-livestatus.cfg
+chown demo $site/etc/naemon/conf.d/checkd-livestatus.cfg
+# No checks but the ones forced below, so that both engines make the same.
+printf "execute_service_checks=0\nexecute_host_checks=0\n" > $site/etc/naemon/naemon.d/zz-checkd-pages.cfg
+chown demo $site/etc/naemon/naemon.d/zz-checkd-pages.cfg
+
+# The scripted plugins count from here: before an engine starts.
+reset() {
+    rm -f /case/state/*
+    date +%s%N > /case/state/start
+    chown -R demo /case/state
+}
+
+session() {
+    engine=$1
+    start=$(cut -c1-10 /case/state/start)
+    # Both engines check everything at once, whatever their own plan for
+    # the first checks.
+    sleep 2
+    for h in web db app; do
+        for c in SCHEDULE_FORCED_HOST_CHECK SCHEDULE_FORCED_HOST_SVC_CHECKS; do
+            printf "[%d] %s;%s;%d\n" "$(date +%s)" "$c" "$h" "$(date +%s)" > $site/tmp/run/naemon.cmd
+        done
+    done
+    sleep 8
+    grep -v "^#" /site/commands | sed "s/{now}/$start/g; s/{now+3600}/$((start + 3600))/g" | while read -r line; do
+        printf "[%d] %s\n" "$(date +%s)" "$line" > $site/tmp/run/naemon.cmd
+    done
+    sleep 5
+    n=0
+    grep -v "^#" /pages | while read -r page; do
+        n=$((n + 1))
+        page=$(printf "%s" "$page" | sed "s/WEB/web/g; s/DB/db/g; s/APP/app/g")
+        su - demo -c "thruk url \"$page\"" > /out/$engine/$n.html 2> /out/$engine/$n.err || true
+        printf "%s\n" "$page" > /out/$engine/$n.page
+    done
+}
+
+reset
+su - demo -c "omd start" > /out/naemon/start.txt 2>&1
+session naemon
+su - demo -c "omd stop naemon" > /dev/null 2>&1
+
+su - demo -c "merge-core-config $site/etc/naemon/naemon.d/*.cfg $site/etc/naemon/naemon.cfg" > /tmp/naemon.cfg
+rm -f $site/tmp/run/live $site/tmp/run/naemon.cmd
+reset
+su - demo -c "cd $site && /checkd run --store none --log-file $site/var/naemon/checkd.log /tmp/naemon.cfg" \
+    > /out/checkd/stdout.txt 2>&1 &
+sleep 2
+session checkd
+cp $site/var/naemon/checkd.log /out/checkd/log.txt 2>/dev/null || true
+chown -R '"$(id -u):$(id -g)"' /out
+'
+
+# Compare, with what is bound to differ taken out.
+python3 -I "$here/compare-pages" "$out"

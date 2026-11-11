@@ -38,6 +38,12 @@ nothing in this repo may be derived from their source.
   PostgreSQL) are pinned by digest in the script that uses them, run
   without a network, and are no part of checkd.
 
+- Thruk is GPL too, and is no part of checkd. How it picks the columns it
+  asks a backend for was read in its source, to make checkd's version
+  string one it treats as Naemon's; nothing of it is copied. What Thruk
+  sends and renders (`livestatus/recorded`, `livestatus/rendered`, the
+  queries of `runs/scenarios/livestatus-thruk`) stays out of git.
+
 By contributing you confirm that your change was not written from the GPL
 source.
 

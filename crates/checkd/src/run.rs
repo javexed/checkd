@@ -68,6 +68,11 @@ pub struct RunArgs {
     /// Without it, the configuration's `state_retention_file`, if there
     /// is one.
     pub import: Option<PathBuf>,
+    /// The Livestatus socket. Without it, the socket of a Livestatus
+    /// `broker_module` line of the configuration, if there is one.
+    pub livestatus: Option<PathBuf>,
+    /// Shadow mode: the Livestatus socket of the production engine.
+    pub shadow: Option<PathBuf>,
 }
 
 pub fn run(mut args: RunArgs) -> ExitCode {
@@ -93,10 +98,16 @@ pub fn run(mut args: RunArgs) -> ExitCode {
         .get("command_file")
         .filter(|path| commands_on && !path.trim().is_empty())
         .map(|path| args.path_map.apply(Path::new(path.trim())));
+    // In shadow mode the configuration's files are production's: checkd
+    // leaves its command file, its Livestatus socket and its log alone.
+    if args.shadow.is_some() {
+        args.command_file = None;
+    }
+    let config_log = if args.shadow.is_some() { None } else { main.get("log_file").map(PathBuf::from) };
     let log_path = args
         .log_file
         .clone()
-        .or_else(|| main.get("log_file").map(PathBuf::from))
+        .or(config_log)
         .filter(|path| path != Path::new("-"));
     let mut log = match Log::open(log_path.as_deref()) {
         Ok(log) => log,
@@ -111,6 +122,19 @@ pub fn run(mut args: RunArgs) -> ExitCode {
     if let Some(at) = args.start_at {
         AHEAD.store(at - now(), Ordering::Relaxed);
     }
+    if args.livestatus.is_none() && args.shadow.is_none() {
+        args.livestatus = main
+            .settings
+            .iter()
+            .filter(|(name, _)| name == "broker_module")
+            .find_map(|(_, value)| crate::livestatus::socket_of_broker_module(value))
+            .map(|path| args.path_map.apply(&path));
+    }
+    for (name, value) in &main.settings {
+        if name == "broker_module" && crate::livestatus::socket_of_broker_module(value).is_none() {
+            eprintln!("warning: broker_module={value} is not loaded: checkd has no event broker");
+        }
+    }
     let retention = main
         .get("state_retention_file")
         .filter(|path| !path.trim().is_empty())
@@ -119,6 +143,13 @@ pub fn run(mut args: RunArgs) -> ExitCode {
     let (mut engine, warnings) = Engine::new(objects, &main, Box::new(Local), now());
     for warning in &warnings {
         eprintln!("warning: {warning}");
+    }
+    if args.shadow.is_some() {
+        // Beside production: nothing is sent and nothing is acted on.
+        engine.quiet();
+        if args.store.is_none() {
+            args.store = Some("none".to_string());
+        }
     }
     let spec = match (&args.store, &retention, keep_state) {
         (Some(spec), _, _) => spec.clone(),
@@ -193,6 +224,32 @@ async fn serve(
 
     let (done, mut results) = mpsc::unbounded_channel::<(u64, JobResult)>();
     let (lines, mut commands) = mpsc::unbounded_channel::<String>();
+    let mut livestatus = match &args.livestatus {
+        Some(path) => Some(crate::livestatus::listen(path)?),
+        None => None,
+    };
+    let mut program = checkd_livestatus::Program {
+        pid: std::process::id(),
+        // The versions of the reference that checkd answers like, with its
+        // own in them. Thruk chooses what it asks for by these: a
+        // Livestatus version that ends in `-naemon` has Naemon's columns
+        // and its wrapped_json output, as checkd's has.
+        version: format!("1.5.2 (checkd {})", env!("CARGO_PKG_VERSION")),
+        livestatus_version: format!("1.5.1-checkd-{}-naemon", env!("CARGO_PKG_VERSION")),
+        ..Default::default()
+    };
+    // The log, for the Livestatus log table.
+    let mut history: Vec<(i64, String)> = Vec::new();
+    let mut perfdata = Perfdata::open(engine.settings());
+    // The check result directory, read on the reaper's interval.
+    let spool = engine.settings().check_result_path.clone().map(PathBuf::from);
+    let mut reaper = tokio::time::interval(Duration::from_secs(
+        engine.settings().check_result_reaper_frequency as u64,
+    ));
+    reaper.tick().await;
+    let mut shadow = crate::shadow::Shadow::default();
+    let mut shadow_tick = tokio::time::interval(crate::shadow::EVERY);
+    let (shadow_done, mut shadow_answers) = mpsc::unbounded_channel();
     if let Some(path) = &args.command_file {
         command_file(path, lines)?;
     }
@@ -206,10 +263,11 @@ async fn serve(
     }
 
     let pid = std::process::id();
-    log.line(&format!(
-        "checkd {} starting... (PID={pid})",
-        env!("CARGO_PKG_VERSION")
-    ));
+    let starting = format!("checkd {} starting... (PID={pid})", env!("CARGO_PKG_VERSION"));
+    log.line(&starting);
+    if livestatus.is_some() {
+        history.push((now().div_euclid(1000), starting));
+    }
 
     // Log lines not yet in the store, and when the store is next written
     // anyway.
@@ -227,11 +285,19 @@ async fn serve(
             match effect {
                 Effect::Log(line) => {
                     log.line(&line);
+                    let second = now().div_euclid(1000);
+                    if livestatus.is_some() {
+                        history.push((second, line.clone()));
+                        if history.len() > HISTORY {
+                            history.drain(..HISTORY / 10);
+                        }
+                    }
                     if store.is_some() {
-                        unsaved.push((now().div_euclid(1000), line));
+                        unsaved.push((second, line));
                     }
                 }
                 Effect::Run(job) => jobs.push(job),
+                Effect::Perfdata { host, line } => perfdata.write(host, &line),
             }
         }
         // What happened is on record before anything it asks for is run.
@@ -248,7 +314,10 @@ async fn serve(
             if otel::BUILT_IN {
                 let latency = match job.kind {
                     JobKind::HostCheck | JobKind::ServiceCheck => engine.item(job.obj).latency,
-                    JobKind::HostHandler | JobKind::ServiceHandler | JobKind::Notification => 0.0,
+                    JobKind::HostHandler
+                    | JobKind::ServiceHandler
+                    | JobKind::Notification
+                    | JobKind::PerfdataProcessing => 0.0,
                 };
                 telemetry.job_started(&job, &engine.log_name(job.obj), latency);
             }
@@ -278,6 +347,40 @@ async fn serve(
                 telemetry.job_done(id, &outcome, read);
             }
             Some(line) = commands.recv() => engine.command(&line, now(), &mut effects),
+            _ = reaper.tick(), if spool.is_some() => {
+                if let Some(dir) = &spool {
+                    read_spool(engine, dir, &mut effects);
+                }
+            }
+            _ = shadow_tick.tick(), if args.shadow.is_some() => {
+                let socket = args.shadow.clone().unwrap_or_default();
+                let done = shadow_done.clone();
+                tokio::spawn(async move {
+                    let _ = done.send(crate::shadow::production(socket).await);
+                });
+            }
+            Some(theirs) = shadow_answers.recv() => {
+                for line in shadow.compare(engine, theirs, now()) {
+                    effects.push(Effect::Log(line));
+                }
+            }
+            Some(ask) = async { livestatus.as_mut()?.recv().await }, if livestatus.is_some() => {
+                program.requests += 1;
+                program.connections += 1;
+                let response = {
+                    let source = checkd_livestatus::Source {
+                        engine,
+                        now: now(),
+                        log: &history,
+                        program: &program,
+                    };
+                    checkd_livestatus::handle(&source, &ask.text)
+                };
+                if let Some(command) = &response.command {
+                    engine.command(command, now(), &mut effects);
+                }
+                let _ = ask.reply.send(response);
+            }
             _ = tokio::time::sleep(flush.unwrap_or_default()), if flush.is_some() => telemetry.flush(),
             _ = terminate.recv() => break "Caught SIGTERM",
             _ = interrupt.recv() => break "Caught SIGINT",
@@ -299,6 +402,64 @@ async fn serve(
     log.line(&format!("Successfully shutdown... (PID={pid})"));
     Ok(())
 }
+
+/// The performance data files.
+struct Perfdata {
+    files: [Option<std::fs::File>; 2],
+}
+
+impl Perfdata {
+    fn open(settings: &checkd_core::settings::Settings) -> Perfdata {
+        let open = |place: usize| {
+            let p = &settings.perfdata[place];
+            let path = p.file.as_ref()?;
+            let mut options = OpenOptions::new();
+            options.create(true);
+            if p.mode == 'w' {
+                options.write(true).truncate(true);
+            } else {
+                options.append(true);
+            }
+            match options.open(path) {
+                Ok(file) => Some(file),
+                Err(err) => {
+                    eprintln!("warning: cannot open the performance data file {path}: {err}");
+                    None
+                }
+            }
+        };
+        Perfdata { files: [open(0), open(1)] }
+    }
+
+    fn write(&mut self, host: bool, line: &str) {
+        if let Some(file) = &mut self.files[(!host) as usize] {
+            let _ = writeln!(file, "{line}");
+        }
+    }
+}
+
+/// Takes the files NRDP and the like left in the check result directory:
+/// each with an `.ok` file beside it once it is written whole. Both are
+/// removed when the result is taken.
+fn read_spool(engine: &mut Engine, dir: &Path, effects: &mut Vec<Effect>) {
+    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let mut names: Vec<PathBuf> = entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_none() && p.with_extension("ok").exists())
+        .collect();
+    names.sort();
+    for path in names {
+        if let Ok(text) = std::fs::read_to_string(&path) {
+            engine.check_result_file(&text, now(), effects);
+        }
+        let _ = std::fs::remove_file(path.with_extension("ok"));
+        let _ = std::fs::remove_file(&path);
+    }
+}
+
+/// How many log lines the Livestatus log table keeps in memory.
+const HISTORY: usize = 200_000;
 
 /// How often the state is written when nothing in the log calls for it.
 const SAVE_EVERY: Ms = 5000;

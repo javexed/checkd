@@ -36,10 +36,11 @@ Each module's header comment gives the rules it follows.
   restart, and putting it back.
 - `retention`: reading the `retention.dat` of the reference version into
   a snapshot.
+- `passive`: passive results, check result files, and performance data.
 
 ## What it is tested against
 
-- `tests/scenarios.rs` plays the 58 scenarios of `runs/scenarios` and
+- `tests/scenarios.rs` plays the 60 scenarios of `runs/scenarios` and
   compares log lines and plugin calls with the reference's recordings.
   [`../../runs/README.md`](../../runs/README.md) says what is compared,
   how closely, and where checkd does something else on purpose.
@@ -51,8 +52,6 @@ Each module's header comment gives the rules it follows.
 
 ## Not in it yet
 
-Passive results and the external commands Thruk sends beyond those for
-notifications, acknowledgements, downtimes and comments are phase 4.
 Custom notifications, triggered downtimes and global notification
 handlers are written but not compared with the reference. Notification
 dependencies are not done. Of what belongs to checks and state, these

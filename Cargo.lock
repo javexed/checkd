@@ -100,6 +100,7 @@ version = "0.0.0"
 dependencies = [
  "checkd-config",
  "checkd-core",
+ "checkd-livestatus",
  "libc",
  "rusqlite",
  "rustls",
@@ -121,6 +122,15 @@ name = "checkd-core"
 version = "0.0.0"
 dependencies = [
  "checkd-config",
+]
+
+[[package]]
+name = "checkd-livestatus"
+version = "0.0.0"
+dependencies = [
+ "checkd-config",
+ "checkd-core",
+ "regex",
 ]
 
 [[package]]

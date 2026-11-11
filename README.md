@@ -24,28 +24,37 @@ gate in that state.
 `checkd run` runs the checks of a config and logs state changes: soft and
 hard states, checks of a host on demand, parents, execution dependencies,
 flap detection, event handlers, macros and timeperiods. It sends
-notifications, with escalations, and takes acknowledgements, downtimes
-and comments through its command file. On 58 scripted runs written for
-this project it is compared with recordings of Naemon Core 1.5.2 on the
-same configs, log line by log line and plugin call by plugin call,
-notifications and the macros of notification commands included. On a
-simulated clock 53 of them play the same as the recording; the other
-five need real programs and are left to the real run. Run for real, with
-the real plugins and the real command file, 57 are compared; in the
-last full run of all of them 52 agreed, four more after the comparison
-was taught the orders that real time leaves open (see `runs/README.md`),
-and one, `two-parents`, agreed when it was run again on its own.
+notifications, with escalations; takes acknowledgements, downtimes,
+comments, passive results and check commands through its command file
+and through Livestatus; reads check result files; and writes performance
+data files. On 60 scripted runs written for this project it is compared
+with recordings of Naemon Core 1.5.2 on the same configs, log line by log
+line and plugin call by plugin call, notifications, the macros of
+notification commands and the performance data included. On a simulated
+clock 55 of them play the same as the recording; the other five need
+real programs and are left to the real run. Run for real, with the real
+plugins and the real command file, 59 are compared and all agree in the
+last full run, within the allowances `runs/README.md` gives; one is not
+compared in real time.
 [runs/README.md](runs/README.md) says what is compared and how closely,
-what checkd is told beforehand to make the runs comparable, and the five
-places where checkd does something else than Naemon on purpose.
+what checkd is told beforehand to make the runs comparable, and where
+checkd does something else than Naemon on purpose.
 
 Its state is kept in SQLite or PostgreSQL and survives a kill: see
 [docs/store.md](docs/store.md). It reads the `retention.dat` of an
 existing Naemon once, when it starts on an empty store.
 
-It does not take passive results, or the external commands Thruk sends
-beyond those for notifications, acknowledgements, downtimes and
-comments, and there is no Livestatus yet. Those are phase 4. A number of
+It answers Livestatus at the socket of a config's Livestatus
+`broker_module` line. The 108 queries Thruk was seen sending for 54 of
+its pages are answered as the reference answers them, value by value,
+but for measured values and the program's own counters; Thruk renders
+all 54 pages against checkd, and 45 are the same as against Naemon after
+times and the program's name are taken out. `checkd run --shadow` runs
+beside a production engine and reports where states differ. See
+[livestatus/README.md](livestatus/README.md), which lists every
+difference and why.
+
+A number of
 settings that belong to checks are not acted on yet, and `checkd run`
 warns when a config sets one of them:
 [crates/checkd-core/README.md](crates/checkd-core/README.md). It has not
@@ -82,6 +91,10 @@ it makes when it is not there.
     --store <where>        sqlite:<file>, postgres:<connection> or none
     --import-retention <file>
                            a retention.dat to start from, see docs/store.md
+    --livestatus <socket>  answer Livestatus there; without it, at the
+                           socket of a Livestatus broker_module line
+    --shadow <socket>      run beside the engine whose Livestatus socket
+                           this is, send nothing, and report differences
     --otlp-endpoint <url>  see below
 
     target/debug/checkd state sqlite:/path/to/checkd.sqlite
@@ -131,12 +144,17 @@ Phases, each with a gate that must pass before the next starts:
 ## Layout
 
 - `crates/checkd-config`: the config loader (phase 1).
-- `crates/checkd-core`: the engine (phase 2). No clock, no processes.
+- `crates/checkd-core`: the engine (phases 2 and 3). No clock, no
+  processes.
+- `crates/checkd-livestatus`: the Livestatus query language (phase 4).
 - `crates/checkd`: the daemon binary: `verify` and `run`.
 - `oracle/`: the Naemon test oracle, see [oracle/README.md](oracle/README.md).
 - `corpus/`: config cases, each with the oracle's expected output.
 - `runs/`: scripted runs, each with a recording of what the oracle did,
   see [runs/README.md](runs/README.md).
+- `livestatus/`: recording what Thruk asks, and rendering Thruk's pages
+  against both engines, see [livestatus/README.md](livestatus/README.md).
+- `docs/`: [the store](docs/store.md).
 - `real/`: the harness for config trees that other people wrote. The
   trees themselves are downloaded and stay out of git.
 

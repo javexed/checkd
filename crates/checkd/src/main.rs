@@ -6,8 +6,10 @@ mod otel;
 #[cfg(not(feature = "otel"))]
 #[path = "otel_off.rs"]
 mod otel;
+mod livestatus;
 mod postgres;
 mod run;
+mod shadow;
 mod store;
 
 use std::path::PathBuf;
@@ -58,6 +60,14 @@ options of run:
                         this retention.dat of Naemon or Nagios; without
                         it, from the configuration's state_retention_file
                         if there is one
+  --livestatus <socket> answer Livestatus queries at this Unix socket;
+                        without it, at the socket of a Livestatus
+                        broker_module line of the configuration
+  --shadow <socket>     run beside a production engine whose Livestatus
+                        socket this is: send no notifications, run no
+                        event handlers, keep no state, and write to the
+                        log where the states of hosts and services differ
+                        from production's
   --otlp-endpoint <url> send metrics and traces about checkd itself to
                         the OpenTelemetry collector at this http:// URL,
                         as OTLP over HTTP; without it the URL in
@@ -92,7 +102,7 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
     let (mut main, mut path_map) = (None, PathMap::default());
     let (mut log_file, mut seconds, mut first_checks, mut start_at) = (None, None, None, None);
     let mut otlp_endpoint = None;
-    let (mut store, mut import) = (None, None);
+    let (mut store, mut import, mut livestatus, mut shadow) = (None, None, None, None);
     while let Some(arg) = args.next() {
         let mut value = |what: &str| args.next().ok_or(format!("{arg} needs {what}"));
         match arg.as_str() {
@@ -100,6 +110,8 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
             "--otlp-endpoint" => otlp_endpoint = Some(value("a URL")?),
             "--store" => store = Some(value("sqlite:<file>, postgres:<connection> or none")?),
             "--import-retention" => import = Some(PathBuf::from(value("a file name")?)),
+            "--livestatus" => livestatus = Some(PathBuf::from(value("a socket path")?)),
+            "--shadow" => shadow = Some(PathBuf::from(value("a socket path")?)),
             "--first-checks" => first_checks = Some(PathBuf::from(value("a file name")?)),
             "--for" => {
                 let text = value("a number of seconds")?;
@@ -143,6 +155,8 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
         command_file: None,
         store,
         import,
+        livestatus,
+        shadow,
     })
 }
 
