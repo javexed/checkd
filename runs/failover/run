@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+# The phase 5 gate: kill and partition tests of failover.
+#
+#   runs/failover/run
+#
+# A PostgreSQL server and two checkd nodes, a and b, run in containers on
+# two internal Docker networks that reach nothing outside: one between the
+# nodes and the database, one between the nodes, for their heartbeat. Each
+# node runs runs/failover/case under node.sh, which starts checkd again
+# when it ends with status 3, as a supervisor would. Lease: 15 seconds.
+#
+#   1. a leads, b stands by. A command and a Livestatus query sent to b
+#      reach a.
+#   2. a is killed. b takes over within a minute and checks.
+#   3. a comes back, as a standby. b, the leader, is cut off from the
+#      database: it stops before a takes over.
+#   4. The nodes are cut off from each other, both still reaching the
+#      database: the leader stays the leader, nobody takes over.
+#   5. The leader is cut off from everything. It goes on, as decided for an
+#      isolated leader, and the other takes over; once it is back it sees
+#      that and stops.
+#
+# What each phase must show is checked from the nodes' logs and from the
+# checks each node ran. Everything stays in runs/failover-work.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(cd "$here/../.." && pwd)
+work=$root/runs/failover-work
+postgres_image='postgres@sha256:e5d2edd28b1f8d40a0a6c0c9cdc545b19b56a0d5d88f94bc11a97d970d4700d0'
+core=$(sed -n 's/^ARG NAEMON_CORE_VERSION=//p' "$root/oracle/Dockerfile")
+inputs=$(cat "$root/oracle/Dockerfile" "$root/oracle/entry.sh" | sha256sum | cut -c1-12)
+image="checkd-oracle:naemon-${core}-${inputs}"
+
+cd "$root"
+CARGO_TARGET_DIR=$root/target/pg cargo build --quiet -p checkd --features postgres
+checkd=$root/target/pg/debug/checkd
+
+tag=checkd-failover-$$
+db_net=$tag-db
+peer_net=$tag-peer
+rm -rf "$work"
+mkdir -p "$work/out" "$work/a-state" "$work/b-state"
+
+cleanup() {
+    docker rm -f "$tag-pg" "$tag-a" "$tag-b" >/dev/null 2>&1 || true
+    docker network rm "$db_net" "$peer_net" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+docker network create --internal "$db_net" >/dev/null
+docker network create --internal "$peer_net" >/dev/null
+docker run -d --name "$tag-pg" --network "$db_net" --network-alias pg \
+    -e POSTGRES_USER=checkd -e POSTGRES_PASSWORD=checkd-test -e POSTGRES_DB=checkd \
+    "$postgres_image" >/dev/null
+for _ in $(seq 60); do
+    docker exec "$tag-pg" pg_isready -h 127.0.0.1 -U checkd >/dev/null 2>&1 && break
+    sleep 1
+done
+
+start=$(date +%s%N)
+node() {
+    name=$1
+    other=$2
+    docker run -d --name "$tag-$name" --hostname "$name" --network "$db_net" --network-alias "$name" \
+        --user "$(id -u):$(id -g)" -e START="$start" -e PGPASSWORD=checkd-test -e CHECKD_STORE_ALLOW_PLAIN=1 \
+        -v "$here/case:/in:ro" -v "$root/runs/lib:/shared:ro" -v "$checkd:/checkd:ro" \
+        -v "$here/node.sh:/node.sh:ro" -v "$work/$name-state:/case/state" -v "$work/out:/out" \
+        --entrypoint sh "$image" /node.sh "$name" "$other" >/dev/null
+    docker network connect --alias "$name" "$peer_net" "$tag-$name"
+}
+mark() {
+    echo "$(date +%s) $1" >> "$work/out/phases"
+    echo "$1"
+}
+# Waits until a node's log has a line, at most some seconds.
+wait_for() {
+    file=$work/out/$1.log
+    for _ in $(seq "$3"); do
+        grep -q -- "$2" "$file" 2>/dev/null && return 0
+        sleep 1
+    done
+    return 1
+}
+
+mark "1 a starts"
+node a b
+wait_for a "took the lease" 60 || { echo "a did not take the lease"; exit 1; }
+node b a
+wait_for b "is a standby" 30 || { echo "b did not stand by"; exit 1; }
+sleep 20
+mark "1 through b"
+docker exec "$tag-b" sh -c 'printf "[%d] ADD_SVC_COMMENT;web;http;1;tester;sent to b\n" "$(date +%s)" > /tmp/oracle/checkd.cmd'
+docker exec "$tag-b" sh -c 'printf "GET status\nColumns: program_version\nOutputFormat: json\n\n" | unixcat /tmp/oracle/live' \
+    > "$work/out/query-through-b" 2>&1 || true
+sleep 5
+
+mark "2 kill a"
+docker kill "$tag-a" >/dev/null
+wait_for b "took the lease" 90 || true
+sleep 10
+
+mark "3 a back"
+docker start "$tag-a" >/dev/null
+wait_for a "is a standby" 30 || true
+sleep 20
+mark "3 cut b from the database"
+docker network disconnect "$db_net" "$tag-b"
+sleep 45
+docker network connect --alias b "$db_net" "$tag-b"
+sleep 10
+
+mark "4 cut the nodes apart"
+docker network disconnect "$peer_net" "$tag-a"
+sleep 40
+docker network connect --alias a "$peer_net" "$tag-a"
+sleep 5
+
+mark "5 cut a off"
+docker network disconnect "$db_net" "$tag-a"
+docker network disconnect "$peer_net" "$tag-a"
+sleep 45
+mark "5 a back"
+docker network connect --alias a "$db_net" "$tag-a"
+docker network connect --alias a "$peer_net" "$tag-a"
+sleep 20
+mark "end"
+docker stop -t 5 "$tag-a" "$tag-b" >/dev/null 2>&1 || true
+cp "$work/a-state/trace" "$work/out/a-trace" 2>/dev/null || true
+cp "$work/b-state/trace" "$work/out/b-trace" 2>/dev/null || true
+
+python3 -I "$here/check" "$work/out" "$start"

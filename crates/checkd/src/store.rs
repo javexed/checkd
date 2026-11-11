@@ -93,6 +93,10 @@ pub trait Backend {
     /// Makes the tables and views when they are not there.
     fn create(&mut self) -> Result<(), String>;
     fn describe(&self) -> String;
+    /// From now on, writes are made only while this node holds the lease
+    /// with this counter. Only PostgreSQL has a lease.
+    #[cfg_attr(not(feature = "postgres"), allow(dead_code))]
+    fn set_fence(&mut self, _holder: &str, _counter: i64) {}
 }
 
 /// A store: a backend and what was last written to it.
@@ -132,6 +136,11 @@ impl Store {
 
     pub fn describe(&self) -> String {
         self.backend.describe()
+    }
+
+    #[cfg_attr(not(feature = "postgres"), allow(dead_code))]
+    pub fn set_fence(&mut self, holder: &str, counter: i64) {
+        self.backend.set_fence(holder, counter);
     }
 
     /// What the store holds, or `None` when it holds no state yet.

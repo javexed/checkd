@@ -18,6 +18,8 @@ directory holds those runs and what compares them.
 - `store/`: kills checkd and starts it again, on SQLite and on
   PostgreSQL, and looks at what it kept.
 - `shadow/`: checkd in shadow mode beside the reference.
+- `failover/`: kill and partition tests of two nodes on one PostgreSQL
+  database, the phase 5 gate. See `../docs/failover.md`.
 - `timeperiods/`: timeperiods against the reference, see
   [timeperiods/README.md](timeperiods/README.md).
 

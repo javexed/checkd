@@ -6,6 +6,8 @@ mod otel;
 #[cfg(not(feature = "otel"))]
 #[path = "otel_off.rs"]
 mod otel;
+#[cfg(feature = "postgres")]
+mod failover;
 mod livestatus;
 mod postgres;
 mod run;
@@ -68,6 +70,22 @@ options of run:
                         event handlers, keep no state, and write to the
                         log where the states of hosts and services differ
                         from production's
+  --failover <node>     take part in failover as the node of this name:
+                        lead while holding the lease in the PostgreSQL
+                        store, stand by otherwise. Ends with status 3
+                        when the lease is lost, to be started again
+  --lease <seconds>     how long the lease lasts unrenewed (15)
+  --peer-listen <addr>  where to answer the other node's heartbeat
+                        (0.0.0.0:6558)
+  --peer <addr>         where the other node answers its heartbeat
+  --livestatus-tcp <addr>
+                        answer Livestatus over TCP too, for the other node
+                        to forward to (0.0.0.0:6557)
+  --advertise <host>    the name the other node reaches this one at
+                        (the node's name)
+  --isolated keep|hold  when neither the database nor the other node
+                        answers: go on notifying (keep), or hold
+                        notifications back (hold)
   --otlp-endpoint <url> send metrics and traces about checkd itself to
                         the OpenTelemetry collector at this http:// URL,
                         as OTLP over HTTP; without it the URL in
@@ -103,6 +121,12 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
     let (mut log_file, mut seconds, mut first_checks, mut start_at) = (None, None, None, None);
     let mut otlp_endpoint = None;
     let (mut store, mut import, mut livestatus, mut shadow) = (None, None, None, None);
+    let mut failover = run::Failover {
+        lease: 15.0,
+        peer_listen: "0.0.0.0:6558".into(),
+        livestatus_tcp: "0.0.0.0:6557".into(),
+        ..Default::default()
+    };
     while let Some(arg) = args.next() {
         let mut value = |what: &str| args.next().ok_or(format!("{arg} needs {what}"));
         match arg.as_str() {
@@ -112,6 +136,22 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
             "--import-retention" => import = Some(PathBuf::from(value("a file name")?)),
             "--livestatus" => livestatus = Some(PathBuf::from(value("a socket path")?)),
             "--shadow" => shadow = Some(PathBuf::from(value("a socket path")?)),
+            "--failover" => failover.node = value("the name of this node")?,
+            "--lease" => {
+                let text = value("a number of seconds")?;
+                failover.lease = text.parse().map_err(|_| format!("--lease needs a number of seconds, not '{text}'"))?;
+            }
+            "--peer-listen" => failover.peer_listen = value("an address")?,
+            "--peer" => failover.peer = Some(value("an address")?),
+            "--livestatus-tcp" => failover.livestatus_tcp = value("an address")?,
+            "--advertise" => failover.advertise = value("a host name")?,
+            "--isolated" => {
+                failover.hold = match value("keep or hold")?.as_str() {
+                    "keep" => false,
+                    "hold" => true,
+                    other => return Err(format!("--isolated takes keep or hold, not '{other}'")),
+                }
+            }
             "--first-checks" => first_checks = Some(PathBuf::from(value("a file name")?)),
             "--for" => {
                 let text = value("a number of seconds")?;
@@ -157,6 +197,12 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
         import,
         livestatus,
         shadow,
+        failover: (!failover.node.is_empty()).then(|| {
+            if failover.advertise.is_empty() {
+                failover.advertise = failover.node.clone();
+            }
+            failover
+        }),
     })
 }
 

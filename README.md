@@ -42,7 +42,10 @@ checkd does something else than Naemon on purpose.
 
 Its state is kept in SQLite or PostgreSQL and survives a kill: see
 [docs/store.md](docs/store.md). It reads the `retention.dat` of an
-existing Naemon once, when it starts on an empty store.
+existing Naemon once, when it starts on an empty store. Two nodes on one
+PostgreSQL database fail over: the standby took over 14 seconds after the
+leader was killed, and the kill and partition tests showed one leader at
+a time: see [docs/failover.md](docs/failover.md).
 
 It answers Livestatus at the socket of a config's Livestatus
 `broker_module` line. The 108 queries Thruk was seen sending for 54 of
@@ -154,7 +157,7 @@ Phases, each with a gate that must pass before the next starts:
   see [runs/README.md](runs/README.md).
 - `livestatus/`: recording what Thruk asks, and rendering Thruk's pages
   against both engines, see [livestatus/README.md](livestatus/README.md).
-- `docs/`: [the store](docs/store.md).
+- `docs/`: [the store](docs/store.md), [failover](docs/failover.md).
 - `real/`: the harness for config trees that other people wrote. The
   trees themselves are downloaded and stay out of git.
 

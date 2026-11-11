@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+"""Checks what runs/failover/run left: the gate of phase 5.
+
+    python3 -I runs/failover/check <out-dir> <start-ns>
+
+Works out, from each node's log, when it held the lease, and from the
+trace of the scripted plugins, when it ran checks; then checks each phase
+(see runs/failover/run). Prints what it found, and a line per failure;
+exits 1 when anything failed.
+"""
+import os
+import re
+import sys
+
+out, start_ns = sys.argv[1], int(sys.argv[2])
+start = start_ns / 1e9
+
+
+def lines(name):
+    path = os.path.join(out, name)
+    if not os.path.exists(path):
+        return []
+    result = []
+    for line in open(path, encoding='utf-8', errors='replace'):
+        m = re.match(r'^\[(\d+)\] (.*)$', line.rstrip('\n'))
+        if m:
+            result.append((int(m.group(1)), m.group(2)))
+    return result
+
+
+phases = {}
+for line in open(os.path.join(out, 'phases')):
+    at, name = line.rstrip('\n').split(' ', 1)
+    phases[name] = int(at)
+
+
+def checks(node):
+    """When the node ran a check: seconds since the epoch."""
+    path = os.path.join(out, f'{node}-trace')
+    if not os.path.exists(path):
+        return []
+    times = []
+    for line in open(path):
+        parts = line.split()
+        if len(parts) >= 2 and not parts[1].startswith('n-'):
+            times.append(start + int(parts[0]) / 1000)
+    return times
+
+
+def leading(node):
+    """The spans in which the node held the lease: (from, to)."""
+    spans, since = [], None
+    kill = phases['2 kill a']
+    for at, text in lines(f'{node}.log'):
+        if 'took the lease' in text:
+            # A node that was killed while it led wrote nothing more.
+            if since is not None and node == 'a' and since < kill <= at:
+                spans.append((since, kill))
+            since = at
+        elif since is not None and ('Leadership lost' in text or 'checkd ended with status' in text
+                                    or 'A write was refused' in text):
+            spans.append((since, at))
+            since = None
+    if since is not None:
+        # a was killed in phase 2 while it led.
+        end = phases['2 kill a'] if node == 'a' and since < phases['2 kill a'] else phases['end']
+        spans.append((since, end))
+    return spans
+
+
+failures = []
+lead = {n: leading(n) for n in 'ab'}
+for n in 'ab':
+    print(f'{n} led: ' + ', '.join(f'{f - phases["1 a starts"]}-{t - phases["1 a starts"]}s' for f, t in lead[n]))
+
+# 1. Forwarding through the standby.
+a_log = [t for _, t in lines('a.log')]
+if not any('EXTERNAL COMMAND: ADD_SVC_COMMENT;web;http;1;tester;sent to b' in t for t in a_log):
+    failures.append('1: the command sent to b did not reach a')
+query = open(os.path.join(out, 'query-through-b'), errors='replace').read()
+if 'checkd' not in query:
+    failures.append(f'1: the Livestatus query sent to b got {query.strip()[:80]!r}')
+else:
+    print('1: the command and the query sent to the standby reached the leader')
+
+# 2. Takeover after the leader is killed.
+kill = phases['2 kill a']
+taken = [f for f, _ in lead['b'] if f >= kill]
+if not taken:
+    failures.append('2: b did not take over')
+else:
+    first = min((c for c in checks('b') if c >= taken[0]), default=None)
+    if first is None:
+        failures.append('2: b took the lease and ran no check')
+    else:
+        took = first - kill
+        print(f'2: b took over {taken[0] - kill} s after a was killed, and checked {took:.1f} s after')
+        if took >= 60:
+            failures.append(f'2: from the kill to the first check took {took:.1f} s, a minute or more')
+
+# 3. The leader cut off from the database stops before the other takes over.
+cut = phases['3 cut b from the database']
+b_end = [t for f, t in lead['b'] if f < cut <= t + 1]
+a_take = [f for f, _ in lead['a'] if f >= cut]
+if not b_end or not a_take:
+    failures.append(f'3: b stopped: {b_end}; a took over: {a_take}')
+else:
+    print(f'3: b stopped {b_end[0] - cut} s after it was cut off, a took over {a_take[0] - cut} s after')
+    if b_end[0] > a_take[0]:
+        failures.append('3: a took over before b stopped')
+
+# 4. Nodes apart, database reached: nobody takes over.
+p4, p5 = phases['4 cut the nodes apart'], phases['5 cut a off']
+for n in 'ab':
+    if any(p4 <= f < p5 for f, _ in lead[n]):
+        failures.append(f'4: {n} took the lease while the nodes were only cut apart')
+print('4: while the nodes were cut apart, the lease stayed where it was'
+      if not any(f.startswith('4') for f in failures) else '4: failed')
+
+# 5. The isolated leader goes on, and stops once it is back.
+back = phases['5 a back']
+isolated = any('Neither the database nor the other node answers' in t for _, t in lines('a.log')
+               if p5 <= _ < back) if False else any(
+    p5 <= at < back and 'Neither the database nor the other node answers' in t for at, t in lines('a.log'))
+b_took = any(p5 <= f < back + 30 for f, _ in lead['b'])
+a_stop = [at for at, t in lines('a.log') if at >= back and ('Leadership lost' in t or 'A write was refused' in t)]
+print(f'5: a said it was isolated: {isolated}; b took over: {b_took}; '
+      f'a stopped {a_stop[0] - back if a_stop else None} s after it was back')
+if not (isolated and b_took and a_stop and a_stop[0] - back <= 20):
+    failures.append('5: the isolated leader did not behave as decided')
+
+# One leader at a time, but for the isolated leader of phase 5.
+spans = [(f, t, n) for n in 'ab' for f, t in lead[n]]
+for f1, t1, n1 in spans:
+    for f2, t2, n2 in spans:
+        if n1 < n2 and f1 < t2 and f2 < t1:
+            overlap = (max(f1, f2), min(t1, t2))
+            if not (p5 <= overlap[0] <= back + 20):
+                failures.append(f'two leaders from {overlap[0] - phases["1 a starts"]} to {overlap[1] - phases["1 a starts"]} s')
+# No checks by a node outside its spans, but for phase 5.
+for n in 'ab':
+    for c in checks(n):
+        if c > phases['end']:
+            continue
+        inside = any(f - 1 <= c <= t + 1 for f, t in lead[n])
+        if not inside and not (p5 <= c <= back + 20):
+            failures.append(f'{n} ran a check at {c - phases["1 a starts"]:.1f} s without the lease')
+            break
+
+for failure in failures:
+    print('FAILED', failure)
+print('failover: ' + ('all phases as they should be' if not failures else f'{len(failures)} failures'))
+sys.exit(1 if failures else 0)

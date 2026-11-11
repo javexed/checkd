@@ -31,61 +31,85 @@ pub fn socket_of_broker_module(line: &str) -> Option<PathBuf> {
     words.find(|w| !w.contains('=')).map(PathBuf::from)
 }
 
-/// Starts listening. Requests come out of the answer's receiver.
-pub fn listen(path: &Path) -> Result<mpsc::UnboundedReceiver<Ask>, String> {
-    if path.exists() {
-        std::fs::remove_file(path).map_err(|err| format!("cannot remove the old socket {}: {err}", path.display()))?;
-    }
-    let listener = UnixListener::bind(path)
-        .map_err(|err| format!("cannot make the Livestatus socket {}: {err}", path.display()))?;
+/// Starts listening at a Unix socket, at a TCP address, or both.
+/// Requests come out of the answer's receiver.
+pub fn listen(path: Option<&Path>, tcp: Option<&str>) -> Result<mpsc::UnboundedReceiver<Ask>, String> {
     let (asks, inbox) = mpsc::unbounded_channel();
-    tokio::spawn(async move {
-        loop {
-            let Ok((stream, _)) = listener.accept().await else { continue };
-            let asks = asks.clone();
-            tokio::spawn(async move {
-                let (read, mut write) = stream.into_split();
-                let mut reader = BufReader::new(read);
-                loop {
-                    let mut text = String::new();
-                    let mut ended = false;
-                    loop {
-                        let mut line = String::new();
-                        match reader.read_line(&mut line).await {
-                            Ok(0) | Err(_) => {
-                                ended = true;
-                                break;
-                            }
-                            Ok(_) => {
-                                if line.trim_end_matches(['\n', '\r']).is_empty() {
-                                    if text.is_empty() {
-                                        continue;
-                                    }
-                                    break;
-                                }
-                                text.push_str(&line);
-                            }
-                        }
-                    }
-                    if text.trim().is_empty() {
-                        return;
-                    }
-                    let (reply, answer) = oneshot::channel();
-                    if asks.send(Ask { text, reply }).is_err() {
-                        return;
-                    }
-                    let Ok(response) = answer.await else { return };
-                    if write.write_all(&response.bytes).await.is_err() {
-                        return;
-                    }
-                    let _ = write.flush().await;
-                    if !response.keep_alive || ended {
-                        let _ = write.shutdown().await;
-                        return;
-                    }
-                }
-            });
+    if let Some(path) = path {
+        if path.exists() {
+            std::fs::remove_file(path)
+                .map_err(|err| format!("cannot remove the old socket {}: {err}", path.display()))?;
         }
-    });
+        let listener = UnixListener::bind(path)
+            .map_err(|err| format!("cannot make the Livestatus socket {}: {err}", path.display()))?;
+        let asks = asks.clone();
+        tokio::spawn(async move {
+            loop {
+                let Ok((stream, _)) = listener.accept().await else { continue };
+                let (read, write) = stream.into_split();
+                tokio::spawn(serve(read, write, asks.clone()));
+            }
+        });
+    }
+    if let Some(addr) = tcp {
+        let std_listener = std::net::TcpListener::bind(addr)
+            .map_err(|err| format!("cannot listen for Livestatus at {addr}: {err}"))?;
+        std_listener.set_nonblocking(true).map_err(|err| err.to_string())?;
+        let listener = tokio::net::TcpListener::from_std(std_listener).map_err(|err| err.to_string())?;
+        tokio::spawn(async move {
+            loop {
+                let Ok((stream, _)) = listener.accept().await else { continue };
+                let (read, write) = stream.into_split();
+                tokio::spawn(serve(read, write, asks.clone()));
+            }
+        });
+    }
     Ok(inbox)
+}
+
+/// One connection: requests in, answers out.
+async fn serve<R, W>(read: R, mut write: W, asks: mpsc::UnboundedSender<Ask>)
+where
+    R: tokio::io::AsyncRead + Unpin,
+    W: tokio::io::AsyncWrite + Unpin,
+{
+    let mut reader = BufReader::new(read);
+    loop {
+        let mut text = String::new();
+        let mut ended = false;
+        loop {
+            let mut line = String::new();
+            match reader.read_line(&mut line).await {
+                Ok(0) | Err(_) => {
+                    ended = true;
+                    break;
+                }
+                Ok(_) => {
+                    if line.trim_end_matches(['\n', '\r']).is_empty() {
+                        if text.is_empty() {
+                            continue;
+                        }
+                        break;
+                    }
+                    text.push_str(&line);
+                }
+            }
+        }
+        if text.trim().is_empty() {
+            return;
+        }
+        let (reply, answer) = oneshot::channel();
+        if asks.send(Ask { text, reply }).is_err() {
+            return;
+        }
+        let Ok(response) = answer.await else { return };
+        if write.write_all(&response.bytes).await.is_err() {
+            return;
+        }
+        let _ = write.flush().await;
+        if !response.keep_alive || ended {
+            let _ = write.shutdown().await;
+            return;
+        }
+    }
 }

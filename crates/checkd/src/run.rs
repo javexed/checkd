@@ -73,7 +73,25 @@ pub struct RunArgs {
     pub livestatus: Option<PathBuf>,
     /// Shadow mode: the Livestatus socket of the production engine.
     pub shadow: Option<PathBuf>,
+    /// Failover, with a PostgreSQL store.
+    pub failover: Option<Failover>,
 }
+
+/// The options of failover. See `failover.rs`.
+#[derive(Clone, Debug, Default)]
+pub struct Failover {
+    pub node: String,
+    pub lease: f64,
+    pub peer_listen: String,
+    pub peer: Option<String>,
+    pub livestatus_tcp: String,
+    pub advertise: String,
+    pub hold: bool,
+}
+
+/// The status checkd ends with when it lost the lease: whatever runs it
+/// should start it again, and it comes back as a standby.
+const LOST_LEASE: u8 = 3;
 
 pub fn run(mut args: RunArgs) -> ExitCode {
     let loaded = load(
@@ -91,6 +109,17 @@ pub fn run(mut args: RunArgs) -> ExitCode {
             loaded.diags.errors.len()
         );
         return ExitCode::from(1);
+    };
+    // A hash of the resolved objects, for failover to tell whether both
+    // nodes run the same configuration.
+    let config_hash = {
+        let text = checkd_config::dump::dump(&objects);
+        let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+        for b in text.bytes() {
+            hash ^= b as u64;
+            hash = hash.wrapping_mul(0x100_0000_01b3);
+        }
+        format!("{hash:016x}")
     };
 
     let commands_on = main.get("check_external_commands").is_none_or(|value| value.trim() != "0");
@@ -166,7 +195,12 @@ pub fn run(mut args: RunArgs) -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    if let Some(store) = store.as_mut() {
+    if args.failover.is_some() && !spec.starts_with("postgres:") {
+        eprintln!("--failover needs a PostgreSQL store: --store postgres:<connection>");
+        return ExitCode::from(2);
+    }
+    // A node in failover reads the state when it takes the lease.
+    if let Some(store) = store.as_mut().filter(|_| args.failover.is_none()) {
         match restore(&mut engine, store, args.import.as_deref().or(retention.as_deref())) {
             Ok(lines) => {
                 for line in lines {
@@ -189,8 +223,10 @@ pub fn run(mut args: RunArgs) -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    match runtime.block_on(serve(&mut engine, &mut log, &args, store.as_mut())) {
-        Ok(()) => ExitCode::SUCCESS,
+    let hash = config_hash;
+    match runtime.block_on(serve(&mut engine, &mut log, &args, store.as_mut(), hash)) {
+        Ok(false) => ExitCode::SUCCESS,
+        Ok(true) => ExitCode::from(LOST_LEASE),
         Err(message) => {
             eprintln!("{message}");
             ExitCode::from(2)
@@ -204,7 +240,8 @@ async fn serve(
     log: &mut Log,
     args: &RunArgs,
     mut store: Option<&mut Store>,
-) -> Result<(), String> {
+    config_hash: String,
+) -> Result<bool, String> {
     let seconds = args.seconds;
     let signals = |kind| signal(kind).map_err(|err| format!("cannot wait for signals: {err}"));
     let mut terminate = signals(SignalKind::terminate())?;
@@ -224,9 +261,73 @@ async fn serve(
 
     let (done, mut results) = mpsc::unbounded_channel::<(u64, JobResult)>();
     let (lines, mut commands) = mpsc::unbounded_channel::<String>();
-    let mut livestatus = match &args.livestatus {
-        Some(path) => Some(crate::livestatus::listen(path)?),
-        None => None,
+    if let Some(path) = &args.command_file {
+        command_file(path, lines)?;
+    }
+    let spool = engine.settings().check_result_path.clone().map(PathBuf::from);
+
+    // A node in failover waits as a standby until it holds the lease.
+    #[cfg(feature = "postgres")]
+    let mut lease_events = None;
+    #[cfg(feature = "postgres")]
+    let mut node: Option<(String, bool)> = None;
+    #[cfg(not(feature = "postgres"))]
+    let _ = &config_hash;
+    if let Some(failover) = &args.failover {
+        #[cfg(not(feature = "postgres"))]
+        {
+            let _ = failover;
+            return Err("--failover: this checkd was built without the PostgreSQL store (the postgres feature)".into());
+        }
+        #[cfg(feature = "postgres")]
+        {
+            let conninfo = args.store.as_deref().and_then(|s| s.strip_prefix("postgres:")).unwrap_or("").to_string();
+            let setup = crate::failover::Setup {
+                node: failover.node.clone(),
+                conninfo,
+                lease: failover.lease,
+                peer_listen: failover.peer_listen.clone(),
+                peer: failover.peer.clone(),
+                livestatus_tcp: failover.livestatus_tcp.clone(),
+                advertise: failover.advertise.clone(),
+                hold: failover.hold,
+                config_hash: config_hash.clone(),
+            };
+            let role = std::sync::Arc::new(std::sync::Mutex::new(crate::failover::Role::Standby));
+            let mut stop = Signals {
+                terminate: &mut terminate,
+                interrupt: &mut interrupt,
+            };
+            let waited = crate::failover::standby(
+                &setup,
+                role,
+                args.livestatus.as_deref(),
+                &mut commands,
+                spool.as_deref(),
+                &mut |line: &str| log.line(line),
+                &mut stop,
+            )
+            .await?;
+            let Some((counter, events)) = waited else {
+                log.line("Caught a signal while a standby, shutting down...");
+                return Ok(false);
+            };
+            lease_events = Some(events);
+            node = Some((setup.node.clone(), setup.hold));
+            if let Some(store) = store.as_deref_mut() {
+                store.set_fence(&setup.node, counter);
+                for line in restore(engine, store, None)? {
+                    log.line(&line);
+                }
+            }
+        }
+    }
+
+    let tcp = args.failover.as_ref().map(|f| f.livestatus_tcp.clone());
+    let mut livestatus = if args.livestatus.is_some() || tcp.is_some() {
+        Some(crate::livestatus::listen(args.livestatus.as_deref(), tcp.as_deref())?)
+    } else {
+        None
     };
     let mut program = checkd_livestatus::Program {
         pid: std::process::id(),
@@ -242,7 +343,6 @@ async fn serve(
     let mut history: Vec<(i64, String)> = Vec::new();
     let mut perfdata = Perfdata::open(engine.settings());
     // The check result directory, read on the reaper's interval.
-    let spool = engine.settings().check_result_path.clone().map(PathBuf::from);
     let mut reaper = tokio::time::interval(Duration::from_secs(
         engine.settings().check_result_reaper_frequency as u64,
     ));
@@ -250,9 +350,9 @@ async fn serve(
     let mut shadow = crate::shadow::Shadow::default();
     let mut shadow_tick = tokio::time::interval(crate::shadow::EVERY);
     let (shadow_done, mut shadow_answers) = mpsc::unbounded_channel();
-    if let Some(path) = &args.command_file {
-        command_file(path, lines)?;
-    }
+    let mut lost = false;
+    #[cfg_attr(not(feature = "postgres"), allow(unused_mut))]
+    let mut held_notifications: Option<bool> = None;
     // The process group of every command that is running.
     let mut running: BTreeMap<u64, i32> = BTreeMap::new();
     let mut effects = Vec::new();
@@ -275,10 +375,13 @@ async fn serve(
     let mut store_failing = false;
     let mut next_save = now() + SAVE_EVERY;
     if let Some(store) = store.as_deref_mut() {
-        save(engine, store, &mut unsaved, log, &mut store_failing);
+        lost |= save(engine, store, &mut unsaved, log, &mut store_failing);
     }
 
     let why = loop {
+        if lost {
+            break "Another node holds the lease now";
+        }
         let batch: Vec<Effect> = effects.drain(..).collect();
         let mut jobs = Vec::new();
         for effect in batch {
@@ -305,7 +408,11 @@ async fn serve(
         // does not hold up every event.
         if !unsaved.is_empty() && !store_failing {
             if let Some(store) = store.as_deref_mut() {
-                save(engine, store, &mut unsaved, log, &mut store_failing);
+                lost |= save(engine, store, &mut unsaved, log, &mut store_failing);
+                if lost {
+                    // Fenced: nothing of this batch is run.
+                    continue;
+                }
                 next_save = now() + SAVE_EVERY;
             }
         }
@@ -334,7 +441,7 @@ async fn serve(
         tokio::select! {
             _ = tokio::time::sleep(save_in), if store.is_some() => {
                 if let Some(store) = store.as_deref_mut() {
-                    save(engine, store, &mut unsaved, log, &mut store_failing);
+                    lost |= save(engine, store, &mut unsaved, log, &mut store_failing);
                 }
                 next_save = now() + SAVE_EVERY;
             }
@@ -382,6 +489,41 @@ async fn serve(
                 let _ = ask.reply.send(response);
             }
             _ = tokio::time::sleep(flush.unwrap_or_default()), if flush.is_some() => telemetry.flush(),
+            Some(event) = lease_event(
+                #[cfg(feature = "postgres")]
+                &mut lease_events,
+            ) => {
+                #[cfg(feature = "postgres")]
+                {
+                    use crate::failover::Event;
+                    let hold = node.as_ref().is_some_and(|(_, hold)| *hold);
+                    match event {
+                        Event::Lost(reason) => {
+                            log.line(&format!("Leadership lost: {reason}"));
+                            lost = true;
+                        }
+                        Event::Isolated => {
+                            if hold {
+                                held_notifications = Some(engine.settings().enable_notifications);
+                                engine.set_notifications(false);
+                                log.line("Neither the database nor the other node answers: holding notifications back");
+                            } else {
+                                log.line("Neither the database nor the other node answers: going on, and notifying");
+                            }
+                        }
+                        Event::Reached => {
+                            if let Some(was) = held_notifications.take() {
+                                engine.set_notifications(was);
+                            }
+                            log.line("The database answers again");
+                        }
+                        Event::Note(note) => log.line(&note),
+                        _ => {}
+                    }
+                }
+                #[cfg(not(feature = "postgres"))]
+                let _ = event;
+            }
             _ = terminate.recv() => break "Caught SIGTERM",
             _ = interrupt.recv() => break "Caught SIGINT",
             _ = &mut over => break "The time given with --for is up",
@@ -392,15 +534,51 @@ async fn serve(
     for group in running.values() {
         stop_group(*group);
     }
-    if let Some(store) = store.as_deref_mut() {
-        save(engine, store, &mut unsaved, log, &mut store_failing);
-        if !store_failing {
+    if let Some(store) = store.as_deref_mut().filter(|_| !lost) {
+        lost |= save(engine, store, &mut unsaved, log, &mut store_failing);
+        if !store_failing && !lost {
             log.line(&format!("State saved to {}", store.describe()));
         }
     }
     telemetry.shutdown().await;
+    let _ = &held_notifications;
     log.line(&format!("Successfully shutdown... (PID={pid})"));
-    Ok(())
+    Ok(lost)
+}
+
+/// The next event of the lease thread, or never without failover.
+async fn lease_event(
+    #[cfg(feature = "postgres")] events: &mut Option<mpsc::UnboundedReceiver<crate::failover::Event>>,
+) -> Option<LeaseEvent> {
+    #[cfg(feature = "postgres")]
+    if let Some(events) = events.as_mut() {
+        return events.recv().await;
+    }
+    std::future::pending().await
+}
+
+#[cfg(feature = "postgres")]
+type LeaseEvent = crate::failover::Event;
+#[cfg(not(feature = "postgres"))]
+type LeaseEvent = ();
+
+/// The signals that stop a standby.
+#[cfg(feature = "postgres")]
+struct Signals<'a> {
+    terminate: &'a mut tokio::signal::unix::Signal,
+    interrupt: &'a mut tokio::signal::unix::Signal,
+}
+
+#[cfg(feature = "postgres")]
+impl crate::failover::futures_like::Stop for Signals<'_> {
+    fn wait(&mut self) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + '_>> {
+        Box::pin(async move {
+            tokio::select! {
+                _ = self.terminate.recv() => {}
+                _ = self.interrupt.recv() => {}
+            }
+        })
+    }
 }
 
 /// The performance data files.
@@ -558,7 +736,7 @@ pub fn show_state(spec: &str) -> ExitCode {
 
 /// Puts the saved state back into the engine: from the store, or, when it
 /// holds none, from a retention file. The lines are for the log.
-fn restore(engine: &mut Engine, store: &mut Store, import: Option<&Path>) -> Result<Vec<String>, String> {
+pub(crate) fn restore(engine: &mut Engine, store: &mut Store, import: Option<&Path>) -> Result<Vec<String>, String> {
     let mut lines = Vec::new();
     let (snapshot, from) = match store.load()? {
         Some(snapshot) => (snapshot, store.describe()),
@@ -590,14 +768,21 @@ fn restore(engine: &mut Engine, store: &mut Store, import: Option<&Path>) -> Res
 
 /// Writes the engine's state and the log lines not yet saved. A store that
 /// fails is said so in the log once, until it works again.
-fn save(engine: &Engine, store: &mut Store, unsaved: &mut Vec<(i64, String)>, log: &mut Log, failing: &mut bool) {
+/// The answer says whether the write was fenced off: another node holds
+/// the lease.
+fn save(engine: &Engine, store: &mut Store, unsaved: &mut Vec<(i64, String)>, log: &mut Log, failing: &mut bool) -> bool {
     match store.write(&engine.snapshot(), unsaved, now().div_euclid(1000)) {
+        Err(message) if message == "fenced" => {
+            log.line("A write was refused: another node holds the lease now");
+            true
+        }
         Ok(()) => {
             if *failing {
                 log.line(&format!("The store {} can be written again", store.describe()));
             }
             *failing = false;
             unsaved.clear();
+            false
         }
         Err(message) => {
             if !*failing {
@@ -609,6 +794,7 @@ fn save(engine: &Engine, store: &mut Store, unsaved: &mut Vec<(i64, String)>, lo
                 let extra = unsaved.len() - 100_000;
                 unsaved.drain(..extra);
             }
+            false
         }
     }
 }

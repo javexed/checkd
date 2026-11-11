@@ -522,6 +522,12 @@ impl Engine {
         &self.settings
     }
 
+    /// Turns notifications on or off for all, as `ENABLE_NOTIFICATIONS`
+    /// does.
+    pub fn set_notifications(&mut self, on: bool) {
+        self.settings.enable_notifications = on;
+    }
+
     /// Shadow mode: no notifications are sent and no event handlers run.
     pub fn quiet(&mut self) {
         self.settings.enable_notifications = false;
