@@ -16,6 +16,7 @@ const KNOWN: &[&str] = &[
     "admin_email",
     "admin_pager",
     "allow_circular_dependencies",
+    "allow_empty_hostgroup_assignment",
     "auto_reschedule_checks",
     "auto_rescheduling_interval",
     "auto_rescheduling_window",
@@ -42,6 +43,7 @@ const KNOWN: &[&str] = &[
     "enable_environment_macros",
     "enable_event_handlers",
     "enable_flap_detection",
+    "enable_notification_suppression_reason_logging",
     "enable_notifications",
     "enable_predictive_host_dependency_checks",
     "enable_predictive_service_dependency_checks",
@@ -66,10 +68,15 @@ const KNOWN: &[&str] = &[
     "host_perfdata_file_processing_command",
     "host_perfdata_file_processing_interval",
     "host_perfdata_file_template",
+    "host_skip_check_dependency_status",
     "illegal_macro_output_chars",
     "illegal_object_name_chars",
+    "include_dir",
+    "include_file",
     "interval_length",
     "lock_file",
+    "log_archive_path",
+    "log_current_states",
     "log_event_handlers",
     "log_external_commands",
     "log_file",
@@ -103,6 +110,7 @@ const KNOWN: &[&str] = &[
     "process_performance_data",
     "query_socket",
     "resource_file",
+    "retain_state_information",
     "retained_contact_host_attribute_mask",
     "retained_contact_service_attribute_mask",
     "retained_host_attribute_mask",
@@ -110,18 +118,21 @@ const KNOWN: &[&str] = &[
     "retained_process_service_attribute_mask",
     "retained_scheduling_randomize_window",
     "retained_service_attribute_mask",
-    "retain_state_information",
     "retention_update_interval",
     "service_check_timeout",
+    "service_check_timeout_state",
     "service_freshness_check_interval",
     "service_inter_check_delay_method",
     "service_interleave_factor",
+    "service_parents_disable_service_checks",
     "service_perfdata_command",
     "service_perfdata_file",
     "service_perfdata_file_mode",
     "service_perfdata_file_processing_command",
     "service_perfdata_file_processing_interval",
     "service_perfdata_file_template",
+    "service_skip_check_dependency_status",
+    "service_skip_check_host_down_status",
     "soft_state_dependencies",
     "state_retention_file",
     "status_file",
@@ -204,8 +215,9 @@ impl PathMap {
 }
 
 /// Reads a file as text. Bytes that are not UTF-8 are replaced, with a
-/// warning.
-pub fn read_text(path: &Path, diags: &mut Diagnostics) -> Option<String> {
+/// warning. `from` is the line that names the file, for the error when it
+/// cannot be read.
+pub fn read_text(path: &Path, from: Option<&Loc>, diags: &mut Diagnostics) -> Option<String> {
     match fs::read(path) {
         Ok(bytes) => Some(String::from_utf8(bytes).unwrap_or_else(|err| {
             diags.warn(
@@ -218,7 +230,7 @@ pub fn read_text(path: &Path, diags: &mut Diagnostics) -> Option<String> {
             String::from_utf8_lossy(err.as_bytes()).into_owned()
         })),
         Err(err) => {
-            diags.error(None, format!("cannot read {}: {err}", path.display()));
+            diags.error(from, format!("cannot read {}: {err}", path.display()));
             None
         }
     }
@@ -257,8 +269,13 @@ fn collect_dir(dir: &Path, out: &mut Vec<PathBuf>, diags: &mut Diagnostics) {
     }
 }
 
-fn read_resource_file(path: &Path, macros: &mut BTreeMap<u32, String>, diags: &mut Diagnostics) {
-    let Some(text) = read_text(path, diags) else {
+fn read_resource_file(
+    path: &Path,
+    from: &Loc,
+    macros: &mut BTreeMap<u32, String>,
+    diags: &mut Diagnostics,
+) {
+    let Some(text) = read_text(path, Some(from), diags) else {
         return;
     };
     let file = Arc::new(path.to_path_buf());
@@ -289,91 +306,263 @@ fn read_resource_file(path: &Path, macros: &mut BTreeMap<u32, String>, diags: &m
     }
 }
 
+/// Settings that take 0 or 1 and nothing else: the reference refuses any
+/// other value. Only the ones that were tried are listed.
+const FLAGS: &[&str] = &[
+    "enable_notification_suppression_reason_logging",
+    "log_current_states",
+];
+
+/// Settings that take a state as a number from -2 to 3. The reference
+/// reads the whole number the value starts with, and 0 when it starts with
+/// none, and refuses a number outside that range.
+const STATES: &[&str] = &[
+    "host_skip_check_dependency_status",
+    "service_skip_check_dependency_status",
+    "service_skip_check_host_down_status",
+];
+
 /// Reads the main configuration file and works out which object files it
 /// names. The object files are not read here.
 pub fn read(path: &Path, map: &PathMap, diags: &mut Diagnostics) -> Option<MainConfig> {
-    let text = read_text(path, diags)?;
-    let file = Arc::new(path.to_path_buf());
-    let base = path.parent().unwrap_or(Path::new(".")).to_path_buf();
-    let locate = |value: &str| {
-        let written = Path::new(value);
-        if written.is_absolute() {
-            map.apply(written)
-        } else {
-            base.join(written)
-        }
-    };
     let mut main = MainConfig {
         path: path.to_path_buf(),
         ..MainConfig::default()
     };
+    let mut reader = Reader {
+        base: path.parent().unwrap_or(Path::new(".")).to_path_buf(),
+        map,
+        open: Vec::new(),
+    };
+    reader.file(path, None, &mut main, diags).then_some(main)
+}
 
-    for (index, line) in text.lines().enumerate() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') || line.starts_with(';') {
-            continue;
+struct Reader<'a> {
+    /// The directory that a path that is not absolute is taken from: the
+    /// one of the main configuration file, until a `config_rel_path` line
+    /// names another. It holds for the lines that follow, also in a file
+    /// that is included from another directory.
+    base: PathBuf,
+    map: &'a PathMap,
+    /// The files being read, the main configuration file first.
+    open: Vec<PathBuf>,
+}
+
+impl Reader<'_> {
+    fn locate(&self, value: &str) -> PathBuf {
+        let written = Path::new(value);
+        if written.is_absolute() {
+            self.map.apply(written)
+        } else {
+            self.base.join(written)
         }
-        let loc = Loc {
-            file: file.clone(),
-            line: index as u32 + 1,
-        };
-        let Some((name, value)) = line.split_once('=') else {
+    }
+
+    /// Reads one file of `name=value` lines: the main configuration file,
+    /// or a file it includes at `from`. An included file is read as if its
+    /// lines stood in place of the line that includes it. Returns whether
+    /// the file could be read at all.
+    fn file(
+        &mut self,
+        path: &Path,
+        from: Option<&Loc>,
+        main: &mut MainConfig,
+        diags: &mut Diagnostics,
+    ) -> bool {
+        if self.open.iter().any(|open| open == path) {
             diags.error(
-                Some(&loc),
-                "a main configuration line must be written name=value",
+                from,
+                format!(
+                    "{} includes itself, directly or through other files",
+                    path.display()
+                ),
             );
-            continue;
-        };
-        let (name, value) = (name.trim(), value.trim());
-        if value.is_empty() {
-            diags.error(Some(&loc), format!("'{name}' has no value"));
-            continue;
+            return false;
         }
-        match name {
-            "cfg_file" => {
-                let found = locate(value);
-                if found.is_file() {
-                    main.object_files.push(found);
-                } else {
-                    diags.error(
-                        Some(&loc),
-                        format!("object file {} cannot be read", found.display()),
-                    );
-                }
+        let Some(text) = read_text(path, from, diags) else {
+            return false;
+        };
+        self.open.push(path.to_path_buf());
+        let file = Arc::new(path.to_path_buf());
+
+        for (index, line) in text.lines().enumerate() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') || line.starts_with(';') {
+                continue;
             }
-            "cfg_dir" => {
-                let found = locate(value);
-                if found.is_dir() {
-                    collect_dir(&found, &mut main.object_files, diags);
-                } else {
-                    diags.error(
-                        Some(&loc),
-                        format!("object directory {} cannot be read", found.display()),
-                    );
-                }
-            }
-            "resource_file" => read_resource_file(&locate(value), &mut main.user_macros, diags),
-            "include_file" | "include_dir" => {
-                diags.error(Some(&loc), format!("'{name}' is not supported yet"));
-            }
-            "broker_module" => {
-                diags.warn(
-                    Some(&loc),
-                    "broker_module is ignored: checkd does not load event broker modules",
-                );
-            }
-            _ if !KNOWN.contains(&name) => {
+            let loc = Loc {
+                file: file.clone(),
+                line: index as u32 + 1,
+            };
+            let Some((name, value)) = line.split_once('=') else {
                 diags.error(
                     Some(&loc),
-                    format!("'{name}' is not a main configuration setting"),
+                    "a main configuration line must be written name=value",
                 );
+                continue;
+            };
+            let (name, value) = (name.trim(), value.trim());
+            if value.is_empty() {
+                diags.error(Some(&loc), format!("'{name}' has no value"));
+                continue;
             }
-            _ if DEPRECATED.contains(&name) => {
-                diags.warn(Some(&loc), format!("'{name}' is deprecated in Naemon"));
+            match name {
+                "cfg_file" => {
+                    let found = self.locate(value);
+                    if found.is_file() {
+                        main.object_files.push(found);
+                    } else {
+                        diags.error(
+                            Some(&loc),
+                            format!("object file {} cannot be read", found.display()),
+                        );
+                    }
+                }
+                "cfg_dir" => {
+                    let found = self.locate(value);
+                    if found.is_dir() {
+                        collect_dir(&found, &mut main.object_files, diags);
+                    } else {
+                        diags.error(
+                            Some(&loc),
+                            format!("object directory {} cannot be read", found.display()),
+                        );
+                    }
+                }
+                "resource_file" => {
+                    read_resource_file(&self.locate(value), &loc, &mut main.user_macros, diags)
+                }
+                "config_rel_path" => {
+                    let written = Path::new(value);
+                    if written.is_absolute() {
+                        self.base = self.map.apply(written);
+                    } else {
+                        diags.error(
+                            Some(&loc),
+                            format!(
+                                "config_rel_path must be an absolute path, not '{value}'. Naemon takes such a \
+                                 path from the directory it is started in"
+                            ),
+                        );
+                    }
+                }
+                "include_file" => {
+                    let found = self.locate(value);
+                    self.file(&found, Some(&loc), main, diags);
+                }
+                "include_dir" => {
+                    let found = self.locate(value);
+                    match included_files(&found) {
+                        Ok(paths) => {
+                            for path in paths {
+                                self.file(&path, Some(&loc), main, diags);
+                            }
+                        }
+                        Err(err) => diags.error(
+                            Some(&loc),
+                            format!("cannot read directory {}: {err}", found.display()),
+                        ),
+                    }
+                }
+                "broker_module" => {
+                    diags.warn(
+                        Some(&loc),
+                        "broker_module is ignored: checkd does not load event broker modules",
+                    );
+                }
+                _ if !KNOWN.contains(&name) => {
+                    diags.error(
+                        Some(&loc),
+                        format!("'{name}' is not a main configuration setting"),
+                    );
+                }
+                _ if FLAGS.contains(&name) && value != "0" && value != "1" => {
+                    diags.error(Some(&loc), format!("'{name}' takes 0 or 1, not '{value}'"));
+                }
+                _ if STATES.contains(&name) => match leading_number(value) {
+                    Some(number) if (-2..=3).contains(&number) => {
+                        if value != number.to_string() {
+                            diags.warn(
+                                Some(&loc),
+                                format!(
+                                    "'{name}' takes a number from -2 to 3; Naemon reads '{value}' as {number}, \
+                                     and so does checkd"
+                                ),
+                            );
+                        }
+                    }
+                    _ => diags.error(
+                        Some(&loc),
+                        format!("'{name}' takes a number from -2 to 3, not '{value}'"),
+                    ),
+                },
+                "service_check_timeout_state" if !["c", "u", "w", "o"].contains(&value) => {
+                    diags.error(
+                        Some(&loc),
+                        format!("'{name}' takes c, u, w or o, not '{value}'"),
+                    );
+                }
+                "allow_empty_hostgroup_assignment" if value != "0" && value != "1" => {
+                    let read = if leading_number_is_positive(value) {
+                        "on"
+                    } else {
+                        "off"
+                    };
+                    diags.warn(
+                        Some(&loc),
+                        format!("'{name}' is written 0 or 1; Naemon reads '{value}' as {read}, and so does checkd"),
+                    );
+                }
+                _ if DEPRECATED.contains(&name) => {
+                    diags.warn(Some(&loc), format!("'{name}' is deprecated in Naemon"));
+                }
+                _ => {}
             }
-            _ => {}
+            main.settings.push((name.to_string(), value.to_string()));
         }
-        main.settings.push((name.to_string(), value.to_string()));
+        self.open.pop();
+        true
     }
-    Some(main)
+}
+
+/// How the reference reads `allow_empty_hostgroup_assignment`: the whole
+/// number the value starts with, and on when that is above zero. `1x` is
+/// on; `0x`, `-1` and `abc` are off.
+pub fn leading_number_is_positive(value: &str) -> bool {
+    leading_number(value).is_none_or(|number| number > 0)
+}
+
+/// The whole number a value starts with, after an optional sign: 3 for
+/// `3x`, 1 for `1.9`, 0 for `abc`. `None` when it is too large to hold.
+fn leading_number(value: &str) -> Option<i64> {
+    let value = value.trim_start();
+    let (negative, rest) = match value.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, value.strip_prefix('+').unwrap_or(value)),
+    };
+    let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+    if digits.is_empty() {
+        return Some(0);
+    }
+    let number: i64 = digits.parse().ok()?;
+    Some(if negative { -number } else { number })
+}
+
+/// The files that `include_dir` reads: the files of the directory itself
+/// whose names end in `.cfg` and do not start with a dot, sorted by name.
+/// Directories below it are not looked into.
+fn included_files(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
+    let mut paths = Vec::new();
+    for entry in fs::read_dir(dir)? {
+        let path = entry?.path();
+        let name = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("");
+        if name.ends_with(".cfg") && !name.starts_with('.') {
+            paths.push(path);
+        }
+    }
+    paths.sort();
+    Ok(paths)
 }

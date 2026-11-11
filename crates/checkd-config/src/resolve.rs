@@ -224,7 +224,7 @@ impl Resolver<'_> {
 }
 
 /// Resolves the definitions of one type. Returns the registered ones, in
-/// file order.
+/// file order, and for some types the others too: see `Resolved::registered`.
 pub fn resolve(kind: ObjType, objects: &[RawObject], diags: &mut Diagnostics) -> Vec<Resolved> {
     let mut by_name: HashMap<&str, usize> = HashMap::new();
     for (index, object) in objects.iter().enumerate() {
@@ -278,8 +278,14 @@ pub fn resolve(kind: ObjType, objects: &[RawObject], diags: &mut Diagnostics) ->
 
     (0..objects.len())
         // The reference applies an extended-info definition even when it
-        // says `register 0`, so those are kept here too.
-        .filter(|&index| kind.is_extinfo() || objects[index].get("register") != Some("0"))
+        // says `register 0`, so those are kept here too. It also checks
+        // the hosts of a host dependency that says so, when
+        // allow_empty_hostgroup_assignment is off.
+        .filter(|&index| {
+            kind.is_extinfo()
+                || kind == ObjType::HostDependency
+                || objects[index].get("register") != Some("0")
+        })
         .map(|index| resolver.resolve(index))
         .collect()
 }

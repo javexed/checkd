@@ -1,0 +1,4 @@
+Reading configuration data...
+Error in configuration file '/case/naemon.cfg' - Line 4 (Error: Cannot open sub-configuration directory '/case/nowhere' for reading!)
+   Error processing main config file!
+

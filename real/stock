@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Copies the config that the Naemon package installs out of the oracle
+# image, to real/trees/naemon-stock, which git ignores.
+#
+#   real/stock
+#
+# These files belong to the Naemon package. They are local test input like
+# the published trees: not committed, and nothing is copied from them.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+dest="$here/trees/naemon-stock"
+if [ -e "$dest" ]; then
+    echo "naemon-stock: already there"
+    exit 0
+fi
+
+core=$(sed -n 's/^ARG NAEMON_CORE_VERSION=//p' "$here/../oracle/Dockerfile")
+inputs=$(cat "$here/../oracle/Dockerfile" "$here/../oracle/entry.sh" | sha256sum | cut -c1-12)
+image="checkd-oracle:naemon-${core}-${inputs}"
+docker image inspect "$image" >/dev/null 2>&1 \
+    || { echo "no oracle image; run oracle/run on any case first" >&2; exit 2; }
+
+# The package's resource file is readable by root and the naemon user
+# only, so the copy is made as root in the container and handed over.
+mkdir -p "$dest"
+docker run --rm --network none -v "$dest:/out" --entrypoint sh "$image" \
+    -c "cp -r /etc/naemon/. /out/ && chown -R $(id -u):$(id -g) /out && chmod -R u+rwX /out"
+echo "naemon-stock: /etc/naemon of $image"

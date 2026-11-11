@@ -1,0 +1,2 @@
+# Included by an absolute path. The file name has no extension.
+use_regexp_matching=1

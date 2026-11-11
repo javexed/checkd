@@ -3,8 +3,8 @@
 Configs written for this project, each with what the reference Naemon makes
 of it. The config loader is tested against these: it has to accept what
 Naemon accepts, refuse what Naemon refuses, and end up with the same objects.
-Six cases are the exception: Naemon accepts them and checkd refuses them
-on purpose. They are listed under "Fault cases".
+Fourteen cases are the exception: Naemon accepts them and checkd refuses
+them on purpose. They are listed under "Fault cases".
 
 Nothing here is copied from Naemon's or Nagios's sample configs. The cases
 were written from the public docs, and where the docs were silent the
@@ -53,6 +53,11 @@ To add a case, make `corpus/<name>/config/naemon.cfg`, run
 | `definition-order` | Everything used before it is defined |
 | `main-settings` | Every setting on the main configuration page of the docs, and a resource file |
 | `main-check-timeouts` | `host_check_timeout` and `service_check_timeout` as the default for hosts and services |
+| `main-more-settings` | Nine main settings that are not on the docs page and that Naemon reads |
+| `main-loose-state` | A state setting written as `3x` and as a word: read as 3 and as 0 |
+| `include-file` | `include_file` in the main config, by absolute and relative path, and an included file that includes another |
+| `include-dir` | `include_dir`, the files it skips, and the same directory given twice |
+| `config-rel-path` | `config_rel_path`: where relative paths are taken from, before and after the line |
 | `templates-chain` | Templates through several levels, for hosts, services, contacts, timeperiods and commands |
 | `templates-multiple` | Several templates in one `use`, and which one wins |
 | `templates-nameless` | A template `name`, no object name and no `register 0`: taken for a template |
@@ -80,11 +85,7 @@ To add a case, make `corpus/<name>/config/naemon.cfg`, run
 | `lists-star` | `*` alone in every list that takes it, with regular expressions off |
 | `lists-leave-nothing` | Valid lists that leave no host, service or contact, and are accepted |
 | `service-expansion` | One service on many hosts: lists, groups, `*`, `!` |
-| `service-duplicates` | The same service defined for a group and for one host of the group |
-| `duplicate-service-first-host` | A service defined twice by host name: which definition is kept on which host |
-| `duplicate-service-hostgroups` | The same, both times by host group |
-| `duplicate-service-patterns` | The same, both times by pattern |
-| `duplicate-service-mixed` | Definitions that do not name the same hosts, and by name against by group |
+| `service-duplicates` | The same service defined for a group and by name for one host of the group: the one by name is used |
 | `parents` | Parent hosts and parent services |
 | `service-parents` | Parent services written as pairs of host and description |
 | `dependencies` | Host and service dependencies with lists, groups and `*` |
@@ -92,6 +93,8 @@ To add a case, make `corpus/<name>/config/naemon.cfg`, run
 | `servicedependency-sides` | The ways each side of a service dependency names its services |
 | `hostdependency-one-sided` | Host dependencies that lack a side: accepted, nothing made |
 | `hostdependency-dropped` | Host dependencies with an undefined name: dropped, config accepted |
+| `hostdependency-strict` | The host dependencies that still load with `allow_empty_hostgroup_assignment=0` |
+| `empty-hostgroup-assignment-loose-value` | `allow_empty_hostgroup_assignment=2x`: read as on |
 | `escalations` | Host and service escalations with lists, groups and `*` |
 | `escalation-exclusions` | `!` in each list of a host or service escalation |
 | `serviceescalation-sides` | The ways a service escalation names its services |
@@ -121,12 +124,27 @@ Naemon 1.5.2 refuses a config at one of two points. While reading, it stops
 at the first fault it meets and reports only that one. In the pre-flight
 check that follows, it goes on and counts every fault.
 
-Refused while reading (exit 1, one fault reported), 168 cases.
+Refused while reading (exit 1, one fault reported), 179 cases.
 
-The main config (5):
+The main config (11):
 
-`bad-main-empty-value`, `bad-main-no-equals-sign`,
-`bad-main-unknown-setting`, `bad-missing-cfg-dir`, `bad-missing-cfg-file`
+`bad-config-rel-path-missing-file`, `bad-include-dir-missing`,
+`bad-include-self`, `bad-main-empty-value`, `bad-main-flag-value`,
+`bad-main-no-equals-sign`, `bad-main-state-out-of-range`,
+`bad-main-timeout-state`, `bad-main-unknown-setting`,
+`bad-missing-cfg-dir`, `bad-missing-cfg-file`
+
+`bad-include-self` is the one case here with more than one fault in the
+output: the main config is read twice, so every object is reported as a
+duplicate.
+
+Host dependencies with `allow_empty_hostgroup_assignment` off (5):
+
+`bad-empty-hostgroup-assignment-negative`,
+`bad-hostdependency-strict-empty-group`,
+`bad-hostdependency-strict-one-sided`,
+`bad-hostdependency-strict-unknown-host`,
+`bad-hostdependency-strict-unregistered`
 
 How definitions and setting names are written (16):
 
@@ -271,7 +289,6 @@ Accepted with a warning (exit 0):
 
 | Case | What Naemon did |
 | --- | --- |
-| `bad-duplicate-service` | Kept the definition that comes later in the file |
 | `bad-host-no-contacts` | Loaded the host with no contacts |
 
 Accepted without a word (exit 0):
@@ -301,6 +318,14 @@ Accepted by Naemon (exit 0), refused by checkd on purpose:
 | `bad-number-too-large-for-interval` | `check_interval 1e400` | Stored `inf` |
 | `bad-number-too-large` | `max_check_attempts 99999999999` | Stored 1215752191 |
 | `bad-escalation-negative-notification` | `first_notification -1` | Stored -1 |
+| `bad-duplicate-service` | A service defined twice by host name for one host | Warned and kept the later definition |
+| `bad-duplicate-service-first-host` | The same for lists of hosts | Warned and kept the later definition on one host, the earlier on the others |
+| `bad-duplicate-service-hostgroups` | The same, both times by host group | Warned and kept one, by the same rule |
+| `bad-duplicate-service-patterns` | The same, both times by pattern | Warned and kept one, by the same rule |
+| `bad-duplicate-service-mixed` | Definitions of the same sort that do not name the same hosts, and three definitions | Warned and kept one, by the same rule |
+| `bad-include-missing-file` | `include_file` names a file that is not there | Printed "Error: Cannot open main configuration file" and went on |
+| `bad-include-unknown-setting` | An included file has a setting Naemon does not know | Printed "UNKNOWN VARIABLE", skipped the rest of that file and went on |
+| `bad-include-loop` | Two included files that include each other | Printed "explicitly included more than once" and went on |
 
 [`../crates/checkd-config/README.md`](../crates/checkd-config/README.md)
 says why checkd refuses each one.
@@ -396,6 +421,50 @@ still rules read off from outside, and may be wrong at an edge nobody tried.
   60 for a service. (`main-check-timeouts`, `minimal`)
 - A config that names no object files, or defines no hosts, is accepted
   with no warning about it. (`bad-main-no-object-files`, `bad-no-hosts`)
+- Naemon reads settings that the docs page does not list. Nine were
+  tried. `log_archive_path` and `service_parents_disable_service_checks`
+  take any value. `enable_notification_suppression_reason_logging` and
+  `log_current_states` take `0` or `1` and nothing else.
+  `service_check_timeout_state` takes one of the small letters `c`, `u`,
+  `w` and `o`. (`main-more-settings`, `bad-main-flag-value`,
+  `bad-main-timeout-state`)
+- `service_skip_check_dependency_status`,
+  `service_skip_check_host_down_status` and
+  `host_skip_check_dependency_status` take a whole number from -2 to 3.
+  The number is read loosely, as the leading digits of the value: `3x` is
+  3 and a word is 0. A number outside the range is "Illegal value".
+  (`main-more-settings`, `main-loose-state`,
+  `bad-main-state-out-of-range`)
+- `allow_empty_hostgroup_assignment` takes any text. It is on when the
+  value starts with a number above 0, and on when the setting is not
+  given. `0`, a negative number and a word turn it off. What it changes
+  is under "Dependencies and escalations".
+  (`empty-hostgroup-assignment-loose-value`,
+  `bad-empty-hostgroup-assignment-negative`)
+- `include_file` reads another file of main settings at that place, so a
+  later line wins over an earlier one whichever file it is in. An
+  included file may include another and may name object files.
+  (`include-file`)
+- `include_dir` reads the files directly in a directory whose names end
+  in `.cfg`. It skips names that start with a dot, names that end in
+  `.CFG` or in anything else, and subdirectories. A directory given twice
+  is read twice. (`include-dir`)
+- A fault in an included file is not a fault of the config. Naemon prints
+  "Error", skips the rest of that file and accepts the config, exit 0.
+  That goes for a setting it does not know, for an `include_file` that
+  is not there and for two files that include each other. checkd refuses
+  all three. (`bad-include-unknown-setting`, `bad-include-missing-file`,
+  `bad-include-loop`)
+- In the main file itself, an `include_dir` that is not there is fatal.
+  A main file that includes itself is read twice, and then refused for
+  the duplicate objects. (`bad-include-dir-missing`, `bad-include-self`)
+- `config_rel_path` names the directory that relative paths are taken
+  from: `cfg_file`, `cfg_dir`, `resource_file`, `include_file` and
+  `include_dir`, in included files too. It works from its line on. Lines
+  before it use the directory of the main config, and a later
+  `config_rel_path` replaces it. The directory is not checked until a
+  path is taken from it. (`config-rel-path`,
+  `bad-config-rel-path-missing-file`)
 
 ### Templates
 
@@ -506,8 +575,11 @@ still rules read off from outside, and may be wrong at an edge nobody tried.
 - `!` works whichever side of the list it is on, and `host_name !x` can
   remove a host that `hostgroup_name` brought in. (`service-expansion`)
 - When a service is defined for a group and again by name for one host of
-  the group, the definition by name is kept, in either order.
-  (`service-duplicates`, `duplicate-service-mixed`)
+  the group, the definition by name is kept, in either order, and Naemon
+  gives no warning. A definition with both `host_name` and
+  `hostgroup_name` counts as by name for the hosts it names, and so does
+  `host_name *`. checkd does the same. (`service-duplicates`,
+  `bad-duplicate-service-mixed`)
 - When it is defined twice in the same way, by host name both times or by
   host group both times, Naemon keeps one and prints "Warning: Already
   defined in config file". Which one it keeps depends on the "first host"
@@ -520,17 +592,21 @@ still rules read off from outside, and may be wrong at an edge nobody tried.
   So two definitions for the same single host give the later one, as the
   docs suggest, and two definitions for the same three hosts give the later
   one on one host and the earlier one on the other two.
-  (`bad-duplicate-service`, `duplicate-service-first-host`,
-  `duplicate-service-mixed`)
+  (`bad-duplicate-service`, `bad-duplicate-service-first-host`,
+  `bad-duplicate-service-mixed`)
 - The first host of a definition is the first name written in `host_name`.
   Host groups come before host names, whichever is written first. A group
   gives its hosts in the reverse of the order they were added to it, and
   `*` and a pattern give the last defined host first. A definition has no
   first host when that host comes up again further on in its lists, or is
-  excluded. (`duplicate-service-first-host`, `duplicate-service-hostgroups`,
-  `duplicate-service-patterns`)
+  excluded. (`bad-duplicate-service-first-host`,
+  `bad-duplicate-service-hostgroups`, `bad-duplicate-service-patterns`)
 - This looks like the trace of how Naemon stores services while it reads,
-  not like a rule anybody chose. checkd copies it and warns.
+  not like a rule anybody chose. checkd does not copy it: two definitions
+  of the same sort for one host are an error, also when a third
+  definition by name would be used over both. A config that has them
+  loads in Naemon and not in checkd. One of the twelve published trees
+  does: see [`../real/README.md`](../real/README.md).
 - A service for no host is accepted and makes nothing: an empty host
   group, or a list that `!` empties. (`bad-service-on-empty-hostgroup`,
   `bad-exclusion-leaves-nothing`, `lists-leave-nothing`)
@@ -600,6 +676,20 @@ still rules read off from outside, and may be wrong at an edge nobody tried.
   accepts the configuration, exit 0. The same fault in a service
   dependency refuses it. (`hostdependency-dropped`,
   `bad-servicedependency-partly-unknown`)
+- The last two rules, and the one for a side that comes to no host, hold
+  while `allow_empty_hostgroup_assignment` is on or not given. With it
+  off, each is an error: a host dependency with one side and not the
+  other, one with a side that comes to no host, and one that names
+  something undefined, also beside a name that is defined. The check is
+  made for a `register 0` host dependency too.
+  (`bad-hostdependency-strict-one-sided`,
+  `bad-hostdependency-strict-empty-group`,
+  `bad-hostdependency-strict-unknown-host`,
+  `bad-hostdependency-strict-unregistered`)
+- Still accepted with the setting off: a host dependency with neither
+  side, registered or not, which makes nothing; one that names a host and
+  excludes it, since a named host stays; and one with an empty host group
+  beside a named host. (`hostdependency-strict`)
 - In the members of a service group, `alpha,!load` is accepted and does
   nothing. `!alpha,ping` is an error. (`lists-leave-nothing`,
   `bad-servicegroup-member-excluded-host`)
@@ -771,7 +861,13 @@ still rules read off from outside, and may be wrong at an edge nobody tried.
 - Any setting or object type that is not on the docs pages used:
   object definitions, object inheritance, time-saving tricks, main
   configuration.
-- `include_file`, `include_dir` and `broker_module` in the main config.
+- `broker_module` in the main config, beyond the warning that it is not
+  loaded.
+- Main settings beyond the docs page and the nine in
+  `main-more-settings`, and illegal values of the settings on the docs
+  page.
+- The order in which `include_dir` reads its files. The case keeps
+  settings that would collide out of one directory.
 - Numbers in settings other than the ones tried: `max_check_attempts`,
   `check_interval`, `freshness_threshold` and the three numbers of a host
   escalation.
@@ -779,7 +875,7 @@ still rules read off from outside, and may be wrong at an edge nobody tried.
   it decides something. The cases keep each such pair of definitions in
   one file.
 - Three or more definitions of one service, beyond the two rows in
-  `duplicate-service-mixed`.
+  `bad-duplicate-service-mixed`.
 - Files that are not UTF-8.
 - Regular expressions beyond the simple forms in the regexp cases.
 - Very large configs. That belongs to the load benchmark.

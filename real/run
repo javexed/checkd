@@ -11,6 +11,17 @@
 # it holds stand-ins for what the tree refers to and does not define.
 # With REAL_ORACLE_ONLY=1 the comparison with checkd is left out.
 #
+# A case may use the tree's own main config instead. It then has a file
+# `main` in place of `naemon.cfg`, holding the directory the tree's
+# naemon.cfg expects to be installed in, such as /etc/naemon. The tree is
+# copied to /case itself and that directory is rewritten to /case in its
+# naemon.cfg. Its temp_path line is dropped. Other paths are left as they
+# are.
+#
+# A case that Naemon accepts and checkd refuses on purpose has a third
+# file, `checkd-refuses`, with a part of the text that every error checkd
+# gives has to have. For such a case the objects are not compared.
+#
 # For each case this builds real/work/<case>/config, asks the oracle for
 # real/work/<case>/expected, and then runs the corpus comparison on it.
 set -euo pipefail
@@ -21,20 +32,30 @@ cd "$here"
 if [ $# -gt 0 ]; then cases=("$@"); else cases=($(ls cases)); fi
 
 for name in "${cases[@]}"; do
-    [ -f "cases/$name/naemon.cfg" ] || { echo "no case $name" >&2; exit 2; }
+    [ -f "cases/$name/naemon.cfg" ] || [ -f "cases/$name/main" ] || { echo "no case $name" >&2; exit 2; }
     tree=$(cat "cases/$name/tree")
     [ -d "trees/$tree" ] || { echo "$name: real/trees/$tree is missing; run real/fetch" >&2; exit 2; }
     work="work/$name"
     rm -rf "$work"
-    mkdir -p "$work/config/tree" "$work/expected"
+    if [ -f "cases/$name/main" ]; then dest="$work/config"; else dest="$work/config/tree"; fi
+    mkdir -p "$dest" "$work/expected"
     # Only regular files and directories are copied: no .git, no links.
-    (cd "trees/$tree" && find . -name .git -prune -o -type f -print0 | cpio -0 -pdm --quiet "$here/$work/config/tree")
-    cp "cases/$name/naemon.cfg" "$work/config/naemon.cfg"
+    (cd "trees/$tree" && find . -name .git -prune -o -type f -print0 | cpio -0 -pdm --quiet "$here/$dest")
+    if [ -f "cases/$name/main" ]; then
+        installed=$(cat "cases/$name/main")
+        [ -f "$work/config/naemon.cfg" ] || { echo "$name: the tree has no naemon.cfg" >&2; exit 2; }
+        # temp_path is left out: the oracle runs as the calling user, who
+        # cannot write to the package's directory, and Naemon checks that.
+        sed -i -e "s#${installed%/}/#/case/#g" -e "s#=${installed%/}\$#=/case#" -e '/^[[:space:]]*temp_path[[:space:]]*=/d' "$work/config/naemon.cfg"
+    else
+        cp "cases/$name/naemon.cfg" "$work/config/naemon.cfg"
+    fi
     [ -f "cases/$name/extra.cfg" ] && cp "cases/$name/extra.cfg" "$work/config/extra.cfg"
     if [ -f "stubs/$name.cfg" ]; then
         cp "stubs/$name.cfg" "$work/config/stubs.cfg"
         echo "cfg_file=/case/stubs.cfg" >> "$work/config/naemon.cfg"
     fi
+    [ -f "cases/$name/checkd-refuses" ] && cp "cases/$name/checkd-refuses" "$work/checkd-refuses"
     ../oracle/run "$work/config" "$work/expected"
     echo "$name: naemon exit $(cat "$work/expected/verify.exit")"
 done
@@ -45,6 +66,14 @@ status=0
 for name in "${cases[@]}"; do
     CHECKD_CORPUS_DIR="$here/work" CHECKD_CASE="$name" \
         cargo test -q -p checkd-config --test corpus corpus_agrees_with_the_reference \
-        > "work/$name/compare.txt" 2>&1 && echo "$name: same" || { echo "$name: differs, see real/work/$name/compare.txt"; status=1; }
+        > "work/$name/compare.txt" 2>&1 && same=1 || same=
+    if [ -z "$same" ]; then
+        echo "$name: differs, see real/work/$name/compare.txt"
+        status=1
+    elif [ -f "work/$name/checkd-refuses" ]; then
+        echo "$name: refused by checkd on purpose, objects not compared"
+    else
+        echo "$name: same"
+    fi
 done
 exit $status

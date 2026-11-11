@@ -22,6 +22,12 @@ define command {
 	}
 
 define hostgroup {
+	hostgroup_name	hg-alpha
+	alias	hg-alpha
+	members	alpha
+	}
+
+define hostgroup {
 	hostgroup_name	hg-web
 	alias	hg-web
 	members	alpha,beta
@@ -114,7 +120,75 @@ define host {
 
 define service {
 	host_name	alpha
+	service_description	Both then group
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	1.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
+	host_name	alpha
 	service_description	Group then host
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	1.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
+	host_name	alpha
+	service_description	Group then star
 	check_period	always
 	check_command	check_dummy!0
 	contacts	ops
@@ -181,6 +255,74 @@ define service {
 	}
 
 define service {
+	host_name	alpha
+	service_description	Star then group
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	1.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
+	host_name	beta
+	service_description	Both then group
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	10.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
 	host_name	beta
 	service_description	Group then host
 	check_period	always
@@ -216,6 +358,40 @@ define service {
 
 define service {
 	host_name	beta
+	service_description	Group then star
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	1.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
+	host_name	beta
 	service_description	Host then group
 	check_period	always
 	check_command	check_dummy!0
@@ -225,6 +401,40 @@ define service {
 	check_timeout	60
 	hourly_value	1
 	check_interval	10.000000
+	retry_interval	1.000000
+	max_check_attempts	3
+	is_volatile	0
+	active_checks_enabled	1
+	passive_checks_enabled	1
+	obsess	1
+	event_handler_enabled	1
+	low_flap_threshold	0.000000
+	high_flap_threshold	0.000000
+	flap_detection_enabled	1
+	flap_detection_options	a
+	freshness_threshold	0
+	check_freshness	0
+	notification_options	a
+	notifications_enabled	1
+	notification_interval	30.000000
+	first_notification_delay	0.000000
+	stalking_options	n
+	process_perf_data	1
+	retain_status_information	1
+	retain_nonstatus_information	1
+	}
+
+define service {
+	host_name	beta
+	service_description	Star then group
+	check_period	always
+	check_command	check_dummy!0
+	contacts	ops
+	notification_period	always
+	initial_state	o
+	check_timeout	60
+	hourly_value	1
+	check_interval	1.000000
 	retry_interval	1.000000
 	max_check_attempts	3
 	is_volatile	0

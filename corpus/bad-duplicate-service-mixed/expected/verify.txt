@@ -1,0 +1,56 @@
+Reading configuration data...
+   Read main config file okay...
+Warning: Duplicate definition found for service 'names-neither-first' on host 'beta' (config file '/case/objects.cfg', starting on line 120)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 113
+Warning: Duplicate definition found for service 'group-name-group' on host 'alpha' (config file '/case/objects.cfg', starting on line 194)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 180
+Warning: Duplicate definition found for service 'three-groups' on host 'alpha' (config file '/case/objects.cfg', starting on line 172)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 158
+Warning: Duplicate definition found for service 'three-groups' on host 'alpha' (config file '/case/objects.cfg', starting on line 165)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 158
+Warning: Duplicate definition found for service 'groups-small-then-big' on host 'alpha' (config file '/case/objects.cfg', starting on line 143)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 150
+Warning: Duplicate definition found for service 'groups-big-then-small' on host 'alpha' (config file '/case/objects.cfg', starting on line 135)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 128
+Warning: Duplicate definition found for service 'names-second-not-first' on host 'beta' (config file '/case/objects.cfg', starting on line 105)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 98
+Warning: Duplicate definition found for service 'names-small-then-big' on host 'beta' (config file '/case/objects.cfg', starting on line 83)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 90
+Warning: Duplicate definition found for service 'names-big-then-small' on host 'alpha' (config file '/case/objects.cfg', starting on line 68)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 75
+Warning: Duplicate definition found for service 'three-by-name' on host 'alpha' (config file '/case/objects.cfg', starting on line 53)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 60
+Warning: Duplicate definition found for service 'three-by-name' on host 'alpha' (config file '/case/objects.cfg', starting on line 46)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 60
+   Read object config files okay...
+
+Running pre-flight check on configuration data...
+
+Checking objects...
+	Checked 23 services.
+	Checked 2 hosts.
+	Checked 1 contacts.
+	Checked 3 host groups.
+	Checked 0 service groups.
+	Checked 0 contact groups.
+	Checked 2 commands.
+	Checked 1 time periods.
+	Checked 0 host escalations.
+	Checked 0 service escalations.
+Checking for circular paths...
+	Checked 2 hosts
+	Checked 0 service dependencies
+	Checked 0 host dependencies
+	Checked 1 timeperiods
+Checking global event handlers...
+Checking global notification handlers...
+Checking obsessive compulsive processor commands...
+Checking misc settings...
+Warning: Nothing specified for illegal_macro_output_chars variable!
+
+Total Warnings: 1
+Total Errors:   0
+
+Things look okay - No serious problems were detected during the pre-flight check
+Object precache file created:
+/tmp/oracle/objects.precache

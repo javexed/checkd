@@ -1,0 +1,2 @@
+# Not read by include_dir. If it were, services would get this timeout.
+service_check_timeout=72

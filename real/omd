@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Copies the Naemon config of an OMD Labs demo site to real/trees/omd-demo.
+#
+#   real/omd
+#
+# OMD (omd.consol.de) is a distribution that sets up Naemon, Thruk and
+# more as a "site". Its Docker image holds one site, `demo`. This is the
+# nearest thing to a config from an installation that can be had without
+# one: the main config is the one a site runs with.
+#
+# The site keeps its main config in pieces (etc/naemon/naemon.d/*.cfg and
+# etc/naemon/naemon.cfg) and joins them when it starts. This script runs
+# that same step, with the site's own tool, and stores the result as
+# naemon.cfg at the top of the tree, beside the site's etc/naemon.
+#
+# The container has no network and nothing of the site is started. The
+# image is pinned by digest. These files belong to OMD. They are local
+# test input like the published trees: not committed, and nothing is
+# copied from them.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+image=consol/omd-labs-debian@sha256:e140902ba2bc2ba042836c5137fefab56d4b70716aae5d21f51a2afaf6fcb73f
+dest="$here/trees/omd-demo"
+
+[ -e "$dest" ] && { echo "real/trees/omd-demo is already there" >&2; exit 0; }
+mkdir -p "$dest"
+
+docker run --rm --network none --entrypoint /bin/sh -v "$dest:/out" "$image" -c '
+    set -eu
+    site=/omd/sites/demo
+    su - demo -c "merge-core-config $site/etc/naemon/naemon.d/*.cfg $site/etc/naemon/naemon.cfg" > /out/naemon.cfg
+    mkdir -p /out/etc
+    cp -rL "$site/etc/naemon" /out/etc/naemon
+    omd version > /out/omd.version
+    chown -R '"$(id -u):$(id -g)"' /out
+    chmod -R u+rwX /out
+'
+echo "real/trees/omd-demo: $(cat "$dest/omd.version")"

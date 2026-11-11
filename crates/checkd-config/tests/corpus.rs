@@ -168,8 +168,28 @@ fn difference(ours: &[Object], theirs: &[Object]) -> Vec<String> {
 /// Cases that the reference accepts and checkd refuses on purpose, each
 /// with a part of the error checkd has to give. The loader's README says
 /// why for each.
-const REFUSED_ON_PURPOSE: [(&str, &str); 6] = [
+const REFUSED_ON_PURPOSE: [(&str, &str); 14] = [
+    ("bad-duplicate-service", "is defined twice for host"),
+    (
+        "bad-duplicate-service-first-host",
+        "is defined twice for host",
+    ),
+    (
+        "bad-duplicate-service-hostgroups",
+        "is defined twice for host",
+    ),
+    ("bad-duplicate-service-mixed", "is defined twice for host"),
+    (
+        "bad-duplicate-service-patterns",
+        "is defined twice for host",
+    ),
     ("bad-escalation-negative-notification", "is below zero"),
+    ("bad-include-loop", "includes itself"),
+    ("bad-include-missing-file", "cannot read"),
+    (
+        "bad-include-unknown-setting",
+        "is not a main configuration setting",
+    ),
     ("bad-number-hex", "is not a number written in digits"),
     ("bad-number-inf", "is not a number written in digits"),
     ("bad-number-nan", "is not a number written in digits"),
@@ -189,6 +209,27 @@ fn check_case(case: &Path) -> Vec<String> {
     let accepted_there = exit.trim() == "0";
     let mut lines = Vec::new();
     let name = case.file_name().unwrap_or_default().to_string_lossy();
+    // A real tree says so in a file of its own, `checkd-refuses`, which
+    // holds a part of the text that every error has to have.
+    if let Ok(reason) = fs::read_to_string(case.join("checkd-refuses")) {
+        let reason = reason.trim();
+        if !accepted_there {
+            lines.push("  marked as refused on purpose, but naemon refuses it too".to_string());
+        }
+        if loaded.objects.is_some() {
+            lines.push("  marked as refused on purpose, but checkd accepts it".to_string());
+        }
+        lines.extend(
+            loaded
+                .diags
+                .errors
+                .iter()
+                .filter(|error| !error.message.contains(reason))
+                .take(20)
+                .map(|error| format!("    error without '{reason}': {error}")),
+        );
+        return lines;
+    }
     if let Some((_, reason)) = REFUSED_ON_PURPOSE.iter().find(|(case, _)| *case == name) {
         if !accepted_there {
             lines.push("  listed as refused on purpose, but naemon refuses it too".to_string());
@@ -287,13 +328,29 @@ fn corpus_agrees_with_the_reference() {
     );
 }
 
+/// Warnings about a line of the main config, where Naemon says nothing:
+/// case, line of `naemon.cfg`, and a part of the text.
+const MAIN_WARNINGS: &[(&str, u32, &str)] = &[
+    (
+        "empty-hostgroup-assignment-loose-value",
+        8,
+        "Naemon reads '2x' as on",
+    ),
+    ("main-loose-state", 6, "Naemon reads '3x' as 3"),
+    ("main-loose-state", 7, "Naemon reads 'unknown' as 0"),
+];
+
 /// Where the reference accepts a config without saying anything about a
 /// part that has no effect, checkd accepts it too and says so. Each row is
 /// a case, the line of `objects.cfg` the warning points at (0 for a warning
 /// about the config as a whole), and a part of its text.
 const WARNINGS: &[(&str, u32, &str)] = &[
     ("bad-dependency-no-criteria", 15, "names no failure states"),
-    ("bad-duplicate-service", 16, "is also defined at"),
+    (
+        "bad-duplicate-service-hostgroups",
+        96,
+        "the lines are added together",
+    ),
     (
         "bad-escalation-first-after-last",
         9,
@@ -364,21 +421,6 @@ const WARNINGS: &[(&str, u32, &str)] = &[
         "define-line-forms",
         39,
         "after the opening brace is not read",
-    ),
-    (
-        "duplicate-service-first-host",
-        62,
-        "that earlier definition is used",
-    ),
-    (
-        "duplicate-service-first-host",
-        62,
-        "this later definition is used",
-    ),
-    (
-        "duplicate-service-hostgroups",
-        93,
-        "the lines are added together",
     ),
     (
         "extinfo-targets",
@@ -462,7 +504,9 @@ const WARNINGS: &[(&str, u32, &str)] = &[
 fn silent_cases_get_a_warning() {
     let corpus = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus");
     let mut missing = Vec::new();
-    for &(case, line, text) in WARNINGS {
+    let object_files = WARNINGS.iter().map(|row| (row, "objects.cfg"));
+    let main_file = MAIN_WARNINGS.iter().map(|row| (row, "naemon.cfg"));
+    for (&(case, line, text), file) in object_files.chain(main_file) {
         let config = corpus.join(case).join("config");
         let options = Options {
             path_map: PathMap(vec![(PathBuf::from("/case"), config.clone())]),
@@ -472,7 +516,7 @@ fn silent_cases_get_a_warning() {
             warning.message.contains(text)
                 && match &warning.loc {
                     None => line == 0,
-                    Some(loc) => loc.line == line && loc.file.ends_with("objects.cfg"),
+                    Some(loc) => loc.line == line && loc.file.ends_with(file),
                 }
         });
         if !found {

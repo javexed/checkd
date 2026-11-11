@@ -1,0 +1,4 @@
+Reading configuration data...
+Error in configuration file '/case/naemon.cfg' - Line 4 (Illegal value for host_skip_check_dependency_status)
+   Error processing main config file!
+

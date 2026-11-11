@@ -18,6 +18,11 @@ nothing in this repo may be derived from their source.
 - Config trees that other people published are local test input only
   (`real/`). They are not committed, and nothing is copied from them. What
   one shows goes into the corpus as a case written for this project.
+- The same goes for the config files that the Naemon package installs and
+  for the config of an OMD site (`real/stock`, `real/omd`). They belong to
+  those projects and are config files, not source. A setting that the
+  loader first met there is known to it by name only. What the setting
+  does was taken from the oracle, with configs written for this project.
 
 By contributing you confirm that your change was not written from the GPL
 source.

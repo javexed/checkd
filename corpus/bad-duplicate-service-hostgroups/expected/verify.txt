@@ -1,0 +1,238 @@
+Reading configuration data...
+   Read main config file okay...
+Warning: Duplicate definition found for service 'plain' on host 'alpha' (config file '/case/objects.cfg', starting on line 161)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 154
+Warning: Duplicate definition found for service 'plain' on host 'zulu' (config file '/case/objects.cfg', starting on line 161)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 154
+Warning: Duplicate definition found for service 'by-host' on host 'alpha' (config file '/case/objects.cfg', starting on line 176)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 169
+Warning: Duplicate definition found for service 'by-host' on host 'mike' (config file '/case/objects.cfg', starting on line 176)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 169
+Warning: Duplicate definition found for service 'more-by-host' on host 'zulu' (config file '/case/objects.cfg', starting on line 191)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 184
+Warning: Duplicate definition found for service 'more-by-host' on host 'bravo' (config file '/case/objects.cfg', starting on line 191)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 184
+Warning: Duplicate definition found for service 'more-by-host' on host 'alpha' (config file '/case/objects.cfg', starting on line 191)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 184
+Warning: Duplicate definition found for service 'members-and-host' on host 'alpha' (config file '/case/objects.cfg', starting on line 206)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 199
+Warning: Duplicate definition found for service 'two-lines' on host 'mike' (config file '/case/objects.cfg', starting on line 221)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 214
+Warning: Duplicate definition found for service 'two-lines' on host 'alpha' (config file '/case/objects.cfg', starting on line 221)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 214
+Warning: Duplicate definition found for service 'two-lines' on host 'zulu' (config file '/case/objects.cfg', starting on line 221)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 214
+Warning: Duplicate definition found for service 'star' on host 'alpha' (config file '/case/objects.cfg', starting on line 236)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 229
+Warning: Duplicate definition found for service 'star' on host 'zulu' (config file '/case/objects.cfg', starting on line 236)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 229
+Warning: Duplicate definition found for service 'star' on host 'echo' (config file '/case/objects.cfg', starting on line 236)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 229
+Warning: Duplicate definition found for service 'star' on host 'kilo' (config file '/case/objects.cfg', starting on line 236)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 229
+Warning: Duplicate definition found for service 'star' on host 'bravo' (config file '/case/objects.cfg', starting on line 236)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 229
+Warning: Duplicate definition found for service 'with-exclusion' on host 'zulu' (config file '/case/objects.cfg', starting on line 251)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 244
+Warning: Duplicate definition found for service 'with-exclusion' on host 'alpha' (config file '/case/objects.cfg', starting on line 251)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 244
+Warning: Duplicate definition found for service 'member-twice' on host 'echo' (config file '/case/objects.cfg', starting on line 266)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 259
+Warning: Duplicate definition found for service 'member-twice' on host 'alpha' (config file '/case/objects.cfg', starting on line 266)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 259
+Warning: Duplicate definition found for service 'nested' on host 'zulu' (config file '/case/objects.cfg', starting on line 281)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 274
+Warning: Duplicate definition found for service 'nested' on host 'alpha' (config file '/case/objects.cfg', starting on line 281)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 274
+Warning: Duplicate definition found for service 'nested' on host 'mike' (config file '/case/objects.cfg', starting on line 281)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 274
+Warning: Duplicate definition found for service 'nested-reversed' on host 'alpha' (config file '/case/objects.cfg', starting on line 296)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 289
+Warning: Duplicate definition found for service 'nested-reversed' on host 'mike' (config file '/case/objects.cfg', starting on line 296)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 289
+Warning: Duplicate definition found for service 'nested-reversed' on host 'echo' (config file '/case/objects.cfg', starting on line 296)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 289
+Warning: Duplicate definition found for service 'nested-two-lines' on host 'alpha' (config file '/case/objects.cfg', starting on line 311)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 304
+Warning: Duplicate definition found for service 'nested-two-lines' on host 'mike' (config file '/case/objects.cfg', starting on line 311)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 304
+Warning: Duplicate definition found for service 'nested-two-lines' on host 'echo' (config file '/case/objects.cfg', starting on line 311)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 304
+Warning: Duplicate definition found for service 'nested-and-member' on host 'zulu' (config file '/case/objects.cfg', starting on line 326)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 319
+Warning: Duplicate definition found for service 'nested-and-member' on host 'alpha' (config file '/case/objects.cfg', starting on line 326)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 319
+Warning: Duplicate definition found for service 'nested-and-member' on host 'mike' (config file '/case/objects.cfg', starting on line 326)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 319
+Warning: Duplicate definition found for service 'nested-and-same-member' on host 'zulu' (config file '/case/objects.cfg', starting on line 341)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 334
+Warning: Duplicate definition found for service 'nested-and-same-member' on host 'alpha' (config file '/case/objects.cfg', starting on line 341)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 334
+Warning: Duplicate definition found for service 'nested-and-host' on host 'kilo' (config file '/case/objects.cfg', starting on line 356)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 349
+Warning: Duplicate definition found for service 'nested-and-host' on host 'zulu' (config file '/case/objects.cfg', starting on line 356)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 349
+Warning: Duplicate definition found for service 'nested-and-host' on host 'alpha' (config file '/case/objects.cfg', starting on line 356)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 349
+Warning: Duplicate definition found for service 'nested-and-host' on host 'mike' (config file '/case/objects.cfg', starting on line 356)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 349
+Warning: Duplicate definition found for service 'nested-twice' on host 'echo' (config file '/case/objects.cfg', starting on line 371)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 364
+Warning: Duplicate definition found for service 'nested-twice' on host 'mike' (config file '/case/objects.cfg', starting on line 371)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 364
+Warning: Duplicate definition found for service 'nested-twice' on host 'alpha' (config file '/case/objects.cfg', starting on line 371)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 364
+Warning: Duplicate definition found for service 'nested-twice' on host 'kilo' (config file '/case/objects.cfg', starting on line 371)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 364
+Warning: Duplicate definition found for service 'nested-twice' on host 'bravo' (config file '/case/objects.cfg', starting on line 371)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 364
+Warning: Duplicate definition found for service 'two-groups' on host 'alpha' (config file '/case/objects.cfg', starting on line 386)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 379
+Warning: Duplicate definition found for service 'two-groups' on host 'zulu' (config file '/case/objects.cfg', starting on line 386)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 379
+Warning: Duplicate definition found for service 'two-groups' on host 'echo' (config file '/case/objects.cfg', starting on line 386)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 379
+Warning: Duplicate definition found for service 'two-groups-reversed' on host 'mike' (config file '/case/objects.cfg', starting on line 401)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 394
+Warning: Duplicate definition found for service 'two-groups-reversed' on host 'alpha' (config file '/case/objects.cfg', starting on line 401)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 394
+Warning: Duplicate definition found for service 'two-groups-reversed' on host 'zulu' (config file '/case/objects.cfg', starting on line 401)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 394
+Warning: Duplicate definition found for service 'group-excluded-first' on host 'alpha' (config file '/case/objects.cfg', starting on line 416)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 409
+Warning: Duplicate definition found for service 'group-excluded-first' on host 'zulu' (config file '/case/objects.cfg', starting on line 416)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 409
+Warning: Duplicate definition found for service 'group-and-name' on host 'alpha' (config file '/case/objects.cfg', starting on line 432)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 424
+Warning: Duplicate definition found for service 'group-and-name' on host 'zulu' (config file '/case/objects.cfg', starting on line 432)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 424
+Warning: Duplicate definition found for service 'group-and-name' on host 'echo' (config file '/case/objects.cfg', starting on line 432)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 424
+Warning: Duplicate definition found for service 'name-and-group' on host 'alpha' (config file '/case/objects.cfg', starting on line 449)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 441
+Warning: Duplicate definition found for service 'name-and-group' on host 'zulu' (config file '/case/objects.cfg', starting on line 449)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 441
+Warning: Duplicate definition found for service 'name-and-group' on host 'echo' (config file '/case/objects.cfg', starting on line 449)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 441
+Warning: Duplicate definition found for service 'group-and-other-name' on host 'alpha' (config file '/case/objects.cfg', starting on line 466)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 458
+Warning: Duplicate definition found for service 'group-and-other-name' on host 'zulu' (config file '/case/objects.cfg', starting on line 466)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 458
+Warning: Duplicate definition found for service 'group-and-first-name' on host 'alpha' (config file '/case/objects.cfg', starting on line 483)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 475
+Warning: Duplicate definition found for service 'group-and-first-name' on host 'zulu' (config file '/case/objects.cfg', starting on line 483)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 475
+Warning: Duplicate definition found for service 'group-and-first-name' on host 'mike' (config file '/case/objects.cfg', starting on line 483)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 475
+Warning: Duplicate definition found for service 'name-and-own-group' on host 'echo' (config file '/case/objects.cfg', starting on line 500)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 492
+Warning: Duplicate definition found for service 'name-and-own-group' on host 'mike' (config file '/case/objects.cfg', starting on line 500)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 492
+Warning: Duplicate definition found for service 'group-twice' on host 'mike' (config file '/case/objects.cfg', starting on line 516)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 509
+Warning: Duplicate definition found for service 'group-twice' on host 'alpha' (config file '/case/objects.cfg', starting on line 516)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 509
+Warning: Duplicate definition found for service 'group-twice' on host 'zulu' (config file '/case/objects.cfg', starting on line 516)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 509
+Warning: Duplicate definition found for service 'overlapping-groups' on host 'echo' (config file '/case/objects.cfg', starting on line 531)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 524
+Warning: Duplicate definition found for service 'overlapping-groups' on host 'mike' (config file '/case/objects.cfg', starting on line 531)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 524
+Warning: Duplicate definition found for service 'overlapping-groups' on host 'alpha' (config file '/case/objects.cfg', starting on line 531)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 524
+Warning: Duplicate definition found for service 'overlapping-groups' on host 'zulu' (config file '/case/objects.cfg', starting on line 531)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 524
+Warning: Duplicate definition found for service 'overlap-not-first' on host 'zulu' (config file '/case/objects.cfg', starting on line 546)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 539
+Warning: Duplicate definition found for service 'overlap-not-first' on host 'kilo' (config file '/case/objects.cfg', starting on line 546)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 539
+Warning: Duplicate definition found for service 'overlap-not-first' on host 'alpha' (config file '/case/objects.cfg', starting on line 546)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 539
+Warning: Duplicate definition found for service 'overlap-not-first' on host 'mike' (config file '/case/objects.cfg', starting on line 546)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 539
+Warning: Duplicate definition found for service 'first-excluded-by-name' on host 'alpha' (config file '/case/objects.cfg', starting on line 562)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 554
+Warning: Duplicate definition found for service 'first-excluded-by-name' on host 'zulu' (config file '/case/objects.cfg', starting on line 562)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 554
+Warning: Duplicate definition found for service 'first-excluded-by-group' on host 'echo' (config file '/case/objects.cfg', starting on line 578)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 571
+Warning: Duplicate definition found for service 'other-excluded-by-name' on host 'alpha' (config file '/case/objects.cfg', starting on line 594)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 586
+Warning: Duplicate definition found for service 'other-excluded-by-name' on host 'mike' (config file '/case/objects.cfg', starting on line 586)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 594
+Warning: Duplicate definition found for service 'overlap-not-first' on host 'echo' (config file '/case/objects.cfg', starting on line 539)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 546
+Warning: Duplicate definition found for service 'group-and-other-name' on host 'mike' (config file '/case/objects.cfg', starting on line 458)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 466
+Warning: Duplicate definition found for service 'name-and-group' on host 'mike' (config file '/case/objects.cfg', starting on line 441)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 449
+Warning: Duplicate definition found for service 'group-and-name' on host 'mike' (config file '/case/objects.cfg', starting on line 424)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 432
+Warning: Duplicate definition found for service 'group-excluded-first' on host 'mike' (config file '/case/objects.cfg', starting on line 409)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 416
+Warning: Duplicate definition found for service 'two-groups-reversed' on host 'echo' (config file '/case/objects.cfg', starting on line 394)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 401
+Warning: Duplicate definition found for service 'two-groups' on host 'mike' (config file '/case/objects.cfg', starting on line 379)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 386
+Warning: Duplicate definition found for service 'nested-twice' on host 'zulu' (config file '/case/objects.cfg', starting on line 364)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 371
+Warning: Duplicate definition found for service 'nested-and-host' on host 'bravo' (config file '/case/objects.cfg', starting on line 349)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 356
+Warning: Duplicate definition found for service 'nested-and-same-member' on host 'mike' (config file '/case/objects.cfg', starting on line 334)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 341
+Warning: Duplicate definition found for service 'nested-and-member' on host 'kilo' (config file '/case/objects.cfg', starting on line 319)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 326
+Warning: Duplicate definition found for service 'nested-two-lines' on host 'zulu' (config file '/case/objects.cfg', starting on line 304)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 311
+Warning: Duplicate definition found for service 'nested-reversed' on host 'zulu' (config file '/case/objects.cfg', starting on line 289)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 296
+Warning: Duplicate definition found for service 'nested' on host 'echo' (config file '/case/objects.cfg', starting on line 274)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 281
+Warning: Duplicate definition found for service 'member-twice' on host 'zulu' (config file '/case/objects.cfg', starting on line 259)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 266
+Warning: Duplicate definition found for service 'with-exclusion' on host 'mike' (config file '/case/objects.cfg', starting on line 244)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 251
+Warning: Duplicate definition found for service 'star' on host 'mike' (config file '/case/objects.cfg', starting on line 229)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 236
+Warning: Duplicate definition found for service 'two-lines' on host 'echo' (config file '/case/objects.cfg', starting on line 214)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 221
+Warning: Duplicate definition found for service 'members-and-host' on host 'mike' (config file '/case/objects.cfg', starting on line 199)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 206
+Warning: Duplicate definition found for service 'more-by-host' on host 'echo' (config file '/case/objects.cfg', starting on line 184)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 191
+Warning: Duplicate definition found for service 'by-host' on host 'kilo' (config file '/case/objects.cfg', starting on line 169)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 176
+Warning: Duplicate definition found for service 'plain' on host 'mike' (config file '/case/objects.cfg', starting on line 154)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 161
+   Read object config files okay...
+
+Running pre-flight check on configuration data...
+
+Checking objects...
+	Checked 102 services.
+	Checked 6 hosts.
+	Checked 1 contacts.
+	Checked 16 host groups.
+	Checked 0 service groups.
+	Checked 0 contact groups.
+	Checked 2 commands.
+	Checked 1 time periods.
+	Checked 0 host escalations.
+	Checked 0 service escalations.
+Checking for circular paths...
+	Checked 6 hosts
+	Checked 0 service dependencies
+	Checked 0 host dependencies
+	Checked 1 timeperiods
+Checking global event handlers...
+Checking global notification handlers...
+Checking obsessive compulsive processor commands...
+Checking misc settings...
+Warning: Nothing specified for illegal_macro_output_chars variable!
+
+Total Warnings: 1
+Total Errors:   0
+
+Things look okay - No serious problems were detected during the pre-flight check
+Object precache file created:
+/tmp/oracle/objects.precache

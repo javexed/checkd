@@ -1,0 +1,118 @@
+Reading configuration data...
+   Read main config file okay...
+Warning: Duplicate definition found for service 'list' on host 'alpha' (config file '/case/objects.cfg', starting on line 65)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 58
+Warning: Duplicate definition found for service 'list' on host 'mike' (config file '/case/objects.cfg', starting on line 65)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 58
+Warning: Duplicate definition found for service 'first-again' on host 'zulu' (config file '/case/objects.cfg', starting on line 95)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 88
+Warning: Duplicate definition found for service 'first-again' on host 'mike' (config file '/case/objects.cfg', starting on line 95)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 88
+Warning: Duplicate definition found for service 'first-again' on host 'alpha' (config file '/case/objects.cfg', starting on line 95)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 88
+Warning: Duplicate definition found for service 'other-again' on host 'zulu' (config file '/case/objects.cfg', starting on line 110)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 103
+Warning: Duplicate definition found for service 'other-again' on host 'alpha' (config file '/case/objects.cfg', starting on line 110)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 103
+Warning: Duplicate definition found for service 'first-excluded' on host 'alpha' (config file '/case/objects.cfg', starting on line 125)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 118
+Warning: Duplicate definition found for service 'exclusion-first' on host 'alpha' (config file '/case/objects.cfg', starting on line 140)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 133
+Warning: Duplicate definition found for service 'other-excluded' on host 'mike' (config file '/case/objects.cfg', starting on line 155)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 148
+Warning: Duplicate definition found for service 'star' on host 'kilo' (config file '/case/objects.cfg', starting on line 170)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 163
+Warning: Duplicate definition found for service 'star' on host 'echo' (config file '/case/objects.cfg', starting on line 170)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 163
+Warning: Duplicate definition found for service 'star' on host 'zulu' (config file '/case/objects.cfg', starting on line 170)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 163
+Warning: Duplicate definition found for service 'star' on host 'alpha' (config file '/case/objects.cfg', starting on line 170)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 163
+Warning: Duplicate definition found for service 'star' on host 'mike' (config file '/case/objects.cfg', starting on line 170)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 163
+Warning: Duplicate definition found for service 'star-less-first' on host 'kilo' (config file '/case/objects.cfg', starting on line 185)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 178
+Warning: Duplicate definition found for service 'star-less-first' on host 'echo' (config file '/case/objects.cfg', starting on line 185)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 178
+Warning: Duplicate definition found for service 'star-less-first' on host 'zulu' (config file '/case/objects.cfg', starting on line 185)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 178
+Warning: Duplicate definition found for service 'star-less-first' on host 'alpha' (config file '/case/objects.cfg', starting on line 185)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 178
+Warning: Duplicate definition found for service 'star-less-first' on host 'mike' (config file '/case/objects.cfg', starting on line 185)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 178
+Warning: Duplicate definition found for service 'star-less-other' on host 'echo' (config file '/case/objects.cfg', starting on line 200)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 193
+Warning: Duplicate definition found for service 'star-less-other' on host 'zulu' (config file '/case/objects.cfg', starting on line 200)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 193
+Warning: Duplicate definition found for service 'star-less-other' on host 'alpha' (config file '/case/objects.cfg', starting on line 200)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 193
+Warning: Duplicate definition found for service 'star-less-other' on host 'mike' (config file '/case/objects.cfg', starting on line 200)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 193
+Warning: Duplicate definition found for service 'name-then-star' on host 'bravo' (config file '/case/objects.cfg', starting on line 215)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 208
+Warning: Duplicate definition found for service 'name-then-star' on host 'kilo' (config file '/case/objects.cfg', starting on line 215)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 208
+Warning: Duplicate definition found for service 'name-then-star' on host 'echo' (config file '/case/objects.cfg', starting on line 215)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 208
+Warning: Duplicate definition found for service 'name-then-star' on host 'zulu' (config file '/case/objects.cfg', starting on line 215)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 208
+Warning: Duplicate definition found for service 'name-then-star' on host 'alpha' (config file '/case/objects.cfg', starting on line 215)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 208
+Warning: Duplicate definition found for service 'name-then-star' on host 'mike' (config file '/case/objects.cfg', starting on line 215)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 208
+Warning: Duplicate definition found for service 'star-then-name' on host 'kilo' (config file '/case/objects.cfg', starting on line 230)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 223
+Warning: Duplicate definition found for service 'star-then-name' on host 'echo' (config file '/case/objects.cfg', starting on line 230)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 223
+Warning: Duplicate definition found for service 'star-then-name' on host 'zulu' (config file '/case/objects.cfg', starting on line 230)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 223
+Warning: Duplicate definition found for service 'star-then-name' on host 'mike' (config file '/case/objects.cfg', starting on line 230)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 223
+Warning: Duplicate definition found for service 'star-then-name' on host 'alpha' (config file '/case/objects.cfg', starting on line 230)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 223
+Warning: Duplicate definition found for service 'star-then-name' on host 'bravo' (config file '/case/objects.cfg', starting on line 223)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 230
+Warning: Duplicate definition found for service 'star-less-other' on host 'bravo' (config file '/case/objects.cfg', starting on line 193)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 200
+Warning: Duplicate definition found for service 'star' on host 'bravo' (config file '/case/objects.cfg', starting on line 163)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 170
+Warning: Duplicate definition found for service 'other-excluded' on host 'zulu' (config file '/case/objects.cfg', starting on line 148)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 155
+Warning: Duplicate definition found for service 'other-again' on host 'mike' (config file '/case/objects.cfg', starting on line 103)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 110
+Warning: Duplicate definition found for service 'single' on host 'echo' (config file '/case/objects.cfg', starting on line 73)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 80
+Warning: Duplicate definition found for service 'list' on host 'zulu' (config file '/case/objects.cfg', starting on line 58)
+Warning: Already defined in config file '/case/objects.cfg', starting on line 65
+   Read object config files okay...
+
+Running pre-flight check on configuration data...
+
+Checking objects...
+	Checked 42 services.
+	Checked 6 hosts.
+	Checked 1 contacts.
+	Checked 0 host groups.
+	Checked 0 service groups.
+	Checked 0 contact groups.
+	Checked 2 commands.
+	Checked 1 time periods.
+	Checked 0 host escalations.
+	Checked 0 service escalations.
+Checking for circular paths...
+	Checked 6 hosts
+	Checked 0 service dependencies
+	Checked 0 host dependencies
+	Checked 1 timeperiods
+Checking global event handlers...
+Checking global notification handlers...
+Checking obsessive compulsive processor commands...
+Checking misc settings...
+Warning: Nothing specified for illegal_macro_output_chars variable!
+
+Total Warnings: 1
+Total Errors:   0
+
+Things look okay - No serious problems were detected during the pre-flight check
+Object precache file created:
+/tmp/oracle/objects.precache

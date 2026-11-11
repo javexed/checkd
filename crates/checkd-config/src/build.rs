@@ -29,6 +29,10 @@ pub struct Settings {
     pub host_check_timeout: u32,
     /// `service_check_timeout`, the same for a service.
     pub service_check_timeout: u32,
+    /// `allow_empty_hostgroup_assignment`. Its one effect on loading: when
+    /// it is off, a host dependency with a side that comes to no host is an
+    /// error. When it is on, such a dependency is dropped.
+    pub allow_empty_hostgroups: bool,
 }
 
 impl Default for Settings {
@@ -37,6 +41,7 @@ impl Default for Settings {
             regexp: false,
             true_regexp: false,
             illegal_name_chars: String::new(),
+            allow_empty_hostgroups: true,
             host_check_timeout: 30,
             service_check_timeout: 60,
         }
@@ -197,54 +202,6 @@ struct Candidate {
     bag: Resolved,
     /// The host is named in `host_name`, not only reached through a group.
     by_host_name: bool,
-    /// Which of two definitions of one service on one host is kept when
-    /// both name the host or both reach it through a group: the one with
-    /// the lower value. See `Builder::services`.
-    turn: (u8, i64),
-}
-
-/// The members of a host group in the order the reference holds them,
-/// which decides the turn of a service defined through the group. Found
-/// by asking the reference: members are added in the order member groups
-/// (each in its own order), hosts that name the group in `hostgroups`,
-/// then the group's own `members`; a host added again moves to its later
-/// place; and the list is held last-added first.
-fn ordered_members(
-    name: &str,
-    nested: &BTreeMap<String, Vec<String>>,
-    asked: &[(String, String)],
-    written: &BTreeMap<String, Vec<String>>,
-    done: &mut BTreeMap<String, Vec<String>>,
-    path: &mut Vec<String>,
-) -> Vec<String> {
-    if let Some(list) = done.get(name) {
-        return list.clone();
-    }
-    // A group on a loop of member groups is refused elsewhere.
-    if path.iter().any(|on_path| on_path == name) || !written.contains_key(name) {
-        return Vec::new();
-    }
-    path.push(name.to_string());
-    let mut added: Vec<String> = Vec::new();
-    for subgroup in nested.get(name).into_iter().flatten() {
-        added.extend(ordered_members(
-            subgroup, nested, asked, written, done, path,
-        ));
-    }
-    path.pop();
-    added.extend(
-        asked
-            .iter()
-            .filter(|(group, _)| group == name)
-            .map(|(_, host)| host.clone()),
-    );
-    added.extend(written.get(name).into_iter().flatten().cloned());
-    let mut list: Vec<String> = Vec::new();
-    for host in added.into_iter().rev() {
-        push_unique(&mut list, host);
-    }
-    done.insert(name.to_string(), list.clone());
-    list
 }
 
 struct Builder<'a> {
@@ -258,12 +215,6 @@ struct Builder<'a> {
     /// Where each object is defined, for messages.
     locs: HashMap<(ObjType, String), Loc>,
     service_parents: Vec<(ServiceId, Vec<String>)>,
-    /// Hosts and host groups in the order they are defined, and each host
-    /// group's members in the reference's order. These only decide which
-    /// definition is kept when a service is defined twice for one host.
-    host_order: Vec<String>,
-    hostgroup_order: Vec<String>,
-    hostgroup_lists: BTreeMap<String, Vec<String>>,
     /// While set, errors are gathered here and not reported. Used for a
     /// host dependency, which Naemon drops where it refuses other objects.
     held_back: Option<Vec<String>>,
@@ -394,9 +345,6 @@ pub fn build(mut raw: Vec<RawObject>, settings: &Settings, diags: &mut Diagnosti
         service_bags: BTreeMap::new(),
         locs: HashMap::new(),
         service_parents: Vec::new(),
-        host_order: Vec::new(),
-        hostgroup_order: Vec::new(),
-        hostgroup_lists: BTreeMap::new(),
         held_back: None,
     };
     builder.timeperiods(take(ObjType::Timeperiod));
@@ -853,9 +801,6 @@ impl Builder<'_> {
     fn hostgroups(&mut self, resolved: Vec<Resolved>, asked: Asked<String>) {
         let hosts: Vec<String> = self.out.hosts.keys().cloned().collect();
         let universe: Vec<&str> = hosts.iter().map(String::as_str).collect();
-        let host_order = self.host_order.clone();
-        let last_first: Vec<&str> = host_order.iter().rev().map(String::as_str).collect();
-        let mut written = BTreeMap::new();
         let mut groups = BTreeMap::new();
         let mut nested = BTreeMap::new();
         for bag in resolved {
@@ -864,19 +809,6 @@ impl Builder<'_> {
                 continue;
             };
             let picked = self.pick(&bag.list("members"), &universe, "host", &bag.loc);
-            // The same members in the order they are added. `*` and a
-            // pattern add hosts last-defined first.
-            let mut own = Vec::new();
-            for item in bag.list("members") {
-                if !item.starts_with('!')
-                    && let Ok(names) = self.settings.select(&item, &last_first, false)
-                {
-                    own.extend(names.into_iter().map(String::from));
-                }
-            }
-            own.retain(|name| !picked.exclude.contains(name));
-            written.insert(group.name.clone(), own);
-            self.hostgroup_order.push(group.name.clone());
             group.members = picked
                 .include
                 .into_iter()
@@ -886,22 +818,6 @@ impl Builder<'_> {
             groups.insert(group.name.clone(), group);
         }
         let asked = self.joined(ObjType::HostGroup, asked, &groups);
-        let asked_in_order: Vec<(String, String)> = asked
-            .iter()
-            .map(|(group, host, _)| (group.clone(), host.clone()))
-            .collect();
-        let mut lists = BTreeMap::new();
-        for name in &self.hostgroup_order {
-            ordered_members(
-                name,
-                &nested,
-                &asked_in_order,
-                &written,
-                &mut lists,
-                &mut Vec::new(),
-            );
-        }
-        self.hostgroup_lists = lists;
         self.finish_groups(ObjType::HostGroup, &mut groups, nested, asked);
         self.out.hostgroups = groups;
     }
@@ -1138,7 +1054,6 @@ impl Builder<'_> {
                 );
             }
             self.out.hosts.insert(name.clone(), host);
-            self.host_order.push(name.clone());
             self.host_bags.insert(name, bag);
         }
         memberships
@@ -1248,61 +1163,27 @@ impl Builder<'_> {
         Some((all, by_name.include.into_iter().collect()))
     }
 
-    /// The host that a service definition is first worked out for: the
-    /// first host of its first host group, or with no host group the first
-    /// host of `host_name`. `None` when that host comes up a second time
-    /// in the two lists. See `services` for what it is used for.
-    fn first_host(&self, bag: &Resolved) -> Option<String> {
-        let groups: Vec<&str> = self
-            .hostgroup_order
-            .iter()
-            .rev()
-            .map(String::as_str)
-            .collect();
-        let hosts: Vec<&str> = self.host_order.iter().rev().map(String::as_str).collect();
-        let mut line: Vec<&str> = Vec::new();
-        for item in bag.list("hostgroup_name") {
-            if !item.starts_with('!')
-                && let Ok(names) = self.settings.select(&item, &groups, false)
-            {
-                for group in names {
-                    if let Some(list) = self.hostgroup_lists.get(group) {
-                        line.extend(list.iter().map(String::as_str));
-                    }
-                }
-            }
-        }
-        for item in bag.list("host_name") {
-            if !item.starts_with('!')
-                && let Ok(names) = self.settings.select(&item, &hosts, false)
-            {
-                line.extend(names);
-            }
-        }
-        let first = *line.first()?;
-        (line.iter().filter(|host| **host == first).count() == 1).then(|| first.to_string())
-    }
-
     /// Returns the groups each service asks to be in.
     ///
     /// A service can be defined more than once for one host. A definition
     /// that names the host in `host_name` wins over one that reaches it
-    /// through a host group, in either order and with no warning. Between
-    /// two definitions of the same sort the reference's choice follows
-    /// from how it works through them, and was found by asking it:
+    /// through a host group, in either order and with no warning, as in
+    /// the reference.
     ///
-    /// - Each definition has at most one first host (see `first_host`).
-    ///   The first host is dropped if `!` takes it out again.
-    /// - For every other host of the two definitions, the earlier
-    ///   definition is kept.
-    /// - Where a host is the first host of one definition and not of the
-    ///   other, the other definition is kept.
-    /// - Where a host is the first host of both, the later definition is
-    ///   kept.
+    /// Two definitions of the same sort for one host are an error. The
+    /// reference keeps one of them and warns, and which one it keeps
+    /// differs from host to host (the corpus cases
+    /// `bad-duplicate-service-*` show how). That is too hard to predict
+    /// from the file to copy.
     fn services(&mut self, resolved: Vec<Resolved>) -> Asked<ServiceId> {
         let mut chosen: BTreeMap<ServiceId, Candidate> = BTreeMap::new();
-        for (index, bag) in resolved.into_iter().enumerate() {
-            let index = index as i64;
+        // One entry for each pair of definitions that clash: where the
+        // later and the earlier one are, the description, and the hosts.
+        let mut clashes: Vec<(Loc, Loc, String, Vec<String>)> = Vec::new();
+        // Where each service was first defined for a host, by host name
+        // (`true`) and through a host group (`false`).
+        let mut seen: BTreeMap<(ServiceId, bool), Loc> = BTreeMap::new();
+        for bag in resolved {
             let description = bag.name("service_description");
             // `null` for both host settings leaves the service without hosts.
             let gives_hosts =
@@ -1335,47 +1216,61 @@ impl Builder<'_> {
                     format!("service '{description}' applies to no host, so it is dropped"),
                 );
             }
-            let first_host = self.first_host(&bag);
             for host in hosts {
                 let id = (host.clone(), description.clone());
                 let candidate = Candidate {
                     bag: bag.clone(),
                     by_host_name: named.contains(&host),
-                    turn: if first_host.as_ref() == Some(&host) {
-                        (1, -index)
-                    } else {
-                        (0, index)
-                    },
                 };
-                match chosen.get(&id) {
-                    Some(earlier) if earlier.by_host_name != candidate.by_host_name => {
-                        if candidate.by_host_name {
-                            chosen.insert(id, candidate);
-                        }
-                    }
+                // Two definitions of the same sort clash, also when a
+                // third that names the host would be used over both.
+                match seen.get(&(id.clone(), candidate.by_host_name)) {
                     Some(earlier) => {
-                        let later_is_used = candidate.turn < earlier.turn;
-                        self.warn(
-                            &bag.loc,
-                            format!(
-                                "service '{description}' on host '{host}' is also defined at {}; {}",
-                                earlier.bag.loc,
-                                if later_is_used {
-                                    "this later definition is used"
-                                } else {
-                                    "that earlier definition is used"
-                                }
-                            ),
-                        );
-                        if later_is_used {
-                            chosen.insert(id, candidate);
+                        match clashes.iter_mut().find(|(later, first, text, _)| {
+                            *later == bag.loc && first == earlier && *text == description
+                        }) {
+                            Some((_, _, _, hosts)) => hosts.push(host),
+                            None => clashes.push((
+                                bag.loc.clone(),
+                                earlier.clone(),
+                                description.clone(),
+                                vec![host],
+                            )),
                         }
+                        continue;
                     }
                     None => {
+                        seen.insert((id.clone(), candidate.by_host_name), bag.loc.clone());
+                    }
+                }
+                match chosen.get(&id) {
+                    Some(earlier) if earlier.by_host_name => {}
+                    _ => {
                         chosen.insert(id, candidate);
                     }
                 }
             }
+        }
+
+        for (later, earlier, description, mut hosts) in clashes {
+            hosts.sort();
+            let shown = hosts
+                .iter()
+                .take(3)
+                .map(|host| format!("'{host}'"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let more = match hosts.len().saturating_sub(3) {
+                0 => String::new(),
+                rest => format!(" and {rest} more"),
+            };
+            self.error(
+                &later,
+                format!(
+                    "service '{description}' is defined twice for host {shown}{more}: here and at \
+                     {earlier}. Naemon keeps one of the two; checkd refuses this"
+                ),
+            );
         }
 
         let mut memberships = Vec::new();
@@ -1637,10 +1532,18 @@ impl Builder<'_> {
     }
 
     fn host_dependencies(&mut self, resolved: Vec<Resolved>) {
+        // With allow_empty_hostgroup_assignment off, Naemon refuses a host
+        // dependency with a side that comes to no host, and it looks at
+        // the ones with `register 0` too.
+        let strict = !self.settings.allow_empty_hostgroups;
         for bag in resolved {
+            if !bag.registered && !strict {
+                continue;
+            }
             // A name that is not defined, or a pattern that is not valid,
             // is an error anywhere else. Here Naemon prints the error,
-            // drops the dependency and accepts the configuration.
+            // drops the dependency and accepts the configuration, unless
+            // the setting is off.
             self.held_back = Some(Vec::new());
             let masters = self.host_set(&bag, "host_name", "hostgroup_name", true);
             let dependents = self.host_set(
@@ -1650,6 +1553,12 @@ impl Builder<'_> {
                 true,
             );
             let faults = self.held_back.take().unwrap_or_default();
+            if strict && !faults.is_empty() {
+                for fault in faults {
+                    self.error(&bag.loc, fault);
+                }
+                continue;
+            }
             if let Some(first) = faults.first() {
                 self.warn(
                     &bag.loc,
@@ -1660,13 +1569,41 @@ impl Builder<'_> {
                 );
                 continue;
             }
+            // With neither side it is dropped whatever the setting says.
+            let one_sided = masters.is_some() != dependents.is_some();
             let (Some((masters, _)), Some((dependents, _))) = (masters, dependents) else {
-                self.warn(
-                    &bag.loc,
-                    "this hostdependency lacks a host or a dependent host, so it has no effect and is dropped",
-                );
+                if strict && one_sided {
+                    self.error(
+                        &bag.loc,
+                        "this hostdependency lacks a host or a dependent host, and \
+                         allow_empty_hostgroup_assignment is off",
+                    );
+                } else if bag.registered {
+                    self.warn(
+                        &bag.loc,
+                        "this hostdependency lacks a host or a dependent host, so it has no effect and is dropped",
+                    );
+                }
                 continue;
             };
+            if strict && (masters.is_empty() || dependents.is_empty()) {
+                let side = if masters.is_empty() {
+                    "hosts"
+                } else {
+                    "dependent hosts"
+                };
+                self.error(
+                    &bag.loc,
+                    format!(
+                        "the {side} of this hostdependency come to no host, and \
+                         allow_empty_hostgroup_assignment is off"
+                    ),
+                );
+                continue;
+            }
+            if !bag.registered {
+                continue;
+            }
             let pairs = masters
                 .iter()
                 .flat_map(|m| dependents.iter().map(move |d| (m.clone(), d.clone())))

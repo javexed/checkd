@@ -5,10 +5,10 @@ Reading configuration data...
 Running pre-flight check on configuration data...
 
 Checking objects...
-	Checked 4 services.
+	Checked 10 services.
 	Checked 2 hosts.
 	Checked 1 contacts.
-	Checked 1 host groups.
+	Checked 2 host groups.
 	Checked 0 service groups.
 	Checked 0 contact groups.
 	Checked 2 commands.

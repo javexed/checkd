@@ -57,7 +57,7 @@ pub fn load(main: &Path, options: &Options) -> Loaded {
 
     let mut raw = Vec::new();
     for path in &config.object_files {
-        if let Some(text) = maincfg::read_text(path, &mut diags) {
+        if let Some(text) = maincfg::read_text(path, None, &mut diags) {
             raw::parse_file(&Arc::new(path.clone()), &text, &mut raw, &mut diags);
         }
     }
@@ -75,6 +75,9 @@ pub fn load(main: &Path, options: &Options) -> Loaded {
             .to_string(),
         host_check_timeout: number("host_check_timeout", defaults.host_check_timeout),
         service_check_timeout: number("service_check_timeout", defaults.service_check_timeout),
+        allow_empty_hostgroups: config
+            .get("allow_empty_hostgroup_assignment")
+            .is_none_or(maincfg::leading_number_is_positive),
     };
     let objects = build::build(raw, &settings, &mut diags);
 
