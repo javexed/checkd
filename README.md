@@ -27,15 +27,16 @@ flap detection, event handlers, macros and timeperiods. It sends
 notifications, with escalations; takes acknowledgements, downtimes,
 comments, passive results and check commands through its command file
 and through Livestatus; reads check result files; and writes performance
-data files. On 60 scripted runs written for this project it is compared
+data files. On 61 scripted runs written for this project it is compared
 with recordings of Naemon Core 1.5.2 on the same configs, log line by log
 line and plugin call by plugin call, notifications, the macros of
 notification commands and the performance data included. On a simulated
-clock 55 of them play the same as the recording; the other five need
+clock 56 of them play the same as the recording; the other five need
 real programs and are left to the real run. Run for real, with the real
-plugins and the real command file, 59 are compared and all agree in the
+plugins and the real command file, 59 were compared and all agreed in the
 last full run, within the allowances `runs/README.md` gives; one is not
-compared in real time.
+compared in real time, and the newest, about what a Livestatus user may
+see, was run on its own since and agrees.
 [runs/README.md](runs/README.md) says what is compared and how closely,
 what checkd is told beforehand to make the runs comparable, and where
 checkd does something else than Naemon on purpose.
@@ -56,7 +57,8 @@ machines, in place of mod_gearman, over TLS with a token per worker: see
 three workers in containers, one of them killed half way through a
 check; not yet with two failover nodes, or under load.
 
-It answers Livestatus at the socket of a config's Livestatus
+It answers Livestatus, limiting each query to what its `AuthUser` may
+see as Naemon does, at the socket of a config's Livestatus
 `broker_module` line. The 108 queries Thruk was seen sending for 54 of
 its pages are answered as the reference answers them, value by value,
 but for measured values and the program's own counters; Thruk renders

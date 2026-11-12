@@ -1,0 +1,47 @@
+[1794457256] Naemon 1.5.2 starting... (PID=26)
+[1794457256] Local time is Thu Nov 12 04:20:56 UTC 2026
+[1794457256] LOG VERSION: 2.0
+[1794457256] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794457256] nerd: Channel hostchecks registered successfully
+[1794457256] nerd: Channel servicechecks registered successfully
+[1794457256] nerd: Fully initialized and ready to rock!
+[1794457256] Successfully launched command file worker with pid 32
+[1794457256] Reading all config object data
+[1794457256] Loading neb modules
+[1794457256] livestatus: Naemon Livestatus 1.5.1.source, Socket: '/tmp/oracle/live'
+[1794457256] livestatus: Finished initialization. Further log messages go to /tmp/oracle/livestatus.log
+[1794457256] Event broker module '/usr/lib/naemon/naemon-livestatus/livestatus.so' initialized successfully.
+[1794457256] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794457256] INITIAL HOST STATE: app;UP;HARD;1;
+[1794457256] INITIAL HOST STATE: db;UP;HARD;1;
+[1794457256] INITIAL HOST STATE: web;UP;HARD;1;
+[1794457256] INITIAL SERVICE STATE: app;proc;OK;HARD;1;(null)
+[1794457256] INITIAL SERVICE STATE: db;disk;OK;HARD;1;(null)
+[1794457256] INITIAL SERVICE STATE: db;query;OK;HARD;1;(null)
+[1794457256] INITIAL SERVICE STATE: web;disk;OK;HARD;1;(null)
+[1794457256] INITIAL SERVICE STATE: web;http;OK;HARD;1;(null)
+[1794457256] TIMEPERIOD TRANSITION: aualways;-1;1
+[1794457256] Naemon successfully initialized (PID=26)
+[1794457259] EXTERNAL COMMAND: ADD_HOST_COMMENT;web;1;ann;c-web
+[1794457259] EXTERNAL COMMAND: ADD_HOST_COMMENT;db;1;ann;c-db
+[1794457259] EXTERNAL COMMAND: ADD_SVC_COMMENT;db;query;1;ann;c-db-query
+[1794457259] EXTERNAL COMMAND: ADD_SVC_COMMENT;web;disk;1;ann;c-web-disk
+[1794457259] EXTERNAL COMMAND: ADD_SVC_COMMENT;web;http;1;ann;c-web-http
+[1794457260] EXTERNAL COMMAND: SCHEDULE_HOST_DOWNTIME;db;1794457316;1794460856;1;0;0;ann;d-db
+[1794457260] EXTERNAL COMMAND: SCHEDULE_SVC_DOWNTIME;web;http;1794457316;1794460856;1;0;0;ann;d-web-http
+[1794457260] EXTERNAL COMMAND: SCHEDULE_SVC_DOWNTIME;app;proc;1794457316;1794460856;1;0;0;ann;d-app-proc
+[1794457261] EXTERNAL COMMAND: DEL_HOST_COMMENT;999
+[1794457261] Error: External command failed -> DEL_HOST_COMMENT;999
+[1794457262] SERVICE ALERT: web;http;CRITICAL;HARD;1;web-http is 2 at second 6
+[1794457262] SERVICE CONTACT NOTIFICATION SUPPRESSED: bob;web;http;Notifications disabled for current object state.
+[1794457262] SERVICE NOTIFICATION SUPPRESSED: web;http;No notification sent, because no contacts were found for notification purposes.
+[1794457263] SERVICE ALERT: db;query;WARNING;HARD;1;db-query is 1 at second 7
+[1794457263] SERVICE CONTACT NOTIFICATION SUPPRESSED: cat;db;query;Notifications disabled for current object state.
+[1794457263] SERVICE NOTIFICATION SUPPRESSED: db;query;No notification sent, because no contacts were found for notification purposes.
+[1794457274] Caught 'Terminated', shutting down...
+[1794457274] livestatus: deinitializing
+[1794457274] Retention data successfully saved.
+[1794457274] Successfully shutdown... (PID=26)
+[1794457274] Event broker module 'NERD' deinitialized successfully.
+[1794457274] livestatus: Logfile cache: flushing complete cache.
+[1794457274] Event broker module '/usr/lib/naemon/naemon-livestatus/livestatus.so' deinitialized successfully.

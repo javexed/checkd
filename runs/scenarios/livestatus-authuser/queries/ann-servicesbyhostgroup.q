@@ -1,0 +1,5 @@
+GET servicesbyhostgroup
+Columns: hostgroup_name host_name description
+AuthUser: ann
+OutputFormat: json
+ResponseHeader: fixed16

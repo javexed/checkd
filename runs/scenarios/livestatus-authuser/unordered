@@ -1,0 +1,10 @@
+# Tables whose answers are compared as sets here, rows and the lists
+# within them: the order is checkd's own on purpose.
+#
+# The members of a service group: the loader keeps no order of definition
+# (runs/README.md).
+servicegroups
+servicesbygroup
+# The reference gives the spans of several objects in the order of the
+# log's lines; checkd object by object.
+statehist

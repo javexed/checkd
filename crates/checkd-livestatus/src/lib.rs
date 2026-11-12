@@ -9,6 +9,7 @@
 //! and first of all to the queries Thruk was recorded sending for its
 //! pages (`livestatus/` at the top of the repository).
 
+mod auth;
 mod columns;
 pub mod json;
 pub mod request;
@@ -94,6 +95,11 @@ fn answer(source: &Source, query: &Query) -> Result<String, Failure> {
     }
     let mut kept = Vec::new();
     for row in rows {
+        if let Some(user) = &query.auth_user {
+            if !auth::visible(source, &row, user) {
+                continue;
+            }
+        }
         if let Some(filter) = &query.filter {
             if !passes(source, &row, filter)? {
                 continue;

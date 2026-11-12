@@ -1,0 +1,11 @@
+# Comments and downtimes on hosts and services of different contacts.
+3 ADD_HOST_COMMENT;web;1;ann;c-web
+3 ADD_HOST_COMMENT;db;1;ann;c-db
+3 ADD_SVC_COMMENT;db;query;1;ann;c-db-query
+3 ADD_SVC_COMMENT;web;disk;1;ann;c-web-disk
+3 ADD_SVC_COMMENT;web;http;1;ann;c-web-http
+4 SCHEDULE_HOST_DOWNTIME;db;{+60};{+3600};1;0;0;ann;d-db
+4 SCHEDULE_SVC_DOWNTIME;web;http;{+60};{+3600};1;0;0;ann;d-web-http
+4 SCHEDULE_SVC_DOWNTIME;app;proc;{+60};{+3600};1;0;0;ann;d-app-proc
+# A command whose first argument is no host's name.
+5 DEL_HOST_COMMENT;999

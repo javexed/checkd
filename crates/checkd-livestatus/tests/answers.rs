@@ -203,6 +203,8 @@ fn compare_scenario(scenario: &str, dir: &Path, real: &Path, problems: &mut Vec<
     if !ours.is_dir() {
         return;
     }
+    let unordered_text = std::fs::read_to_string(dir.join("unordered")).unwrap_or_default();
+    let unordered: Vec<&str> = unordered_text.lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with('#')).collect();
     let mut seconds: Vec<_> = std::fs::read_dir(&reference).unwrap().flatten().map(|e| e.file_name()).collect();
     seconds.sort();
     for second in seconds {
@@ -250,6 +252,23 @@ fn compare_scenario(scenario: &str, dir: &Path, real: &Path, problems: &mut Vec<
                                         *text = rest.to_string();
                                     }
                                 }
+                            }
+                        }
+                    }
+                    rows.sort_by(|a, b| format!("{a:?}").cmp(&format!("{b:?}")));
+                };
+                plain(&mut want_rows);
+                plain(&mut have_rows);
+            }
+            if unordered.iter().any(|t| *t == table) {
+                // The scenario's `unordered` file names tables whose rows,
+                // and whose lists within a row, come in another order
+                // from checkd on purpose: compared as sets.
+                let plain = |rows: &mut Vec<Vec<Json>>| {
+                    for row in rows.iter_mut() {
+                        for cell in row.iter_mut() {
+                            if let Json::List(items) = cell {
+                                items.sort_by(|a, b| format!("{a:?}").cmp(&format!("{b:?}")));
                             }
                         }
                     }

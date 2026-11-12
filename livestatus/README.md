@@ -27,7 +27,7 @@ by `GET columns`), and the headers they use: `Columns`, `Filter`, `And`,
 `Or`, `Negate`, `Stats` with `sum`, `min`, `max`, `avg`, `std`, `StatsAnd`,
 `StatsOr`, `StatsNegate`, `Sort`, `Limit`, `Offset`, `OutputFormat` (`json`,
 `wrapped_json`, `csv`), `ResponseHeader: fixed16`, `KeepAlive`,
-`ColumnHeaders`, `Separators`, and `COMMAND`. `AuthUser`, `Localtime` and
+`ColumnHeaders`, `Separators`, `AuthUser` and `COMMAND`. `Localtime` and
 the `Wait` headers are read and not acted on.
 
 The recordings and the templates stay out of git: they are what Thruk
@@ -184,10 +184,30 @@ the log lines and the errors of bad commands. What the reference does:
 These queries are the project's own, so they and the reference's answers
 are in git, unlike Thruk's.
 
+## AuthUser
+
+A query's `AuthUser` limits what it is given to what that contact may
+see, as the reference's Livestatus module does with its defaults
+(`service_authorization=loose`, `group_authorization=strict`): a host for
+its contacts, a service for its contacts and its host's, a group for who
+sees every member, and comments, downtimes, the state history and the
+log's lines by the object they are about. Contacts, contact groups,
+commands, timeperiods and status are given to everyone, and so are the
+log's lines that name no host or a host there is none of: both as the
+reference does. `crates/checkd-livestatus/src/auth.rs` has the rules.
+
+`runs/scenarios/livestatus-authuser` puts 15 queries to both engines as
+each of six users, among them a contact of nothing and a name that is no
+contact: all 90 answers agree. The members of service groups and the
+spans of the state history come in checkd's own order and are compared
+as sets there (the scenario's `unordered` file).
+
 ## Not done
 
 - The columns that neither Thruk nor these queries ask for.
-- `AuthUser` (all is shown to everyone), `Wait` headers, `Localtime`.
+- `Wait` headers, `Localtime`.
+- The Livestatus module's options `service_authorization=strict` and
+  `group_authorization=loose`: `AuthUser` follows the defaults only.
 - Livestatus over TCP.
 - The external commands Thruk sends that are not about acknowledgements,
   downtimes, comments, notifications, checks and passive results.
