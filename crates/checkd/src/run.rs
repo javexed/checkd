@@ -346,8 +346,18 @@ async fn serve(
         livestatus_version: format!("1.5.1-checkd-{}-naemon", env!("CARGO_PKG_VERSION")),
         ..Default::default()
     };
-    // The log, for the Livestatus log table.
+    // The log, for the Livestatus log table and the state history: what
+    // the store holds of it, so that a restart loses none, and then what
+    // is written from now on. The newest HISTORY lines are kept.
     let mut history: Vec<(i64, String)> = Vec::new();
+    if livestatus.is_some() || args.http.is_some() {
+        if let Some(store) = store.as_deref_mut() {
+            match store.recent_log(HISTORY) {
+                Ok(lines) => history = lines,
+                Err(err) => log.line(&format!("Warning: the log could not be read from the store: {err}")),
+            }
+        }
+    }
     let mut perfdata = Perfdata::open(engine.settings());
     // The check result directory, read on the reaper's interval.
     let mut reaper = tokio::time::interval(Duration::from_secs(

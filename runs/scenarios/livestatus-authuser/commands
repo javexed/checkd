@@ -9,3 +9,8 @@
 4 SCHEDULE_SVC_DOWNTIME;app;proc;{+60};{+3600};1;0;0;ann;d-app-proc
 # A command whose first argument is no host's name.
 5 DEL_HOST_COMMENT;999
+# The states of a host that is never checked: up, down, unreachable, up.
+6 PROCESS_HOST_CHECK_RESULT;pas;0;up
+8 PROCESS_HOST_CHECK_RESULT;pas;1;down
+10 PROCESS_HOST_CHECK_RESULT;pas;2;unreachable
+12 PROCESS_HOST_CHECK_RESULT;pas;0;up

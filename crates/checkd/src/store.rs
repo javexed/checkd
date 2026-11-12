@@ -181,6 +181,19 @@ impl Store {
         Ok(Some(snapshot))
     }
 
+    /// The newest lines of the log, at most `limit`, oldest first: what
+    /// the Livestatus log table and the state history start from after a
+    /// restart.
+    pub fn recent_log(&mut self, limit: usize) -> Result<Vec<(i64, String)>, String> {
+        let rows = self.backend.query(&format!("SELECT time, line FROM log ORDER BY id DESC LIMIT {limit}"))?;
+        let mut lines: Vec<(i64, String)> = rows
+            .iter()
+            .map(|row| (if let Value::Int(time) = &row[0] { *time } else { 0 }, text(&row[1])))
+            .collect();
+        lines.reverse();
+        Ok(lines)
+    }
+
     /// Writes what changed since the last write, and the log lines.
     /// `now` is in seconds.
     pub fn write(&mut self, snapshot: &Snapshot, log: &[(i64, String)], now: i64) -> Result<(), String> {
@@ -849,6 +862,9 @@ mod tests {
         });
         let log = vec![(100, "SERVICE NOTIFICATION: ann;a;s;CRITICAL;n-svc;down".to_string())];
         store.write(&snapshot, &log, 100).unwrap();
+        store.write(&snapshot, &[(101, "second".to_string()), (101, "third".to_string())], 101).unwrap();
+        assert_eq!(store.recent_log(2).unwrap(), vec![(101, "second".to_string()), (101, "third".to_string())]);
+        assert_eq!(store.recent_log(10).unwrap().len(), 3);
         // A second write of the same state writes nothing but the time.
         store.write(&snapshot, &[], 101).unwrap();
         drop(store);

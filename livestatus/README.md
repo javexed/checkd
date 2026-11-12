@@ -197,15 +197,32 @@ log's lines that name no host or a host there is none of: both as the
 reference does. `crates/checkd-livestatus/src/auth.rs` has the rules.
 
 `runs/scenarios/livestatus-authuser` puts 15 queries to both engines as
-each of six users, among them a contact of nothing and a name that is no
-contact: all 90 answers agree. The members of service groups and the
+each of six users, among them a name that is no contact, and one more
+about the state history of a host: all 91 answers agree. The members of service groups and the
 spans of the state history come in checkd's own order and are compared
 as sets there (the scenario's `unordered` file).
+
+## The log and the state history after a restart
+
+The `log` table and `statehist` start from what the store holds of the
+log: the newest 200,000 lines are read at the start, so a restart loses
+no history. Without a store they start empty.
+
+In `statehist`, `duration_warning`, `duration_critical` and
+`duration_unknown` go by the number of the state, for a host as for a
+service: a host's DOWN counts as warning and its UNREACHABLE as
+critical, as the reference has it (the scenario above records it). The
+reference cuts a service's spans where its host changes state; checkd
+does not, and the sums are the same. Asked to group `statehist` by
+`state` with `Stats:`, the reference gave one group three times over in
+a try; checkd groups by state. Summing the `duration_*` columns works
+alike on both.
 
 ## Not done
 
 - The columns that neither Thruk nor these queries ask for.
 - `Wait` headers, `Localtime`.
+- History older than the newest 200,000 lines of the log.
 - The Livestatus module's options `service_authorization=strict` and
   `group_authorization=loose`: `AuthUser` follows the defaults only.
 - Livestatus over TCP.

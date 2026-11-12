@@ -147,10 +147,11 @@ pub fn spans(source: &Source, window: &Window) -> Vec<Span> {
 
 pub fn column(_source: &Source, span: &Span, column: &str) -> Option<Value> {
     let duration = span.until - span.from;
-    let host = span.service.is_empty();
     let in_state = |wanted: u8| Value::Int(if span.state == wanted { duration } else { 0 });
-    // A host's DOWN counts as critical and UNREACHABLE as unknown.
-    let (warning, critical, unknown) = if host { (u8::MAX, 1, 2) } else { (1, 2, 3) };
+    // By the number of the state, for a host as for a service: the
+    // reference counts a host's DOWN (1) as warning and its UNREACHABLE
+    // (2) as critical.
+    let (warning, critical, unknown) = (1, 2, 3);
     Some(match column {
         "host_name" => Value::str(&span.host),
         "service_description" => Value::str(&span.service),

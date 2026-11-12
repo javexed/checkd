@@ -1,5 +1,6 @@
-200        1788
-[[0,"SERVICE CONTACT NOTIFICATION SUPPRESSED: cat;db;query;Notifications disabled for current object state.","","","",0],
+200        1901
+[[0,"HOST CONTACT NOTIFICATION SUPPRESSED: eve;pas;Notifications disabled for current object state.","","","",0],
+[0,"SERVICE CONTACT NOTIFICATION SUPPRESSED: cat;db;query;Notifications disabled for current object state.","","","",0],
 [0,"SERVICE NOTIFICATION SUPPRESSED","web","http","",0],
 [0,"SERVICE CONTACT NOTIFICATION SUPPRESSED: bob;web;http;Notifications disabled for current object state.","","","",0],
 [1,"SERVICE ALERT","web","http","",2],
@@ -9,7 +10,7 @@
 [5,"EXTERNAL COMMAND","web","http","",0],
 [5,"EXTERNAL COMMAND","web","disk","",0],
 [5,"EXTERNAL COMMAND","web","","",0],
-[0,"Naemon successfully initialized (PID=26)","","","",0],
+[0,"Naemon successfully initialized (PID=23)","","","",0],
 [6,"INITIAL SERVICE STATE","web","http","",0],
 [6,"INITIAL SERVICE STATE","web","disk","",0],
 [6,"INITIAL HOST STATE","web","","",0],
@@ -19,11 +20,11 @@
 [0,"livestatus: Naemon Livestatus 1.5.1.source, Socket: '/tmp/oracle/live'","","","",0],
 [0,"Loading neb modules","","","",0],
 [0,"Reading all config object data","","","",0],
-[0,"Successfully launched command file worker with pid 32","","","",0],
+[0,"Successfully launched command file worker with pid 30","","","",0],
 [0,"nerd: Fully initialized and ready to rock!","","","",0],
 [0,"nerd: Channel servicechecks registered successfully","","","",0],
 [0,"nerd: Channel hostchecks registered successfully","","","",0],
 [0,"qh: Socket '/tmp/oracle/naemon.qh' successfully initialized","","","",0],
 [2,"LOG VERSION: 2.0","","","",0],
-[0,"Local time is Thu Nov 12 04:20:56 UTC 2026","","","",0],
-[2,"Naemon 1.5.2 starting... (PID=26)","","","",0]]
+[0,"Local time is Thu Nov 12 04:35:55 UTC 2026","","","",0],
+[2,"Naemon 1.5.2 starting... (PID=23)","","","",0]]
