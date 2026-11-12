@@ -1,0 +1,38 @@
+# checkd, the monitoring engine. Install the binary as /usr/local/bin/checkd,
+# make a user `checkd`, and point ExecStart at the main config.
+#
+#   systemctl reload checkd    reads the configuration again (SIGHUP)
+[Unit]
+Description=checkd monitoring engine
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=checkd
+Group=checkd
+ExecStartPre=/usr/local/bin/checkd verify --quiet /etc/checkd/naemon.cfg
+ExecStart=/usr/local/bin/checkd run /etc/checkd/naemon.cfg
+ExecReload=/usr/local/bin/checkd verify --quiet /etc/checkd/naemon.cfg
+ExecReload=/bin/kill -HUP $MAINPID
+# With --failover, checkd ends with 3 when it loses the lease and comes
+# back as a standby: any end but a clean one is followed by a restart.
+Restart=on-failure
+RestartSec=2s
+# Plugins run as this user, in a process group of their own each.
+KillMode=mixed
+TimeoutStopSec=30s
+# The password of a PostgreSQL store, if there is one:
+#Environment=CHECKD_STORE_PASSWORD_FILE=/etc/checkd/store.password
+# The state, the log and the Livestatus socket.
+StateDirectory=checkd
+LogsDirectory=checkd
+RuntimeDirectory=checkd
+RuntimeDirectoryPreserve=yes
+NoNewPrivileges=yes
+ProtectSystem=full
+PrivateTmp=yes
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

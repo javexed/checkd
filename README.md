@@ -183,6 +183,7 @@ Phases, each with a gate that must pass before the next starts:
   [the HTTP API, metrics and perfdata export](docs/api.md),
   [reading the configuration again](docs/reload.md),
   [load](docs/load.md),
+  [installing it](docs/install.md),
   [remote workers](docs/workers.md).
 - `real/`: the harness for config trees that other people wrote. The
   trees themselves are downloaded and stay out of git.

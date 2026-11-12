@@ -170,8 +170,8 @@ plugins and their paths must be on the worker's machine.
   result carries the plugin's performance data back to the engine like
   any other, and the engine writes the performance data files or sends
   the values straight to Graphite or InfluxDB (`docs/api.md`).
-- Not done: workers that check their results' age, and `checkd worker`
-  as a service file.
+- Not done: workers that check their results' age. A unit file for a
+  worker is `contrib/systemd/checkd-worker.service`.
 
 ## Tests
 

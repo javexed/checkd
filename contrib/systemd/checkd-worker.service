@@ -1,0 +1,26 @@
+# A remote worker of checkd (docs/workers.md). Install the binary, built
+# with the workers feature, as /usr/local/bin/checkd, put the CA
+# certificate and this worker's token under /etc/checkd-worker, and set
+# the engine's address and the worker's name below.
+[Unit]
+Description=checkd remote worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=checkd-worker
+Group=checkd-worker
+ExecStart=/usr/local/bin/checkd worker --engine engine.example.invalid:4730 --name %H \
+    --token-file /etc/checkd-worker/token --ca /etc/checkd-worker/ca.crt \
+    --restrict-path /usr/lib/nagios/plugins
+Restart=always
+RestartSec=5s
+KillMode=mixed
+NoNewPrivileges=yes
+ProtectSystem=full
+PrivateTmp=yes
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
