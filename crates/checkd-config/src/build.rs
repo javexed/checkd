@@ -65,15 +65,15 @@ impl Settings {
 
     /// The names that one item of a list stands for: all of them for `*`,
     /// those a pattern matches, or the one with that name.
-    fn select<'u>(
+    fn select<'u, S: AsRef<str>>(
         &self,
         item: &str,
-        universe: &[&'u str],
+        universe: &'u [S],
         descriptions: bool,
     ) -> Result<Vec<&'u str>, String> {
         if item == "*" {
             if self.star_is_all(descriptions) {
-                return Ok(universe.to_vec());
+                return Ok(universe.iter().map(AsRef::as_ref).collect());
             }
             return Err(
                 "'*' does not stand for every name here: with regexp matching on it is read as a regular \
@@ -86,15 +86,16 @@ impl Settings {
                 .map_err(|_| format!("'{item}' is not a valid regular expression"))?;
             return Ok(universe
                 .iter()
-                .copied()
+                .map(AsRef::as_ref)
                 .filter(|name| pattern.is_match(name))
                 .collect());
         }
-        Ok(universe
-            .iter()
-            .copied()
-            .filter(|name| *name == item)
-            .collect())
+        // The universes are made from sorted maps.
+        debug_assert!(universe.windows(2).all(|pair| pair[0].as_ref() <= pair[1].as_ref()));
+        Ok(match universe.binary_search_by(|name| name.as_ref().cmp(item)) {
+            Ok(at) => vec![universe[at].as_ref()],
+            Err(_) => Vec::new(),
+        })
     }
 }
 
@@ -218,6 +219,10 @@ struct Builder<'a> {
     /// While set, errors are gathered here and not reported. Used for a
     /// host dependency, which Naemon drops where it refuses other objects.
     held_back: Option<Vec<String>>,
+    /// The names of the hosts and of the host groups, sorted, for lists
+    /// that name them: made again only when there are more.
+    host_names: Vec<String>,
+    hostgroup_names: Vec<String>,
 }
 
 /// Builds the objects of a configuration from every definition read.
@@ -346,6 +351,8 @@ pub fn build(mut raw: Vec<RawObject>, settings: &Settings, diags: &mut Diagnosti
         locs: HashMap::new(),
         service_parents: Vec::new(),
         held_back: None,
+        host_names: Vec::new(),
+        hostgroup_names: Vec::new(),
     };
     builder.timeperiods(take(ObjType::Timeperiod));
     builder.commands(take(ObjType::Command));
@@ -471,16 +478,16 @@ impl Builder<'_> {
     }
 
     /// Expands a list of names, patterns, `*` and `!exclusions`.
-    fn pick(&mut self, items: &[String], universe: &[&str], what: &str, loc: &Loc) -> Picked {
+    fn pick<S: AsRef<str>>(&mut self, items: &[String], universe: &[S], what: &str, loc: &Loc) -> Picked {
         self.pick_from(items, universe, what, loc, false)
     }
 
     /// `descriptions` says that the list is one of service descriptions,
     /// where `*` is read differently (`Settings::star_is_all`).
-    fn pick_from(
+    fn pick_from<S: AsRef<str>>(
         &mut self,
         items: &[String],
-        universe: &[&str],
+        universe: &[S],
         what: &str,
         loc: &Loc,
         descriptions: bool,
@@ -1100,8 +1107,16 @@ impl Builder<'_> {
         if bag.text(hosts_key).is_none() && bag.text(groups_key).is_none() {
             return None;
         }
-        let hosts: Vec<String> = self.out.hosts.keys().cloned().collect();
-        let groups: Vec<String> = self.out.hostgroups.keys().cloned().collect();
+        // Hosts and groups are only added, so a list of the same length is
+        // the same list.
+        if self.host_names.len() != self.out.hosts.len() {
+            self.host_names = self.out.hosts.keys().cloned().collect();
+        }
+        if self.hostgroup_names.len() != self.out.hostgroups.len() {
+            self.hostgroup_names = self.out.hostgroups.keys().cloned().collect();
+        }
+        let hosts = std::mem::take(&mut self.host_names);
+        let groups = std::mem::take(&mut self.hostgroup_names);
         let mut host_items = bag.list(hosts_key);
         if named_hosts_stay
             && bag.text(groups_key).is_none()
@@ -1116,18 +1131,10 @@ impl Builder<'_> {
                 ),
             );
         }
-        let by_name = self.pick(
-            &host_items,
-            &hosts.iter().map(String::as_str).collect::<Vec<_>>(),
-            "host",
-            &bag.loc,
-        );
-        let by_group = self.pick(
-            &bag.list(groups_key),
-            &groups.iter().map(String::as_str).collect::<Vec<_>>(),
-            "hostgroup",
-            &bag.loc,
-        );
+        let by_name = self.pick(&host_items, &hosts, "host", &bag.loc);
+        let by_group = self.pick(&bag.list(groups_key), &groups, "hostgroup", &bag.loc);
+        self.host_names = hosts;
+        self.hostgroup_names = groups;
         let members = |names: &mut dyn Iterator<Item = &String>| -> Vec<String> {
             names
                 .flat_map(|group| self.out.hostgroups[group].members.iter().cloned())
@@ -1384,9 +1391,9 @@ impl Builder<'_> {
         let on_host: Vec<String> = self
             .out
             .services
-            .keys()
-            .filter(|(h, _)| h == host)
-            .map(|(_, description)| description.clone())
+            .range((host.to_string(), String::new())..)
+            .take_while(|((h, _), _)| h == host)
+            .map(|((_, description), _)| description.clone())
             .collect();
         let universe: Vec<&str> = on_host.iter().map(String::as_str).collect();
         let what = format!("on host '{host}', service");

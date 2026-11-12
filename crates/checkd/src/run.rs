@@ -10,7 +10,6 @@
 //! it line by line. It keeps the pipe open for writing too, so that the
 //! pipe does not end when the last program that wrote to it lets go.
 
-use std::collections::BTreeMap;
 use std::ffi::CStr;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -28,7 +27,7 @@ use tokio::signal::unix::{SignalKind, signal};
 use tokio::sync::mpsc;
 
 use crate::otel::{self, Telemetry};
-use crate::runner::{start, stop_group};
+use crate::runner::{Running, start};
 use crate::store::{Sqlite, Store};
 
 
@@ -258,6 +257,9 @@ fn run_once(args: &mut RunArgs, pipe: &mut Option<Pipe>, carried: Option<Box<Sna
         }
     }
     let runtime = match tokio::runtime::Builder::new_current_thread()
+        // Threads that start commands: enough to start thousands a
+        // second, few enough to keep memory down.
+        .max_blocking_threads(32)
         .enable_all()
         .build()
     {
@@ -466,7 +468,7 @@ async fn serve(
     #[cfg_attr(not(feature = "postgres"), allow(unused_mut))]
     let mut held_notifications: Option<bool> = None;
     // The process group of every command that is running.
-    let mut running: BTreeMap<u64, i32> = BTreeMap::new();
+    let running = Running::default();
     let mut effects = Vec::new();
     engine.start(&mut effects);
     // The engine has now planned every first check. The file moves them.
@@ -491,6 +493,11 @@ async fn serve(
     }
 
     let why = loop {
+        // The tasks that wait for running commands get their turn here,
+        // even when the engine always has something due: on this one
+        // thread they run only while the loop waits, and under load it
+        // may never have to.
+        tokio::task::yield_now().await;
         if lost {
             break "Another node holds the lease now";
         }
@@ -587,9 +594,8 @@ async fn serve(
                     continue;
                 }
             }
-            if let Some(group) = start(job, done.clone()) {
-                running.insert(id, group);
-            }
+            let _ = id;
+            start(job, done.clone(), &running);
         }
         let wait = match engine.next_wakeup() {
             Some(at) => Duration::from_millis((at - now()).max(0) as u64),
@@ -606,7 +612,6 @@ async fn serve(
             }
             _ = tokio::time::sleep(wait) => engine.advance(now(), &mut effects),
             Some((id, result)) = results.recv() => {
-                running.remove(&id);
                 let read = otel::nanos();
                 let outcome = result.outcome.clone();
                 engine.job_done(now(), id, result, &mut effects);
@@ -626,7 +631,7 @@ async fn serve(
                 let pool_stats = pools.as_ref().map(|(pools, _)| pools.stats(now())).unwrap_or_default();
                 #[cfg(not(feature = "workers"))]
                 let pool_stats = Vec::new();
-                let reply = answer_http(engine, &ask, &history, &program, &counts, running.len(), store_failing, &pool_stats);
+                let reply = answer_http(engine, &ask, &history, &program, &counts, running.count(), store_failing, &pool_stats);
                 if ask.method == "POST" && ask.path == "/api/v1/command" && ask.authorized {
                     counts.commands += 1;
                     let line = format!("[{}] {}", now().div_euclid(1000), ask.body.trim());
@@ -747,9 +752,7 @@ async fn serve(
     if !reloading {
         log.line(&format!("{why}, shutting down..."));
     }
-    for group in running.values() {
-        stop_group(*group);
-    }
+    running.stop_all();
     if let Some(store) = store.as_deref_mut().filter(|_| !lost) {
         lost |= save(engine, store, &mut unsaved, log, &mut store_failing, args.journal.as_deref());
         if !store_failing && !lost {

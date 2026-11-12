@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Load: Naemon and checkd on the same generated config, with a no-op plugin
+# (a shell script that adds a byte to a file, to count the calls), one after the other in the oracle image, on this machine.
+#
+#   runs/load/run [hosts] [services per host] [check interval s] [seconds]
+#
+# Defaults: 1000 hosts, 10 services each, every 10 s, measured over 60 s:
+# 10,000 services, about 1,000 checks a second asked for. Host checks are
+# off. Says, for each engine: checks a second (calls of the plugin),
+# the average and the largest check latency, how many services are more
+# than two intervals behind at the end, the peak memory (VmHWM) and the CPU
+# time of the engine's own process (not of the plugins).
+set -euo pipefail
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(cd "$here/../.." && pwd)
+core=$(sed -n 's/^ARG NAEMON_CORE_VERSION=//p' "$root/oracle/Dockerfile")
+inputs=$(cat "$root/oracle/Dockerfile" "$root/oracle/entry.sh" | sha256sum | cut -c1-12)
+image="checkd-oracle:naemon-${core}-${inputs}"
+cd "$root"
+cargo build --quiet --release -p checkd
+for engine in naemon checkd; do
+    docker run --rm --network none --user "$(id -u):$(id -g)" --entrypoint sh \
+        -v "$here/entry.sh:/entry.sh:ro" -v "$root/target/release/checkd:/checkd:ro" \
+        "$image" /entry.sh "$engine" "${1:-1000}" "${2:-10}" "${3:-10}" "${4:-60}"
+done

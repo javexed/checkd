@@ -26,6 +26,8 @@ directory holds those runs and what compares them.
   jobs go, refusals, and a worker killed half way through a check; and
   (`workers/failover`) a worker with two failover nodes. See
   `../docs/workers.md`.
+- `load/`: Naemon and checkd on the same generated config, checks a
+  second, latency and memory. See `../docs/load.md`.
 - `timeperiods/`: timeperiods against the reference, see
   [timeperiods/README.md](timeperiods/README.md).
 

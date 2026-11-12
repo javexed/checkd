@@ -1,0 +1,89 @@
+//! Whether the engine holds on to memory check by check: a million checks
+//! with results given at once, no processes. Run by hand:
+//! `cargo test --release -p checkd-core --test memory -- --ignored --nocapture`
+
+use std::path::Path;
+
+use checkd_core::engine::{Effect, Engine, JobResult, Outcome};
+
+fn rss_kb() -> i64 {
+    std::fs::read_to_string("/proc/self/status")
+        .unwrap()
+        .lines()
+        .find(|l| l.starts_with("VmRSS:"))
+        .and_then(|l| l.split_whitespace().nth(1))
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(0)
+}
+
+#[test]
+#[ignore]
+fn memory_over_a_million_checks() {
+    run(0);
+}
+
+/// The same with every result coming back 6 s after its check started,
+/// longer than the 5 s interval: checks come due while still running.
+#[test]
+#[ignore]
+fn memory_with_late_results() {
+    run(6000);
+}
+
+fn run(late: i64) {
+    let dir = std::env::temp_dir().join(format!("checkd-memory-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut objects = String::from(
+        "define command {\n command_name ok\n command_line /bin/true\n}\n\
+         define timeperiod {\n timeperiod_name always\n alias always\n sunday 00:00-24:00\n monday 00:00-24:00\n tuesday 00:00-24:00\n \
+         wednesday 00:00-24:00\n thursday 00:00-24:00\n friday 00:00-24:00\n saturday 00:00-24:00\n}\n",
+    );
+    for h in 0..1000 {
+        objects.push_str(&format!("define host {{\n host_name h{h}\n address 192.0.2.1\n check_command ok\n max_check_attempts 1\n check_period always\n}}\n"));
+        for s in 0..10 {
+            objects.push_str(&format!(
+                "define service {{\n host_name h{h}\n service_description s{s}\n check_command ok\n max_check_attempts 1\n check_interval 5\n retry_interval 5\n check_period always\n}}\n"
+            ));
+        }
+    }
+    std::fs::write(dir.join("objects.cfg"), objects).unwrap();
+    std::fs::write(
+        dir.join("naemon.cfg"),
+        "cfg_file=objects.cfg\ninterval_length=1\nexecute_host_checks=0\ncached_service_check_horizon=0\nlog_initial_states=0\n",
+    )
+    .unwrap();
+    let loaded = checkd_config::load(Path::new(&dir.join("naemon.cfg")), &Default::default());
+    let (main, objects) = (loaded.main.unwrap(), loaded.objects.unwrap());
+    let mut now = 1_800_000_000_000;
+    let (mut engine, _) = Engine::new(objects, &main, Box::new(checkd_core::timeperiod::Fixed(0)), now);
+    let mut effects = Vec::new();
+    engine.start(&mut effects);
+    let mut checks = 0u64;
+    let mut waiting: std::collections::VecDeque<(i64, u64)> = std::collections::VecDeque::new();
+    let mut marks = Vec::new();
+    while checks < 1_000_000 {
+        now += 100;
+        engine.advance(now, &mut effects);
+        waiting.extend(effects.drain(..).filter_map(|e| match e {
+            Effect::Run(job) => Some((now + late, job.id)),
+            _ => None,
+        }));
+        let ready = waiting.iter().take_while(|(at, _)| *at <= now).count();
+        let jobs: Vec<u64> = waiting.drain(..ready).map(|(_, id)| id).collect();
+        for id in jobs {
+            checks += 1;
+            let result = JobResult { outcome: Outcome::Exited(0), stdout: "OK fine|time=0.1s".into(), stderr: String::new() };
+            engine.job_done(now, id, result, &mut effects);
+            effects.clear();
+        }
+        if checks / 200_000 > marks.len() as u64 {
+            marks.push((checks, rss_kb() / 1024));
+        }
+        if now > 1_800_000_000_000 + 3_600_000 {
+            break;
+        }
+    }
+    println!("checks, MB: {marks:?}");
+    let grown = marks.last().unwrap().1 - marks.first().unwrap().1;
+    assert!(grown < 20, "the engine grew by {grown} MB over {checks} checks");
+}

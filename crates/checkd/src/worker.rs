@@ -18,7 +18,6 @@
 //! - `--load-limit1/5/15 <n>`: while the machine's load average is above
 //!   the limit, the worker takes no new jobs.
 
-use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -134,7 +133,7 @@ fn over_limit(limits: &[Option<f64>; 3]) -> bool {
 }
 
 pub fn run(args: WorkerArgs) -> std::process::ExitCode {
-    let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
+    let runtime = match tokio::runtime::Builder::new_current_thread().max_blocking_threads(32).enable_all().build() {
         Ok(runtime) => runtime,
         Err(err) => {
             eprintln!("cannot start: {err}");
@@ -233,7 +232,7 @@ async fn session(
     say(&format!("Connected to {engine}, for pools {pools}"));
 
     let (done, mut results) = mpsc::unbounded_channel::<(u64, JobResult)>();
-    let mut running: BTreeMap<u64, Option<i32>> = BTreeMap::new();
+    let running = crate::runner::Running::default();
     let mut ping = tokio::time::interval(Duration::from_secs(10));
     let mut load_tick = tokio::time::interval(Duration::from_secs(5));
     let mut offered = slots;
@@ -282,15 +281,12 @@ async fn session(
                         stdout: format!("(Refused by worker {}: {why})\n", args.name),
                         stderr: String::new(),
                     }));
-                    running.insert(id, None);
                     continue;
                 }
                 let job = Job { id, kind: JobKind::ServiceCheck, obj: Obj::Host(0), line, timeout };
-                let group = crate::runner::start(job, done.clone());
-                running.insert(id, group);
+                crate::runner::start(job, done.clone(), &running);
             }
             Some((id, result)) = results.recv() => {
-                running.remove(&id);
                 let (kind, code) = match &result.outcome {
                     Outcome::Exited(code) => ("exit", *code),
                     Outcome::Signaled(signal) => ("signal", *signal),
@@ -327,9 +323,7 @@ async fn session(
     };
     reading.abort();
     // The engine gives what was running to another worker.
-    for group in running.into_values().flatten() {
-        crate::runner::stop_group(group);
-    }
+    running.stop_all();
     outcome
 }
 

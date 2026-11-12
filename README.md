@@ -73,7 +73,10 @@ A number of
 settings that belong to checks are not acted on yet, and `checkd run`
 warns when a config sets one of them:
 [crates/checkd-core/README.md](crates/checkd-core/README.md). It has not
-been run on a config from a real installation, or under load.
+been run on a config from a real installation. Under a generated load it
+keeps up with about 15,000 checks a second where Naemon keeps up with
+about 7,500, and takes about 6 KB of memory a service against Naemon's
+2.5 KB: [docs/load.md](docs/load.md).
 
 ## Try it
 
@@ -179,6 +182,7 @@ Phases, each with a gate that must pass before the next starts:
 - `docs/`: [the store](docs/store.md), [failover](docs/failover.md),
   [the HTTP API, metrics and perfdata export](docs/api.md),
   [reading the configuration again](docs/reload.md),
+  [load](docs/load.md),
   [remote workers](docs/workers.md).
 - `real/`: the harness for config trees that other people wrote. The
   trees themselves are downloaded and stay out of git.
