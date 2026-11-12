@@ -27,9 +27,13 @@ Loading a config of 80,000 services (`checkd verify`): 1.1 s; Naemon's
 
 - checkd keeps up to about 15,000 checks a second here; Naemon to about
   7,500, beyond which its checks fall behind.
-- checkd takes more memory: about 6.3 KB a service, against about 2.5 KB
-  for Naemon. It does not grow under load (flat over 120 s at 80,000
-  services).
+- checkd takes more memory: the table gives its peak, about 6.3 KB a
+  service while the configuration is loaded; once loaded it gives back
+  what loading freed, and holds about 5 KB a service (204 MB at 40,000,
+  393 MB at 80,000), against about 2.5 KB for Naemon. It does not grow
+  under load (flat over 120 s at 80,000 services). Of those 5 KB about
+  half is the configuration kept twice, as read and in the engine's own
+  form.
 - CPU time is not compared: checkd starts plugins from threads of its own
   process, Naemon from separate worker processes.
 

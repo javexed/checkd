@@ -87,3 +87,48 @@ fn run(late: i64) {
     let grown = marks.last().unwrap().1 - marks.first().unwrap().1;
     assert!(grown < 20, "the engine grew by {grown} MB over {checks} checks");
 }
+
+/// Where the memory of a configuration goes: after loading, and after the
+/// engine is made from it.
+#[test]
+#[ignore]
+fn memory_per_service() {
+    let dir = std::env::temp_dir().join(format!("checkd-memory-size-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut objects = String::from(
+        "define command {\n command_name ok\n command_line /bin/true\n}\n\
+         define timeperiod {\n timeperiod_name always\n alias always\n monday 00:00-24:00\n}\n",
+    );
+    for h in 0..4000 {
+        objects.push_str(&format!("define host {{\n host_name h{h}\n address 192.0.2.1\n check_command ok\n max_check_attempts 1\n check_period always\n}}\n"));
+        for s in 0..10 {
+            objects.push_str(&format!(
+                "define service {{\n host_name h{h}\n service_description s{s}\n check_command ok\n max_check_attempts 1\n check_interval 5\n check_period always\n}}\n"
+            ));
+        }
+    }
+    std::fs::write(dir.join("objects.cfg"), objects).unwrap();
+    std::fs::write(dir.join("naemon.cfg"), "cfg_file=objects.cfg\ninterval_length=1\n").unwrap();
+    let before = rss_kb();
+    let loaded = checkd_config::load(Path::new(&dir.join("naemon.cfg")), &Default::default());
+    let after_load = rss_kb();
+    let (main, objects) = (loaded.main.unwrap(), loaded.objects.unwrap());
+    let (engine, _) = Engine::new(objects, &main, Box::new(checkd_core::timeperiod::Fixed(0)), 1_800_000_000_000);
+    let after_engine = rss_kb();
+    // What the C allocator keeps of what loading freed.
+    unsafe extern "C" {
+        fn malloc_trim(pad: usize) -> i32;
+    }
+    unsafe {
+        malloc_trim(0);
+    }
+    let trimmed = rss_kb();
+    println!("after giving freed memory back: {} bytes a service", (trimmed - before) * 1024 / 40_000);
+    println!(
+        "40,000 services: loading {} MB, engine {} MB more; {} bytes a service in all",
+        (after_load - before) / 1024,
+        (after_engine - after_load) / 1024,
+        (after_engine - before) * 1024 / 40_000
+    );
+    drop(engine);
+}

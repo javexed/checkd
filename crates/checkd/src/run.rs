@@ -204,6 +204,13 @@ fn run_once(args: &mut RunArgs, pipe: &mut Option<Pipe>, carried: Option<Box<Sna
         .map(|path| args.path_map.apply(Path::new(path.trim())));
     let keep_state = main.get("retain_state_information").is_none_or(|v| v.trim() != "0");
     let (mut engine, warnings) = Engine::new(objects, &main, Box::new(Local), now());
+    // Loading the configuration frees much more than it keeps; the C
+    // allocator holds on to that unless told: about a third of the memory
+    // of a large configuration.
+    // SAFETY: a plain call into the C library.
+    unsafe {
+        libc::malloc_trim(0);
+    }
     for warning in &warnings {
         eprintln!("warning: {warning}");
     }
