@@ -12,8 +12,11 @@
 //! - a comment, a downtime, a span of the state history: who sees its
 //!   host or service;
 //! - a line of the log: who sees the service it names, or else the host.
-//!   A line that names no host, or a host there is none of, is given to
-//!   everyone;
+//!   A line that names no host is given to everyone. So is one that names
+//!   a host there is none of, unless it is an alert, a notification, a
+//!   passive check or a state line: those of a host that was taken out
+//!   of the configuration are given to nobody who is limited (seen on a
+//!   site that lost a host; the scenario cannot take a host away);
 //! - contacts, contact groups, commands, timeperiods, status and columns
 //!   are given to everyone.
 //!
@@ -86,7 +89,15 @@ pub fn visible(source: &Source, row: &Row, user: &str) -> bool {
                 Some(value) => value.text(),
                 None => String::new(),
             };
-            sees_named(engine, &text("host_name"), &text("service_description"), user)
+            let (host, service) = (text("host_name"), text("service_description"));
+            // Alerts (1), notifications (3), passive checks (4) and state
+            // lines (6) are about an object: of a host that is no longer
+            // there, nobody who is limited sees them.
+            let about_object = matches!(text("class").as_str(), "1" | "3" | "4" | "6");
+            if about_object && !host.is_empty() && engine.host(&host).is_none() {
+                return false;
+            }
+            sees_named(engine, &host, &service, user)
         }
         Row::Status | Row::ContactGroup(_) | Row::Contact(_) | Row::Command(_) | Row::Timeperiod(_) | Row::Column(..) => true,
     }

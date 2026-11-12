@@ -136,7 +136,7 @@ pub fn parse(text: &str) -> Result<Request, Refused> {
         sort: Vec::new(),
         limit: None,
         offset: 0,
-        format: Format::Json,
+        format: Format::Csv,
         fixed16: false,
         keep_alive: false,
         column_headers: None,

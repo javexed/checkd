@@ -27,7 +27,8 @@ by `GET columns`), and the headers they use: `Columns`, `Filter`, `And`,
 `Or`, `Negate`, `Stats` with `sum`, `min`, `max`, `avg`, `std`, `StatsAnd`,
 `StatsOr`, `StatsNegate`, `Sort`, `Limit`, `Offset`, `OutputFormat` (`json`,
 `wrapped_json`, `csv`), `ResponseHeader: fixed16`, `KeepAlive`,
-`ColumnHeaders`, `Separators`, `AuthUser` and `COMMAND`. `Localtime` and
+`ColumnHeaders`, `Separators`, `AuthUser` and `COMMAND`. Without
+`OutputFormat` an answer is CSV, as the reference's is. `Localtime` and
 the `Wait` headers are read and not acted on.
 
 The recordings and the templates stay out of git: they are what Thruk
@@ -217,6 +218,16 @@ does not, and the sums are the same. Asked to group `statehist` by
 `state` with `Stats:`, the reference gave one group three times over in
 a try; checkd groups by state. Summing the `duration_*` columns works
 alike on both.
+
+The state history has spans only of the hosts and services that are
+configured now, as the reference's has (seen on a site that lost a
+host).
+
+Before the first line of the log about an object, checkd counts the
+object as in the state that line gives. The reference does so too when
+its log begins within the time asked about; where its log is older than
+the object, it counts that time as `duration_unmonitored` (seen on a
+site that gained a host). checkd has no unmonitored time yet.
 
 ## Not done
 

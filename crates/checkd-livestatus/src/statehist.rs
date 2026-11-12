@@ -141,6 +141,12 @@ pub fn spans(source: &Source, window: &Window) -> Vec<Span> {
         }
         all.extend(mine);
     }
+    // Only of what is configured now, as the reference has it: the log's
+    // lines about a host or service that was taken out give no spans.
+    let engine = source.engine;
+    all.retain(|span| {
+        if span.service.is_empty() { engine.host(&span.host).is_some() } else { engine.service(&span.host, &span.service).is_some() }
+    });
     all.sort_by(|a, b| (&a.host, &a.service, a.from).cmp(&(&b.host, &b.service, b.from)));
     all
 }

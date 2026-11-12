@@ -22,6 +22,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use checkd_config::maincfg::PathMap;
 use checkd_config::{Options, load};
 use checkd_core::engine::{Effect, Engine, JobKind, JobResult, Ms};
+use checkd_core::snapshot::Snapshot;
 use checkd_core::timeperiod::Zone;
 use tokio::signal::unix::{SignalKind, signal};
 use tokio::sync::mpsc;
@@ -89,7 +90,39 @@ pub struct Failover {
 /// should start it again, and it comes back as a standby.
 const LOST_LEASE: u8 = 3;
 
+/// How one run of a configuration ended.
+enum Ended {
+    Exit(ExitCode),
+    /// The configuration is read again. With no store, the state goes
+    /// along here.
+    Reload(Box<Snapshot>),
+}
+
+/// How `serve` ended.
+enum End {
+    /// With the lease lost, or not.
+    Stopped(bool),
+    Reload,
+}
+
+/// The command file's lines, read by a thread that lives as long as the
+/// program: a reload goes on reading the same pipe.
+type Pipe = (mpsc::UnboundedSender<String>, mpsc::UnboundedReceiver<String>);
+
 pub fn run(mut args: RunArgs) -> ExitCode {
+    let mut pipe: Option<Pipe> = None;
+    let mut carried = None;
+    loop {
+        match run_once(&mut args, &mut pipe, carried.take()) {
+            Ended::Exit(code) => return code,
+            Ended::Reload(snapshot) => carried = Some(snapshot),
+        }
+    }
+}
+
+/// Loads the configuration and runs it until it is stopped, or told to
+/// read the configuration again.
+fn run_once(args: &mut RunArgs, pipe: &mut Option<Pipe>, carried: Option<Box<Snapshot>>) -> Ended {
     let loaded = load(
         &args.main,
         &Options {
@@ -104,7 +137,7 @@ pub fn run(mut args: RunArgs) -> ExitCode {
             "{} errors. This configuration cannot be used.",
             loaded.diags.errors.len()
         );
-        return ExitCode::from(1);
+        return Ended::Exit(ExitCode::from(1));
     };
     // A hash of the resolved objects, for failover to tell whether both
     // nodes run the same configuration.
@@ -138,7 +171,7 @@ pub fn run(mut args: RunArgs) -> ExitCode {
         Ok(log) => log,
         Err(message) => {
             eprintln!("{message}");
-            return ExitCode::from(2);
+            return Ended::Exit(ExitCode::from(2));
         }
     };
 
@@ -188,12 +221,12 @@ pub fn run(mut args: RunArgs) -> ExitCode {
         Ok(store) => store,
         Err(message) => {
             eprintln!("{message}");
-            return ExitCode::from(2);
+            return Ended::Exit(ExitCode::from(2));
         }
     };
     if args.failover.is_some() && !spec.starts_with("postgres:") {
         eprintln!("--failover needs a PostgreSQL store: --store postgres:<connection>");
-        return ExitCode::from(2);
+        return Ended::Exit(ExitCode::from(2));
     }
     // A node in failover reads the state when it takes the lease.
     if let Some(store) = store.as_mut().filter(|_| args.failover.is_none()) {
@@ -205,7 +238,7 @@ pub fn run(mut args: RunArgs) -> ExitCode {
             }
             Err(message) => {
                 eprintln!("{message}");
-                return ExitCode::from(2);
+                return Ended::Exit(ExitCode::from(2));
             }
         }
     }
@@ -216,19 +249,38 @@ pub fn run(mut args: RunArgs) -> ExitCode {
         Ok(runtime) => runtime,
         Err(err) => {
             eprintln!("cannot start: {err}");
-            return ExitCode::from(2);
+            return Ended::Exit(ExitCode::from(2));
         }
     };
     let hash = config_hash;
-    match runtime.block_on(serve(&mut engine, &mut log, &args, store.as_mut(), hash)) {
-        Ok(false) => ExitCode::SUCCESS,
-        Ok(true) => ExitCode::from(LOST_LEASE),
+    // The command file is opened once, with the first configuration's
+    // name for it.
+    if pipe.is_none() {
+        let (lines, commands) = mpsc::unbounded_channel::<String>();
+        if let Some(path) = &args.command_file {
+            if let Err(message) = command_file(path, lines.clone()) {
+                eprintln!("{message}");
+                return Ended::Exit(ExitCode::from(2));
+            }
+        }
+        *pipe = Some((lines, commands));
+    }
+    let commands = &mut pipe.as_mut().expect("made above").1;
+    // Without a store, the state of before a reload is the engine's own.
+    if let (None, Some(snapshot)) = (&store, &carried) {
+        engine.restore(snapshot);
+    }
+    match runtime.block_on(serve(&mut engine, &mut log, args, store.as_mut(), hash, commands)) {
+        Ok(End::Stopped(false)) => Ended::Exit(ExitCode::SUCCESS),
+        Ok(End::Stopped(true)) => Ended::Exit(ExitCode::from(LOST_LEASE)),
+        Ok(End::Reload) => Ended::Reload(Box::new(engine.snapshot())),
         Err(message) => {
             eprintln!("{message}");
-            ExitCode::from(2)
+            Ended::Exit(ExitCode::from(2))
         }
     }
 }
+
 
 /// Runs the engine until a signal says stop or the time is up.
 async fn serve(
@@ -237,11 +289,15 @@ async fn serve(
     args: &RunArgs,
     mut store: Option<&mut Store>,
     config_hash: String,
-) -> Result<bool, String> {
+    commands: &mut mpsc::UnboundedReceiver<String>,
+) -> Result<End, String> {
     let seconds = args.seconds;
     let signals = |kind| signal(kind).map_err(|err| format!("cannot wait for signals: {err}"));
     let mut terminate = signals(SignalKind::terminate())?;
     let mut interrupt = signals(SignalKind::interrupt())?;
+    let mut hangup = signals(SignalKind::hangup())?;
+    // Who asked for the configuration to be read again.
+    let mut reload_asked: Option<&str> = None;
     let over = async {
         match seconds {
             Some(seconds) => tokio::time::sleep(Duration::from_secs(seconds)).await,
@@ -256,10 +312,6 @@ async fn serve(
     }
 
     let (done, mut results) = mpsc::unbounded_channel::<(u64, JobResult)>();
-    let (lines, mut commands) = mpsc::unbounded_channel::<String>();
-    if let Some(path) = &args.command_file {
-        command_file(path, lines)?;
-    }
     let spool = engine.settings().check_result_path.clone().map(PathBuf::from);
     // Remote workers: the file is read now, so that a mistake in it shows
     // at once; a standby listens for workers only once it leads.
@@ -309,7 +361,7 @@ async fn serve(
                 &setup,
                 role,
                 args.livestatus.as_deref(),
-                &mut commands,
+                commands,
                 spool.as_deref(),
                 &mut |line: &str| log.line(line),
                 &mut stop,
@@ -317,7 +369,7 @@ async fn serve(
             .await?;
             let Some((counter, events)) = waited else {
                 log.line("Caught a signal while a standby, shutting down...");
-                return Ok(false);
+                return Ok(End::Stopped(false));
             };
             lease_events = Some(events);
             node = Some((setup.node.clone(), setup.hold));
@@ -427,6 +479,27 @@ async fn serve(
         if lost {
             break "Another node holds the lease now";
         }
+        if let Some(who) = reload_asked.take() {
+            if args.failover.is_some() {
+                log.line(&format!("{who}: a node in failover does not read its configuration again; restart it"));
+            } else {
+                // Only a configuration that can be used replaces the one
+                // that runs.
+                let options = Options { path_map: args.path_map.clone() };
+                let loaded = load(&args.main, &options);
+                if loaded.objects.is_some() && loaded.diags.errors.is_empty() {
+                    log.line(&format!("{who}, restarting..."));
+                    break RELOAD;
+                }
+                log.line(&format!(
+                    "{who}: the configuration has {} errors and is not taken; the one that runs stays",
+                    loaded.diags.errors.len()
+                ));
+                for error in loaded.diags.errors.iter().take(20) {
+                    log.line(&format!("Error: {error}"));
+                }
+            }
+        }
         let batch: Vec<Effect> = effects.drain(..).collect();
         let mut jobs = Vec::new();
         for effect in batch {
@@ -518,7 +591,11 @@ async fn serve(
             Some(note) = notes.recv() => log.line(&note),
             Some(line) = commands.recv() => {
                 counts.commands += 1;
-                engine.command(&line, now(), &mut effects);
+                if restart_asked(&line) {
+                    reload_asked = Some("RESTART_PROGRAM");
+                } else {
+                    engine.command(&line, now(), &mut effects);
+                }
             }
             Some(ask) = async { http.as_mut()?.recv().await }, if http.is_some() => {
                 #[cfg(feature = "workers")]
@@ -529,7 +606,11 @@ async fn serve(
                 if ask.method == "POST" && ask.path == "/api/v1/command" && ask.authorized {
                     counts.commands += 1;
                     let line = format!("[{}] {}", now().div_euclid(1000), ask.body.trim());
-                    engine.command(&line, now(), &mut effects);
+                    if restart_asked(&line) {
+                        reload_asked = Some("RESTART_PROGRAM");
+                    } else {
+                        engine.command(&line, now(), &mut effects);
+                    }
                 }
                 let _ = ask.reply.send(reply);
             }
@@ -565,7 +646,11 @@ async fn serve(
                 };
                 if let Some(command) = &response.command {
                     counts.commands += 1;
-                    engine.command(command, now(), &mut effects);
+                    if restart_asked(command) {
+                        reload_asked = Some("RESTART_PROGRAM");
+                    } else {
+                        engine.command(command, now(), &mut effects);
+                    }
                 }
                 let _ = ask.reply.send(response);
             }
@@ -627,13 +712,17 @@ async fn serve(
                     }
                 }
             }
+            _ = hangup.recv() => reload_asked = Some("Caught SIGHUP"),
             _ = terminate.recv() => break "Caught SIGTERM",
             _ = interrupt.recv() => break "Caught SIGINT",
             _ = &mut over => break "The time given with --for is up",
         }
     };
 
-    log.line(&format!("{why}, shutting down..."));
+    let reloading = why == RELOAD;
+    if !reloading {
+        log.line(&format!("{why}, shutting down..."));
+    }
     for group in running.values() {
         stop_group(*group);
     }
@@ -646,7 +735,17 @@ async fn serve(
     telemetry.shutdown().await;
     let _ = &held_notifications;
     log.line(&format!("Successfully shutdown... (PID={pid})"));
-    Ok(lost)
+    Ok(if reloading && !lost { End::Reload } else { End::Stopped(lost) })
+}
+
+/// What the loop ends with to read the configuration again.
+const RELOAD: &str = "reload";
+
+/// Whether an external command line is RESTART_PROGRAM: the configuration
+/// is read again, as on SIGHUP.
+fn restart_asked(line: &str) -> bool {
+    let command = line.trim().split_once("] ").map_or(line.trim(), |(_, rest)| rest);
+    command.split(';').next().map(str::trim) == Some("RESTART_PROGRAM")
 }
 
 /// The next event of the remote workers, or never without them.

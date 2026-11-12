@@ -115,6 +115,9 @@ it makes when it is not there.
     --workers <file>       hand jobs to remote workers, see docs/workers.md
     --otlp-endpoint <url>  see below
 
+SIGHUP, or the external command `RESTART_PROGRAM`, makes it read the
+configuration again without losing state: see [docs/reload.md](docs/reload.md).
+
     target/debug/checkd state sqlite:/path/to/checkd.sqlite
 
 prints what a store holds.
@@ -174,6 +177,7 @@ Phases, each with a gate that must pass before the next starts:
   against both engines, see [livestatus/README.md](livestatus/README.md).
 - `docs/`: [the store](docs/store.md), [failover](docs/failover.md),
   [the HTTP API, metrics and perfdata export](docs/api.md),
+  [reading the configuration again](docs/reload.md),
   [remote workers](docs/workers.md).
 - `real/`: the harness for config trees that other people wrote. The
   trees themselves are downloaded and stay out of git.
