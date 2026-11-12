@@ -20,8 +20,13 @@ pub fn open(_conninfo: &str) -> Result<crate::store::Store, String> {
     Err("--store postgres:...: this checkd was built without the PostgreSQL store (the postgres feature)".to_string())
 }
 
+#[cfg(not(feature = "postgres"))]
+pub fn open_deferred(conninfo: &str) -> Result<crate::store::Store, String> {
+    open(conninfo)
+}
+
 #[cfg(feature = "postgres")]
-pub use with_feature::{Postgres, connect_to, open};
+pub use with_feature::{Postgres, connect_to, open, open_deferred};
 
 #[cfg(feature = "postgres")]
 mod with_feature {
@@ -94,6 +99,13 @@ mod with_feature {
     pub fn open(conninfo: &str) -> Result<Store, String> {
         let backend = connect_to(conninfo, true)?;
         Store::new(Box::new(backend))
+    }
+
+    /// A store whose database may not answer yet: it is connected to when
+    /// it first does.
+    pub fn open_deferred(conninfo: &str) -> Result<Store, String> {
+        let backend = connect_to(conninfo, false)?;
+        Ok(Store::deferred(Box::new(backend)))
     }
 
     /// A client of the database in a thread of its own. With `now`, the

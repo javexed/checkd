@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+# What happens while a PostgreSQL store cannot be reached.
+#
+#   runs/store/outage
+#
+# checkd runs on a small config with a PostgreSQL store, in containers on
+# an internal network. The script then:
+#
+#   1. makes a comment, which goes to the store;
+#   2. cuts checkd off from the database, makes a second comment and
+#      submits a state: they go to the journal on checkd's disk;
+#   3. kills checkd, and starts it again, still cut off: it reads its state
+#      from the journal, with both comments;
+#   4. lets it reach the database again: the journal's state and log
+#      lines go to the store, and the journal is removed.
+#
+# What the runs left stays in runs/store-outage-work.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(cd "$here/../.." && pwd)
+work=$root/runs/store-outage-work
+postgres_image='postgres@sha256:e5d2edd28b1f8d40a0a6c0c9cdc545b19b56a0d5d88f94bc11a97d970d4700d0'
+core=$(sed -n 's/^ARG NAEMON_CORE_VERSION=//p' "$root/oracle/Dockerfile")
+inputs=$(cat "$root/oracle/Dockerfile" "$root/oracle/entry.sh" | sha256sum | cut -c1-12)
+image="checkd-oracle:naemon-${core}-${inputs}"
+
+cd "$root"
+CARGO_TARGET_DIR=$root/target/pg cargo build --quiet -p checkd --features postgres
+checkd=$root/target/pg/debug/checkd
+
+tag=checkd-outage-$$
+net=$tag-net
+# A network of its own, without the database: cut off, yet connectable again.
+alone=$tag-alone
+rm -rf "$work"
+mkdir -p "$work/case" "$work/state"
+cleanup() {
+    docker rm -f "$tag-pg" "$tag-checkd" >/dev/null 2>&1 || true
+    docker network rm "$net" "$alone" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+cat > "$work/case/naemon.cfg" <<'CFG'
+cfg_file=/case/objects.cfg
+interval_length=1
+log_file=/state/checkd.log
+command_file=/state/checkd.cmd
+state_retention_file=/state/retention.dat
+retain_state_information=1
+log_initial_states=1
+CFG
+cat > "$work/case/objects.cfg" <<'CFG'
+define command {
+    command_name    ok
+    command_line    /bin/true
+}
+define timeperiod {
+    timeperiod_name always
+    alias           always
+    sunday 00:00-24:00
+    monday 00:00-24:00
+    tuesday 00:00-24:00
+    wednesday 00:00-24:00
+    thursday 00:00-24:00
+    friday 00:00-24:00
+    saturday 00:00-24:00
+}
+define host {
+    host_name       one
+    address         192.0.2.75
+    check_command   ok
+    max_check_attempts 1
+    check_period    always
+    active_checks_enabled 0
+}
+CFG
+
+docker network create --internal "$net" >/dev/null
+docker network create --internal "$alone" >/dev/null
+docker run -d --name "$tag-pg" --network "$net" --network-alias pg \
+    -e POSTGRES_USER=checkd -e POSTGRES_PASSWORD=checkd-test -e POSTGRES_DB=checkd "$postgres_image" >/dev/null
+for _ in $(seq 60); do
+    docker exec "$tag-pg" pg_isready -h 127.0.0.1 -U checkd >/dev/null 2>&1 && break
+    sleep 1
+done
+
+start_checkd() {
+    # $1: the network, or none
+    docker rm -f "$tag-checkd" >/dev/null 2>&1 || true
+    docker run -d --name "$tag-checkd" --network "$1" --user "$(id -u):$(id -g)" \
+        -e PGPASSWORD=checkd-test -e CHECKD_STORE_ALLOW_PLAIN=1 \
+        -v "$work/case:/case:ro" -v "$work/state:/state" -v "$checkd:/checkd:ro" \
+        --entrypoint /checkd "$image" run --livestatus /state/live \
+        --store "postgres:host=pg user=checkd dbname=checkd sslmode=disable connect_timeout=2" /case/naemon.cfg >/dev/null
+    for _ in $(seq 50); do [ -S "$work/state/live" ] && break; sleep 0.2; done
+}
+ask() {
+    printf '%b\nOutputFormat: csv\n\n' "$1" | docker exec -i "$tag-checkd" unixcat /state/live 2>/dev/null | tr '\n' '|' | sed 's/|$//'
+}
+command() {
+    docker exec "$tag-checkd" sh -c "printf '[%d] %s\n' \"\$(date +%s)\" '$1' > /state/checkd.cmd"
+}
+psql() {
+    docker exec "$tag-pg" psql -U checkd -d checkd -tA -c "$1"
+}
+logged() {
+    for _ in $(seq "${2:-30}"); do
+        grep -q -- "$1" "$work/state/checkd.log" 2>/dev/null && return 0
+        sleep 1
+    done
+    return 1
+}
+failures=0
+check() {
+    if [ "$2" = "$3" ]; then echo "ok    $1"; else echo "FAIL  $1: got '$2', wanted '$3'"; failures=$((failures + 1)); fi
+}
+
+rm -f "$work/state/live"
+start_checkd "$net"
+command "ADD_HOST_COMMENT;one;1;ann;before the outage"
+sleep 3
+check "1: the first comment is in the store" "$(psql "SELECT text FROM comments")" "before the outage"
+
+docker network disconnect "$net" "$tag-checkd"
+command "ADD_HOST_COMMENT;one;1;ann;during the outage"
+command "PROCESS_HOST_CHECK_RESULT;one;1;down during the outage"
+if logged "kept in the journal" 40; then echo "ok    2: checkd says it keeps the state in the journal"; else echo "FAIL  2: no journal"; failures=$((failures + 1)); fi
+sleep 2
+check "2: the journal is there" "$([ -f "$work/state/checkd-journal.sqlite" ] && echo yes)" "yes"
+check "2: the store has only the first comment" "$(psql "SELECT text FROM comments ORDER BY id")" "before the outage"
+
+docker kill "$tag-checkd" >/dev/null
+rm -f "$work/state/live"
+start_checkd "$alone"
+if logged "from the journal" 30; then echo "ok    3: checkd read its state from the journal"; else echo "FAIL  3: the state was not read from the journal"; docker logs "$tag-checkd" 2>&1 | tail -5; failures=$((failures + 1)); fi
+check "3: both comments are there" "$(ask 'GET comments\nColumns: comment')" "before the outage|during the outage"
+check "3: and the state submitted during the outage" "$(ask 'GET hosts\nColumns: state plugin_output')" "1;down during the outage"
+
+docker network connect --alias checkd "$net" "$tag-checkd"
+if logged "is in the store now" 60; then echo "ok    4: checkd wrote the journal to the store"; else echo "FAIL  4: the journal did not go to the store"; failures=$((failures + 1)); fi
+sleep 1
+check "4: the store has both comments" "$(psql "SELECT text FROM comments ORDER BY id" | tr '\n' '|' | sed 's/|$//')" "before the outage|during the outage"
+check "4: and the state" "$(psql "SELECT state || ';' || output FROM objects WHERE host = 'one' AND service = ''")" "1;down during the outage"
+check "4: and the log lines of the outage" "$(psql "SELECT count(*) FROM log WHERE line LIKE '%during the outage%'" | tr -d ' ')" "$(grep -c "during the outage" "$work/state/checkd.log" | tr -d ' ')"
+check "4: the journal is gone" "$([ -e "$work/state/checkd-journal.sqlite" ] && echo there || echo gone)" "gone"
+
+echo
+if [ "$failures" = 0 ]; then echo "All checks of an outage of the store passed."; else echo "$failures checks failed. See $work."; exit 1; fi

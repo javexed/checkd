@@ -52,6 +52,30 @@ From a Naemon `retention.dat` only notifications and active checks of
 hosts and services are taken yet; the other settings start as
 configured.
 
+## When PostgreSQL cannot be reached
+
+checkd goes on monitoring, and keeps its state in a journal on its own
+disk: an SQLite file, `checkd-journal.sqlite` beside the configuration's
+`state_retention_file`, or the file given with `--journal`.
+
+- While the database does not answer, each batch of events goes to the
+  journal, and the database is tried again every five seconds.
+- If checkd is restarted in that time, it starts from the journal, even
+  while the database still does not answer, and connects when it does.
+- Once the database answers, the state and the log lines the journal
+  holds are written to it in one transaction, and the journal is
+  removed.
+- Without a `state_retention_file` and without `--journal` there is no
+  journal: what waits stays in memory, up to 100,000 log lines, and a
+  restart in that time loses it.
+- Not with `--failover`: only the node that holds the lease writes, and a
+  journal of a node that lost the lease would be wrong to replay. The
+  other node takes over instead.
+
+`runs/store/outage` cuts checkd off from its database, makes changes,
+kills checkd and starts it again while still cut off, then lets it
+reach the database, and finds everything there.
+
 ## Moving from Naemon or Nagios
 
 When the store holds no state yet, checkd reads the configuration's
@@ -104,7 +128,5 @@ can only read the views, and on PostgreSQL run them on a replica.
 
 - The log table grows without end. Partitions by month and a setting
   that drops old ones are to come.
-- When PostgreSQL cannot be reached, writes wait in memory, not in a
-  journal file on disk, and a restart in that time loses them.
 - Moving a store from SQLite to PostgreSQL by a command.
 - A root certificate of one's own for PostgreSQL's TLS.

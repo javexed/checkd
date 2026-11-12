@@ -65,6 +65,9 @@ pub struct RunArgs {
     pub shadow: Option<PathBuf>,
     /// The remote workers' file.
     pub workers: Option<PathBuf>,
+    /// Where the state is kept while a PostgreSQL store cannot be
+    /// written. Filled in by `run` when not given.
+    pub journal: Option<PathBuf>,
     /// Failover, with a PostgreSQL store.
     pub failover: Option<Failover>,
     /// Where the HTTP API listens, if anywhere.
@@ -217,7 +220,19 @@ fn run_once(args: &mut RunArgs, pipe: &mut Option<Pipe>, carried: Option<Box<Sna
         }
         _ => "none".to_string(),
     };
-    let mut store = match open_store(&spec) {
+    // A PostgreSQL store has a journal on this machine for when it cannot
+    // be written: beside the retention file unless given. Not in failover,
+    // where only the leader may write and a journal of a node that lost
+    // the lease would be wrong to replay.
+    if !spec.starts_with("postgres:") || args.failover.is_some() {
+        args.journal = None;
+    } else if args.journal.is_none() {
+        args.journal = retention.as_deref().and_then(Path::parent).map(|dir| dir.join("checkd-journal.sqlite"));
+    }
+    // With a journal on disk, checkd starts from it even while the
+    // database does not answer, and connects when it does.
+    let deferred = args.journal.as_deref().is_some_and(Path::exists);
+    let mut store = match open_store_with(&spec, deferred) {
         Ok(store) => store,
         Err(message) => {
             eprintln!("{message}");
@@ -230,7 +245,7 @@ fn run_once(args: &mut RunArgs, pipe: &mut Option<Pipe>, carried: Option<Box<Sna
     }
     // A node in failover reads the state when it takes the lease.
     if let Some(store) = store.as_mut().filter(|_| args.failover.is_none()) {
-        match restore(&mut engine, store, args.import.as_deref().or(retention.as_deref())) {
+        match restore(&mut engine, store, args.import.as_deref().or(retention.as_deref()), args.journal.as_deref()) {
             Ok(lines) => {
                 for line in lines {
                     log.line(&line);
@@ -375,7 +390,7 @@ async fn serve(
             node = Some((setup.node.clone(), setup.hold));
             if let Some(store) = store.as_deref_mut() {
                 store.set_fence(&setup.node, counter);
-                for line in restore(engine, store, None)? {
+                for line in restore(engine, store, None, None)? {
                     log.line(&line);
                 }
             }
@@ -472,7 +487,7 @@ async fn serve(
     let mut store_failing = false;
     let mut next_save = now() + SAVE_EVERY;
     if let Some(store) = store.as_deref_mut() {
-        lost |= save(engine, store, &mut unsaved, log, &mut store_failing);
+        lost |= save(engine, store, &mut unsaved, log, &mut store_failing, args.journal.as_deref());
     }
 
     let why = loop {
@@ -529,9 +544,18 @@ async fn serve(
         // What happened is on record before anything it asks for is run.
         // A store that fails is tried again on the timer only, so that it
         // does not hold up every event.
+        if !unsaved.is_empty() && store_failing {
+            // While the store fails, each batch goes to the journal, which
+            // is on this machine and quick; the store is tried on the timer.
+            if let Some(path) = args.journal.as_deref() {
+                if journal_write(engine, path, &mut unsaved).is_err() {
+                    // Said in the log by `save` when it first failed.
+                }
+            }
+        }
         if !unsaved.is_empty() && !store_failing {
             if let Some(store) = store.as_deref_mut() {
-                lost |= save(engine, store, &mut unsaved, log, &mut store_failing);
+                lost |= save(engine, store, &mut unsaved, log, &mut store_failing, args.journal.as_deref());
                 if lost {
                     // Fenced: nothing of this batch is run.
                     continue;
@@ -576,7 +600,7 @@ async fn serve(
         tokio::select! {
             _ = tokio::time::sleep(save_in), if store.is_some() => {
                 if let Some(store) = store.as_deref_mut() {
-                    lost |= save(engine, store, &mut unsaved, log, &mut store_failing);
+                    lost |= save(engine, store, &mut unsaved, log, &mut store_failing, args.journal.as_deref());
                 }
                 next_save = now() + SAVE_EVERY;
             }
@@ -727,7 +751,7 @@ async fn serve(
         stop_group(*group);
     }
     if let Some(store) = store.as_deref_mut().filter(|_| !lost) {
-        lost |= save(engine, store, &mut unsaved, log, &mut store_failing);
+        lost |= save(engine, store, &mut unsaved, log, &mut store_failing, args.journal.as_deref());
         if !store_failing && !lost {
             log.line(&format!("State saved to {}", store.describe()));
         }
@@ -987,6 +1011,15 @@ const HISTORY: usize = 200_000;
 const SAVE_EVERY: Ms = 5000;
 
 /// Opens the store a `--store` value names.
+/// Opens a store. `deferred`: a PostgreSQL database that does not answer
+/// yet is connected to when it does.
+fn open_store_with(spec: &str, deferred: bool) -> Result<Option<Store>, String> {
+    if let (true, Some(conninfo)) = (deferred, spec.strip_prefix("postgres:")) {
+        return crate::postgres::open_deferred(conninfo).map(Some);
+    }
+    open_store(spec)
+}
+
 fn open_store(spec: &str) -> Result<Option<Store>, String> {
     if spec == "none" {
         return Ok(None);
@@ -1080,8 +1113,23 @@ pub fn show_state(spec: &str) -> ExitCode {
 
 /// Puts the saved state back into the engine: from the store, or, when it
 /// holds none, from a retention file. The lines are for the log.
-pub(crate) fn restore(engine: &mut Engine, store: &mut Store, import: Option<&Path>) -> Result<Vec<String>, String> {
+pub(crate) fn restore(engine: &mut Engine, store: &mut Store, import: Option<&Path>, journal: Option<&Path>) -> Result<Vec<String>, String> {
     let mut lines = Vec::new();
+    // A journal is newer than the store: it is written only while the
+    // store cannot be, and removed once the store has what it holds.
+    if let Some(path) = journal.filter(|path| path.exists()) {
+        let mut kept = Store::new(Box::new(Sqlite::open(&path.to_string_lossy())?))?;
+        if let Some(snapshot) = kept.load()? {
+            let dropped = engine.restore(&snapshot);
+            lines.push(format!(
+                "Read the state of {} hosts and services from the journal {}, written while {} could not be; it goes to the store when the store can be written",
+                snapshot.objects.len() - dropped.min(snapshot.objects.len()),
+                path.display(),
+                store.describe()
+            ));
+            return Ok(lines);
+        }
+    }
     let (snapshot, from) = match store.load()? {
         Some(snapshot) => (snapshot, store.describe()),
         None => match import.filter(|path| path.exists()) {
@@ -1114,8 +1162,24 @@ pub(crate) fn restore(engine: &mut Engine, store: &mut Store, import: Option<&Pa
 /// fails is said so in the log once, until it works again.
 /// The answer says whether the write was fenced off: another node holds
 /// the lease.
-fn save(engine: &Engine, store: &mut Store, unsaved: &mut Vec<(i64, String)>, log: &mut Log, failing: &mut bool) -> bool {
-    match store.write(&engine.snapshot(), unsaved, now().div_euclid(1000)) {
+///
+/// With a journal, what cannot be written to the store goes there, a
+/// local SQLite file, so that a restart in that time loses nothing; the
+/// journal's log lines go to the store with the next write that works,
+/// and the journal is then removed.
+fn save(engine: &Engine, store: &mut Store, unsaved: &mut Vec<(i64, String)>, log: &mut Log, failing: &mut bool, journal: Option<&Path>) -> bool {
+    let snapshot = engine.snapshot();
+    let second = now().div_euclid(1000);
+    let journaled = journal.filter(|path| path.exists());
+    let mut lines: Vec<(i64, String)> = match journaled {
+        Some(path) => Sqlite::open(&path.to_string_lossy())
+            .and_then(|db| Store::new(Box::new(db)))
+            .and_then(|mut kept| kept.recent_log(100_000))
+            .unwrap_or_default(),
+        None => Vec::new(),
+    };
+    lines.extend(unsaved.iter().cloned());
+    match store.write(&snapshot, &lines, second) {
         Err(message) if message == "fenced" => {
             log.line("A write was refused: another node holds the lease now");
             true
@@ -1123,6 +1187,12 @@ fn save(engine: &Engine, store: &mut Store, unsaved: &mut Vec<(i64, String)>, lo
         Ok(()) => {
             if *failing {
                 log.line(&format!("The store {} can be written again", store.describe()));
+            }
+            if let Some(path) = journaled {
+                for suffix in ["", "-wal", "-shm"] {
+                    let _ = std::fs::remove_file(format!("{}{suffix}", path.display()));
+                }
+                log.line(&format!("What the journal {} held is in the store now", path.display()));
             }
             *failing = false;
             unsaved.clear();
@@ -1132,7 +1202,23 @@ fn save(engine: &Engine, store: &mut Store, unsaved: &mut Vec<(i64, String)>, lo
             if !*failing {
                 log.line(&format!("Warning: the store cannot be written: {message}"));
             }
+            let first = !*failing;
             *failing = true;
+            if let Some(path) = journal {
+                match journal_write(engine, path, unsaved) {
+                    Ok(()) => {
+                        if first {
+                            log.line(&format!("The state is kept in the journal {} until then", path.display()));
+                        }
+                        return false;
+                    }
+                    Err(err) => {
+                        if first {
+                            log.line(&format!("Warning: the journal {} cannot be written either: {err}", path.display()));
+                        }
+                    }
+                }
+            }
             // Lines wait for the next try, up to a limit.
             if unsaved.len() > 100_000 {
                 let extra = unsaved.len() - 100_000;
@@ -1141,6 +1227,15 @@ fn save(engine: &Engine, store: &mut Store, unsaved: &mut Vec<(i64, String)>, lo
             false
         }
     }
+}
+
+/// Writes the state and the lines not yet saved to the journal; the lines
+/// are then saved.
+fn journal_write(engine: &Engine, path: &Path, unsaved: &mut Vec<(i64, String)>) -> Result<(), String> {
+    let mut kept = Store::new(Box::new(Sqlite::open(&path.to_string_lossy())?))?;
+    kept.write(&engine.snapshot(), unsaved, now().div_euclid(1000))?;
+    unsaved.clear();
+    Ok(())
 }
 
 /// Makes the command file if it is not there, and starts the thread that

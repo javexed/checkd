@@ -79,6 +79,10 @@ options of run:
                         this retention.dat of Naemon or Nagios; without
                         it, from the configuration's state_retention_file
                         if there is one
+  --journal <file>      with a PostgreSQL store, the SQLite file the state
+                        is kept in while the store cannot be written;
+                        without it, checkd-journal.sqlite beside the
+                        state_retention_file. Not with --failover
   --livestatus <socket> answer Livestatus queries at this Unix socket;
                         without it, at the socket of a Livestatus
                         broker_module line of the configuration
@@ -155,6 +159,7 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
     let (mut store, mut import, mut livestatus, mut shadow) = (None, None, None, None);
     let mut http = None;
     let mut workers = None;
+    let mut journal = None;
     let (mut perfdata_graphite, mut perfdata_influx) = (None, None);
     let mut failover = run::Failover {
         lease: 15.0,
@@ -173,6 +178,7 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
             "--shadow" => shadow = Some(PathBuf::from(value("a socket path")?)),
             "--http" => http = Some(value("an address")?),
             "--workers" => workers = Some(PathBuf::from(value("a file name")?)),
+            "--journal" => journal = Some(PathBuf::from(value("a file name")?)),
             "--perfdata-graphite" => perfdata_graphite = Some(value("host:port")?),
             "--perfdata-influx" => perfdata_influx = Some(value("a URL")?),
             "--failover" => failover.node = value("the name of this node")?,
@@ -238,6 +244,7 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
         shadow,
         http,
         workers,
+        journal,
         perfdata_graphite,
         perfdata_influx,
         failover: (!failover.node.is_empty()).then(|| {

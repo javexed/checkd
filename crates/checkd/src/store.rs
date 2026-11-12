@@ -107,10 +107,38 @@ pub struct Store {
     downtimes: BTreeMap<u64, DowntimeState>,
     meta: Option<(u64, u64, bool)>,
     program: Option<Vec<Setting>>,
+    /// Whether the tables were made and the version checked: at once for
+    /// `new`, at the first use that reaches the database for `deferred`.
+    ready: bool,
 }
 
 impl Store {
-    pub fn new(mut backend: Box<dyn Backend>) -> Result<Store, String> {
+    pub fn new(backend: Box<dyn Backend>) -> Result<Store, String> {
+        let mut store = Store::deferred(backend);
+        store.ensure()?;
+        Ok(store)
+    }
+
+    /// A store whose database need not answer yet: the tables are made
+    /// and the version checked when it first does.
+    #[cfg_attr(not(feature = "postgres"), allow(dead_code))]
+    pub fn deferred(backend: Box<dyn Backend>) -> Store {
+        Store {
+            backend,
+            objects: BTreeMap::new(),
+            comments: BTreeMap::new(),
+            downtimes: BTreeMap::new(),
+            meta: None,
+            program: None,
+            ready: false,
+        }
+    }
+
+    fn ensure(&mut self) -> Result<(), String> {
+        if self.ready {
+            return Ok(());
+        }
+        let backend = &mut self.backend;
         backend.create()?;
         let rows = backend.query("SELECT value FROM meta WHERE key = 'schema_version'")?;
         match rows.first().and_then(|row| row.first()) {
@@ -126,14 +154,8 @@ impl Store {
                 ));
             }
         }
-        Ok(Store {
-            backend,
-            objects: BTreeMap::new(),
-            comments: BTreeMap::new(),
-            downtimes: BTreeMap::new(),
-            meta: None,
-            program: None,
-        })
+        self.ready = true;
+        Ok(())
     }
 
     pub fn describe(&self) -> String {
@@ -147,6 +169,7 @@ impl Store {
 
     /// What the store holds, or `None` when it holds no state yet.
     pub fn load(&mut self) -> Result<Option<Snapshot>, String> {
+        self.ensure()?;
         let meta = self.backend.query("SELECT key, value FROM meta")?;
         let get = |name: &str| {
             meta.iter()
@@ -208,6 +231,7 @@ impl Store {
     /// the Livestatus log table and the state history start from after a
     /// restart.
     pub fn recent_log(&mut self, limit: usize) -> Result<Vec<(i64, String)>, String> {
+        self.ensure()?;
         let rows = self.backend.query(&format!("SELECT time, line FROM log ORDER BY id DESC LIMIT {limit}"))?;
         let mut lines: Vec<(i64, String)> = rows
             .iter()
@@ -220,6 +244,7 @@ impl Store {
     /// Writes what changed since the last write, and the log lines.
     /// `now` is in seconds.
     pub fn write(&mut self, snapshot: &Snapshot, log: &[(i64, String)], now: i64) -> Result<(), String> {
+        self.ensure()?;
         let mut statements = Vec::new();
         let mut objects = Vec::new();
         for object in &snapshot.objects {

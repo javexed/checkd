@@ -15,3 +15,4 @@
 /runs/workers-work
 /runs/reload-work
 /runs/workers-failover-work
+/runs/store-outage-work
