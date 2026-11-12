@@ -224,10 +224,12 @@ configured now, as the reference's has (seen on a site that lost a
 host).
 
 Before the first line of the log about an object, checkd counts the
-object as in the state that line gives. The reference does so too when
-its log begins within the time asked about; where its log is older than
-the object, it counts that time as `duration_unmonitored` (seen on a
-site that gained a host). checkd has no unmonitored time yet.
+object as in the state that line gives. So does the reference, tried on
+a host added by a reload, one added before a restart, and one not yet
+checked: no time counted as `duration_unmonitored`. Once, on a site
+that had been restarted several times, the reference did count time
+before an added host's first line as unmonitored; that was not seen
+again, and checkd has no unmonitored time.
 
 ## Not done
 
