@@ -94,7 +94,7 @@ result 2 ms after the check was started. The second form shows both
 sides in full.
 
 Five scenarios need real programs or a real shell and are not played
-here (`skip` in their `compare` file). The other 56 are.
+here (`skip` in their `compare` file). The other 57 are.
 
 ### In real time
 
@@ -103,7 +103,7 @@ here (`skip` in their `compare` file). The other 56 are.
 This runs the `checkd` binary on each scenario inside the oracle image,
 where the reference made its recordings: the same shell, the same paths,
 the same plugins. Nothing of the reference is run. Each run takes as long
-as the reference's did, eight at a time, about thirteen minutes for all 61.
+as the reference's did, eight at a time, about thirteen minutes for all 62.
 At the end it compares the Livestatus answers of the scenarios that ask
 queries: `livestatus-thruk`, `livestatus-commands` and
 `livestatus-authuser` (what a query's `AuthUser` may see).
@@ -222,13 +222,6 @@ lists must fit one series of states, each call having seen the object
 before or after one result. That lets through any single call that
 differs between two that agree. The number of calls and their times are
 still compared.
-
-## Open
-
-- In `two-parents`, host `q` is passed over at second 31 by its cache
-  horizon and planned again a retry interval on. checkd checks it then,
-  at second 47; the reference, in its recording, does not. The real run
-  leaves `q`'s calls out (`ignore-real`) until this is settled.
 
 ## Where checkd does not do what the reference did
 

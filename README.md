@@ -27,11 +27,11 @@ flap detection, event handlers, macros and timeperiods. It sends
 notifications, with escalations; takes acknowledgements, downtimes,
 comments, passive results and check commands through its command file
 and through Livestatus; reads check result files; and writes performance
-data files. On 61 scripted runs written for this project it is compared
+data files. On 62 scripted runs written for this project it is compared
 with recordings of Naemon Core 1.5.2 on the same configs, log line by log
 line and plugin call by plugin call, notifications, the macros of
 notification commands and the performance data included. On a simulated
-clock 56 of them play the same as the recording; the other five need
+clock 57 of them play the same as the recording; the other five need
 real programs and are left to the real run. Run for real, with the real
 plugins and the real command file, 59 were compared and all agreed in the
 last full run, within the allowances `runs/README.md` gives; one is not

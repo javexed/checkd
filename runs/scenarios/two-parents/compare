@@ -1,6 +1,10 @@
 
-# Open: host q is passed over at second 31 by its cache horizon and planned
-# again a retry interval on. checkd checks it then, at 47; the reference
-# does not, in its recording, and what it does instead was not settled.
-# Seen in real runs only, where the times are the real ones.
-ignore-real q a host passed over by its cache horizon: open, see the comment
+# Host q's own check at second 31 is still running in the reference's
+# recording when c2's DOWN result comes, 2 ms later, so the on-demand
+# check of q that c2's change asks for does nothing. In a real run of
+# checkd q's check may end a millisecond before c2's result; the on-demand
+# check then finds a fresh result, moves q's check to now, and passes it
+# over until the result is 15 s old: q is checked again at 47. The
+# reference does the same when the order is that one (fresh-parent). A
+# real run cannot be held to the millisecond.
+ignore-real q a 1 ms race at second 31 decides whether q is checked again at 47; see fresh-parent
