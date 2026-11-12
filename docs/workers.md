@@ -165,9 +165,13 @@ plugins and their paths must be on the worker's machine.
 - Pool names follow mod_gearman's queue names (`hostgroup_<name>`,
   `servicegroup_<name>`, `host`, `service`, `eventhandler`,
   `notification`), so dashboards that name queues carry over.
-- Not done: performance data through workers (mod_gearman's `perfdata`
-  queue), workers that check their results' age, and `checkd worker` as
-  a service file.
+- mod_gearman's `perfdata` queue, which hands performance data to a
+  graphing worker such as pnp4nagios, has no counterpart: a worker's
+  result carries the plugin's performance data back to the engine like
+  any other, and the engine writes the performance data files or sends
+  the values straight to Graphite or InfluxDB (`docs/api.md`).
+- Not done: workers that check their results' age, and `checkd worker`
+  as a service file.
 
 ## Tests
 
