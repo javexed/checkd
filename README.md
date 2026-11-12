@@ -55,7 +55,8 @@ Remote workers run checks, event handlers and notifications on other
 machines, in place of mod_gearman, over TLS with a token per worker: see
 [docs/workers.md](docs/workers.md). They are tested with an engine and
 three workers in containers, one of them killed half way through a
-check; not yet with two failover nodes, or under load.
+check, and with two failover nodes whose leader is killed; not yet under
+load.
 
 It answers Livestatus, limiting each query to what its `AuthUser` may
 see as Naemon does, at the socket of a config's Livestatus

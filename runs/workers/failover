@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+# Remote workers with two failover nodes.
+#
+#   runs/workers/failover
+#
+# A PostgreSQL server, two checkd nodes a and b in failover, both started
+# with the same workers' file, and one worker that is given both
+# (--engine a:4730 --engine b:4730), in containers on an internal network
+# that reaches nothing outside. The case is runs/workers/case.
+#
+# Checked:
+#   1. a leads, and the worker joins a and runs its checks;
+#   2. b, the standby, does not let the worker in;
+#   3. a is killed: b takes the lease, the worker finds b by itself, and
+#      its checks go on, within a minute of the kill.
+#
+# Everything stays in runs/workers-failover-work.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(cd "$here/../.." && pwd)
+work=$root/runs/workers-failover-work
+postgres_image='postgres@sha256:e5d2edd28b1f8d40a0a6c0c9cdc545b19b56a0d5d88f94bc11a97d970d4700d0'
+core=$(sed -n 's/^ARG NAEMON_CORE_VERSION=//p' "$root/oracle/Dockerfile")
+inputs=$(cat "$root/oracle/Dockerfile" "$root/oracle/entry.sh" | sha256sum | cut -c1-12)
+image="checkd-oracle:naemon-${core}-${inputs}"
+
+cd "$root"
+CARGO_TARGET_DIR=$root/target/pgw cargo build --quiet -p checkd --features postgres,workers
+checkd=$root/target/pgw/debug/checkd
+
+tag=checkd-wf-$$
+net=$tag-net
+rm -rf "$work"
+mkdir -p "$work/out" "$work/conf"
+cleanup() {
+    docker rm -f "$tag-pg" "$tag-a" "$tag-b" "$tag-w1" >/dev/null 2>&1 || true
+    docker network rm "$net" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+# One certificate for both nodes' names; the worker trusts its authority.
+"$checkd" make-certs "$work/conf" a b >/dev/null
+head -c 24 /dev/urandom | base64 | tr -d '=+/\n' > "$work/conf/w1.token"
+cat > "$work/conf/workers.cfg" <<CFG
+listen=0.0.0.0:4730
+cert=engine.crt
+key=engine.key
+hostgroups=dmz
+localhostgroups=core
+services=yes
+worker=w1 token=w1.token pools=hostgroup_dmz,service
+CFG
+# A node: checkd in failover, started again when it ends, as a supervisor would.
+cat > "$work/conf/node.sh" <<'NODE'
+#!/bin/sh
+while true; do
+    /checkd run --failover "$1" --peer "$2:6558" --lease 15 \
+        --store "postgres:host=pg user=checkd dbname=checkd sslmode=disable" \
+        --workers /conf/workers.cfg --log-file "/out/$1.log" /case/naemon.cfg >> "/out/$1.stdout" 2>&1
+    code=$?
+    echo "[$(date +%s)] checkd ended with status $code" >> "/out/$1.log"
+    [ "$code" = 0 ] && break
+    sleep 2
+done
+NODE
+
+docker network create --internal "$net" >/dev/null
+docker run -d --name "$tag-pg" --network "$net" --network-alias pg \
+    -e POSTGRES_USER=checkd -e POSTGRES_PASSWORD=checkd-test -e POSTGRES_DB=checkd "$postgres_image" >/dev/null
+for _ in $(seq 60); do
+    docker exec "$tag-pg" pg_isready -h 127.0.0.1 -U checkd >/dev/null 2>&1 && break
+    sleep 1
+done
+node() {
+    docker run -d --name "$tag-$1" --hostname "$1" --network "$net" --network-alias "$1" \
+        --user "$(id -u):$(id -g)" -e PGPASSWORD=checkd-test -e CHECKD_STORE_ALLOW_PLAIN=1 \
+        -v "$here/case:/case:ro" -v "$work/conf:/conf:ro" -v "$checkd:/checkd:ro" -v "$work/out:/out" \
+        --entrypoint sh "$image" /conf/node.sh "$1" "$2" >/dev/null
+}
+wait_for() {
+    for _ in $(seq "$3"); do
+        grep -q -- "$2" "$work/out/$1" 2>/dev/null && return 0
+        sleep 1
+    done
+    return 1
+}
+failures=0
+ok() { echo "ok    $1"; }
+bad() { echo "FAIL  $1"; failures=$((failures + 1)); }
+
+node a b
+wait_for a.log "took the lease" 60 || { echo "a did not take the lease"; exit 1; }
+node b a
+wait_for b.log "is a standby" 30 || { echo "b did not stand by"; exit 1; }
+docker run -d --name "$tag-w1" --hostname w1 --network "$net" --user "$(id -u):$(id -g)" \
+    -v "$here/case/plugins:/case/plugins:ro" -v "$work/conf/ca.crt:/conf/ca.crt:ro" -v "$work/conf/w1.token:/conf/token:ro" \
+    -v "$checkd:/checkd:ro" -v "$work/out:/out" \
+    --entrypoint /checkd "$image" worker --engine b:4730 --engine a:4730 --name w1 \
+    --token-file /conf/token --ca /conf/ca.crt --max-jobs 4 >/dev/null
+
+if wait_for a.log "Worker w1 joined" 40; then ok "the worker joins the leader, a, though b was named first"; else bad "the worker did not join a"; fi
+if wait_for trace " w1 dmz1 done" 30; then ok "its checks run"; else bad "no check ran on the worker"; fi
+sleep 8
+if grep -q "Worker w1 joined" "$work/out/b.log"; then bad "the standby let the worker in"; else ok "the standby does not let the worker in"; fi
+
+killed=$(date +%s)
+docker kill "$tag-a" >/dev/null
+echo "      a killed at $killed"
+if wait_for b.log "took the lease" 90; then ok "b takes the lease"; else bad "b did not take the lease"; fi
+if wait_for b.log "Worker w1 joined" 60; then ok "the worker finds b by itself"; else bad "the worker did not join b"; fi
+after=""
+for _ in $(seq 60); do
+    after=$(awk -v t="$killed" '$2 == "w1" && $4 == "done" && $1 > t + 2 { print $1; exit }' "$work/out/trace")
+    [ -n "$after" ] && break
+    sleep 1
+done
+if [ -n "$after" ] && [ $((after - killed)) -le 60 ]; then
+    ok "its checks go on, $((after - killed)) s after the kill"
+else
+    bad "no check on the worker within a minute of the kill (first: '${after}')"
+fi
+checks=$(awk -v t="$killed" '$2 == "w1" && $4 == "done" && $1 > t + 2' "$work/out/trace" | wc -l)
+sleep 12
+more=$(awk -v t="$killed" '$2 == "w1" && $4 == "done" && $1 > t + 2' "$work/out/trace" | wc -l)
+if [ "$more" -gt "$checks" ]; then ok "and keep going"; else bad "the checks stopped again"; fi
+
+echo
+if [ "$failures" = 0 ]; then
+    echo "All checks of workers with failover passed."
+else
+    echo "$failures checks failed. The logs are in $work/out."
+    exit 1
+fi

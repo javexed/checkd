@@ -100,7 +100,8 @@ may serve. A worker serves all of those it is let.
   and connects again after a pause that grows to 30 seconds.
 - **Failover.** Only the node that leads listens for workers. Give each
   worker both nodes, `--engine a:4730 --engine b:4730`; it tries them in
-  turn. This has not been tested with two nodes.
+  turn. In the test below its checks went on 18 seconds after the leader
+  was killed.
 
 The engine never runs two checks of one host or service at once, so no
 check is out with two workers.
@@ -178,3 +179,7 @@ worker with a wrong token refused; the pools in `/metrics`; and a worker
 killed half way through a 15-second check, after which the other worker
 of its pool runs it again. Unit tests in `crates/checkd/src/workers.rs`
 cover the queueing.
+
+`runs/workers/failover` runs two nodes in failover and a worker that is
+given both: the worker joins the leader and not the standby, and when the
+leader is killed it finds the new one by itself and its checks go on.

@@ -23,7 +23,8 @@ directory holds those runs and what compares them.
 - `reload/`: reading the configuration again on SIGHUP and on
   `RESTART_PROGRAM`, with a store and without. See `../docs/reload.md`.
 - `workers/`: an engine and remote workers on an internal network: where
-  jobs go, refusals, and a worker killed half way through a check. See
+  jobs go, refusals, and a worker killed half way through a check; and
+  (`workers/failover`) a worker with two failover nodes. See
   `../docs/workers.md`.
 - `timeperiods/`: timeperiods against the reference, see
   [timeperiods/README.md](timeperiods/README.md).
