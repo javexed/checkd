@@ -175,6 +175,7 @@ pub fn read(text: &str) -> (Snapshot, Vec<String>) {
                     active_checks_enabled: checks,
                     config_notifications_enabled: config_notifications,
                     config_active_checks_enabled: config_checks,
+                    settings: Vec::new(),
                 });
             }
             "hostcomment" | "servicecomment" => {

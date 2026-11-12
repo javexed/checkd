@@ -153,6 +153,26 @@ check "restart: its comment is gone, the host's is not" "$(ask 'GET comments\nCo
 check "restart: the hosts are there" "$(ask 'GET hosts\nColumns: name')" "one two"
 check "restart: the downtime is kept" "$(ask 'GET downtimes\nColumns: host_name comment')" "one;planned"
 
+# 5. With a store: what commands changed outlasts a restart of the process.
+if [ "$1" = sqlite ]; then
+    command "DISABLE_HOST_FLAP_DETECTION;one"
+    command "CHANGE_NORMAL_HOST_CHECK_INTERVAL;one;9"
+    command "STOP_EXECUTING_SVC_CHECKS"
+    sleep 1.5
+    before=$(ask 'GET hosts\nColumns: flap_detection_enabled check_interval modified_attributes\nFilter: name = one')
+    check "restart: set before it" "$before" "0;9.0000000000e+00;$(ask 'GET hosts\nColumns: modified_attributes\nFilter: name = one')"
+    kill -TERM "$pid"
+    wait "$pid"
+    rm -f "$work/live"
+    /checkd run --store "$store" --livestatus "$work/live" naemon.cfg >> /out/stdout.txt 2>&1 &
+    pid=$!
+    for _ in $(seq 50); do [ -S "$work/live" ] && break; sleep 0.2; done
+    sleep 0.5
+    check "restart: a host's settings are kept" "$(ask 'GET hosts\nColumns: flap_detection_enabled check_interval modified_attributes\nFilter: name = one')" "$before"
+    check "restart: the program's switch is kept" "$(ask 'GET status\nColumns: execute_service_checks')" "0"
+    check "restart: the other host is as configured" "$(ask 'GET hosts\nColumns: flap_detection_enabled modified_attributes\nFilter: name = two')" "1;0"
+fi
+
 kill -TERM "$pid"
 wait "$pid"
 check "ends cleanly" "$?" "0"

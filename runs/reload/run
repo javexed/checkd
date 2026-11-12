@@ -16,6 +16,8 @@
 #   4. mends it, takes the first host's service away, and sends
 #      RESTART_PROGRAM through Livestatus: the service is gone, and so is
 #      its comment.
+#   5. with the store: switches a host's settings and a program switch by
+#      command, restarts the process, and finds them kept.
 #
 # What the runs left stays in runs/reload-work/<store>.
 set -euo pipefail

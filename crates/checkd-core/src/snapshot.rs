@@ -8,7 +8,10 @@
 //! Restore before [`Engine::start`]: the start plans the checks, and
 //! knows then which objects were checked before.
 
+use checkd_config::model::Checkable;
+
 use crate::engine::{Engine, Ms, Obj};
+use crate::settings::Settings;
 use crate::flap::History;
 use crate::notify::{Ack, Comment, Downtime, Timer};
 use crate::output::Output;
@@ -58,6 +61,21 @@ pub struct ObjState {
     pub active_checks_enabled: bool,
     pub config_notifications_enabled: bool,
     pub config_active_checks_enabled: bool,
+    /// The other settings that commands changed, by name, with what the
+    /// configuration said when they were saved: only those that differ
+    /// from the configuration, and `modified`, the bits of what commands
+    /// changed.
+    pub settings: Vec<Setting>,
+}
+
+/// A setting a command changed: its name (`passive_checks_enabled`,
+/// `check_interval`, `_VARIABLE` for a custom variable ...), its value,
+/// and what the configuration said when it was saved.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Setting {
+    pub name: String,
+    pub value: String,
+    pub configured: String,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -110,9 +128,104 @@ pub struct Snapshot {
     pub next_comment: u64,
     pub next_downtime: u64,
     pub notifications_enabled: bool,
+    /// The program-wide switches that commands changed, as for an
+    /// object's settings.
+    pub program: Vec<Setting>,
+}
+
+/// An object's settings that commands can change, other than
+/// notifications and active checks, which have fields of their own.
+fn object_settings(cfg: &Checkable, modified: u32) -> Vec<(String, String)> {
+    let flag = |b: bool| if b { "1" } else { "0" }.to_string();
+    let mut out = vec![
+        ("passive_checks_enabled".to_string(), flag(cfg.passive_checks_enabled)),
+        ("event_handler_enabled".to_string(), flag(cfg.event_handler_enabled)),
+        ("flap_detection_enabled".to_string(), flag(cfg.flap_detection_enabled)),
+        ("check_interval".to_string(), cfg.check_interval.to_string()),
+        ("retry_interval".to_string(), cfg.retry_interval.to_string()),
+        ("max_check_attempts".to_string(), cfg.max_check_attempts.to_string()),
+        ("modified".to_string(), modified.to_string()),
+    ];
+    out.extend(cfg.custom.iter().map(|(name, value)| (format!("_{name}"), value.clone())));
+    out
+}
+
+fn put_setting(cfg: &mut Checkable, modified: &mut u32, name: &str, value: &str) {
+    let flag = value == "1";
+    match name {
+        "passive_checks_enabled" => cfg.passive_checks_enabled = flag,
+        "event_handler_enabled" => cfg.event_handler_enabled = flag,
+        "flap_detection_enabled" => cfg.flap_detection_enabled = flag,
+        "check_interval" => cfg.check_interval = value.parse().unwrap_or(cfg.check_interval),
+        "retry_interval" => cfg.retry_interval = value.parse().unwrap_or(cfg.retry_interval),
+        "max_check_attempts" => cfg.max_check_attempts = value.parse::<u32>().unwrap_or(cfg.max_check_attempts).max(1),
+        "modified" => *modified = value.parse().unwrap_or(0),
+        _ => {
+            if let Some(var) = name.strip_prefix('_') {
+                if let Some(entry) = cfg.custom.iter_mut().find(|(n, _)| n == var) {
+                    entry.1 = value.to_string();
+                }
+            }
+        }
+    }
+}
+
+/// The program-wide switches that commands can change.
+fn program_settings(s: &Settings) -> Vec<(String, String)> {
+    let flag = |b: bool| if b { "1" } else { "0" }.to_string();
+    vec![
+        ("execute_service_checks".to_string(), flag(s.execute_service_checks)),
+        ("execute_host_checks".to_string(), flag(s.execute_host_checks)),
+        ("accept_passive_service_checks".to_string(), flag(s.accept_passive_service_checks)),
+        ("accept_passive_host_checks".to_string(), flag(s.accept_passive_host_checks)),
+        ("enable_event_handlers".to_string(), flag(s.enable_event_handlers)),
+        ("enable_flap_detection".to_string(), flag(s.enable_flap_detection)),
+    ]
+}
+
+fn put_program(s: &mut Settings, name: &str, value: &str) {
+    let on = value == "1";
+    match name {
+        "execute_service_checks" => s.execute_service_checks = on,
+        "execute_host_checks" => s.execute_host_checks = on,
+        "accept_passive_service_checks" => s.accept_passive_service_checks = on,
+        "accept_passive_host_checks" => s.accept_passive_host_checks = on,
+        "enable_event_handlers" => s.enable_event_handlers = on,
+        "enable_flap_detection" => s.enable_flap_detection = on,
+        _ => {}
+    }
+}
+
+/// What differs between now and the configuration, with what the
+/// configuration says.
+fn changed(now: Vec<(String, String)>, configured: Vec<(String, String)>) -> Vec<Setting> {
+    now.into_iter()
+        .filter_map(|(name, value)| {
+            let was = configured.iter().find(|(n, _)| *n == name).map(|(_, v)| v.clone()).unwrap_or_default();
+            (value != was).then_some(Setting { name, value, configured: was })
+        })
+        .collect()
+}
+
+/// Puts back what was saved, where the configuration still says what it
+/// said then.
+fn still_configured<'a>(saved: &'a [Setting], configured: &[(String, String)]) -> impl Iterator<Item = &'a Setting> + use<'a> {
+    let configured = configured.to_vec();
+    saved.iter().filter(move |s| configured.iter().any(|(n, v)| *n == s.name && *v == s.configured))
 }
 
 impl Engine {
+    /// An object's settings as the configuration gives them.
+    fn configured_checkable(&self, obj: Obj) -> Option<&Checkable> {
+        match obj {
+            Obj::Host(at) => self.objects.hosts.get(&self.hosts[at].name).map(|h| &h.check),
+            Obj::Service(at) => {
+                let entry = &self.services[at];
+                self.objects.services.get(&(entry.host_name.clone(), entry.description.clone())).map(|s| &s.check)
+            }
+        }
+    }
+
     fn names(&self, obj: Obj) -> (String, Option<String>) {
         match obj {
             Obj::Host(at) => (self.hosts[at].name.clone(), None),
@@ -198,6 +311,10 @@ impl Engine {
             active_checks_enabled: item.cfg.active_checks_enabled,
             config_notifications_enabled: config_notifications,
             config_active_checks_enabled: config_checks,
+            settings: match self.configured_checkable(obj) {
+                Some(cfg) => changed(object_settings(&item.cfg, item.modified), object_settings(cfg, 0)),
+                None => Vec::new(),
+            },
         }
     }
 
@@ -245,6 +362,7 @@ impl Engine {
             next_comment: self.next_comment,
             next_downtime: self.next_downtime,
             notifications_enabled: self.settings.enable_notifications,
+            program: changed(program_settings(&self.settings), program_settings(&self.configured_settings)),
         }
     }
 
@@ -303,6 +421,11 @@ impl Engine {
             }
             if saved.config_active_checks_enabled == config_checks {
                 item.cfg.active_checks_enabled = saved.active_checks_enabled;
+            }
+            let configured = self.configured_checkable(obj).map(|cfg| object_settings(cfg, 0)).unwrap_or_default();
+            let item = self.item_mut(obj);
+            for setting in still_configured(&saved.settings, &configured) {
+                put_setting(&mut item.cfg, &mut item.modified, &setting.name, &setting.value);
             }
         }
         self.comments.clear();
@@ -368,6 +491,10 @@ impl Engine {
         self.next_comment = snapshot.next_comment.max(highest_comment);
         self.next_downtime = snapshot.next_downtime.max(highest_downtime);
         self.settings.enable_notifications = snapshot.notifications_enabled;
+        let configured = program_settings(&self.configured_settings);
+        for setting in still_configured(&snapshot.program, &configured) {
+            put_program(&mut self.settings, &setting.name, &setting.value);
+        }
         dropped
     }
 }

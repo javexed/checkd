@@ -30,6 +30,28 @@ state.
 
 `checkd state <store>` prints what a store holds.
 
+## What commands changed
+
+Settings that external commands change are kept over a restart and over
+a reload, with what the configuration said when they were saved:
+
+- of a host or service: notifications, active and passive checks, event
+  handler, flap detection, check and retry intervals, maximum attempts,
+  custom variables, and which of these commands touched (Livestatus'
+  `modified_attributes`);
+- of the program: notifications, the execution of host and service
+  checks, passive results, event handlers, flap detection.
+
+A saved value is put back only where the configuration still says what
+it said then: a setting changed in the configuration meanwhile takes the
+configuration's value. Settings are in the table `settings` (one row per
+setting that differs from the configuration) and the program's in `meta`
+(`program.<name>`).
+
+From a Naemon `retention.dat` only notifications and active checks of
+hosts and services are taken yet; the other settings start as
+configured.
+
 ## Moving from Naemon or Nagios
 
 When the store holds no state yet, checkd reads the configuration's

@@ -294,6 +294,8 @@ const SERVICE_LETTERS: [char; 4] = ['o', 'w', 'c', 'u'];
 pub struct Engine {
     pub(crate) objects: Objects,
     pub(crate) settings: Settings,
+    /// The settings as the configuration gave them, before any command.
+    pub(crate) configured_settings: Settings,
     pub(crate) zone: Box<dyn Zone>,
     pub(crate) hosts: Vec<HostEntry>,
     pub(crate) services: Vec<ServiceEntry>,
@@ -518,6 +520,7 @@ impl Engine {
             service_checks_run: 0,
             export: false,
             objects,
+            configured_settings: settings.clone(),
             settings,
             zone,
             hosts,

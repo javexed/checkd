@@ -15,7 +15,7 @@
 
 use std::collections::BTreeMap;
 
-use checkd_core::snapshot::{AckState, CommentState, DowntimeState, ObjState, Snapshot};
+use checkd_core::snapshot::{AckState, CommentState, DowntimeState, ObjState, Snapshot, Setting};
 
 /// The version of the tables. A store of another version is refused.
 pub const SCHEMA_VERSION: i64 = 1;
@@ -106,6 +106,7 @@ pub struct Store {
     comments: BTreeMap<u64, CommentState>,
     downtimes: BTreeMap<u64, DowntimeState>,
     meta: Option<(u64, u64, bool)>,
+    program: Option<Vec<Setting>>,
 }
 
 impl Store {
@@ -131,6 +132,7 @@ impl Store {
             comments: BTreeMap::new(),
             downtimes: BTreeMap::new(),
             meta: None,
+            program: None,
         })
     }
 
@@ -163,6 +165,26 @@ impl Store {
         for row in self.backend.query(&format!("SELECT {OBJECT_COLUMNS} FROM objects"))? {
             snapshot.objects.push(object_from(&row));
         }
+        // The other settings commands changed, by object.
+        let mut settings: BTreeMap<(String, String), Vec<Setting>> = BTreeMap::new();
+        for row in self.backend.query("SELECT host, service, name, value, configured FROM settings ORDER BY name")? {
+            settings.entry((text(&row[0]), text(&row[1]))).or_default().push(Setting {
+                name: text(&row[2]),
+                value: text(&row[3]),
+                configured: text(&row[4]),
+            });
+        }
+        for object in &mut snapshot.objects {
+            let key = (object.host.clone(), object.service.clone().unwrap_or_default());
+            object.settings = settings.remove(&key).unwrap_or_default();
+        }
+        // The program's: `program.<name>` = `<value>\t<what the configuration said>`.
+        for row in &meta {
+            let (Value::Text(key), Value::Text(value)) = (&row[0], &row[1]) else { continue };
+            if let (Some(name), Some((value, configured))) = (key.strip_prefix("program."), value.split_once('\t')) {
+                snapshot.program.push(Setting { name: name.to_string(), value: value.to_string(), configured: configured.to_string() });
+            }
+        }
         for row in self.backend.query(&format!("SELECT {COMMENT_COLUMNS} FROM comments"))? {
             snapshot.comments.push(comment_from(&row));
         }
@@ -178,6 +200,7 @@ impl Store {
         self.comments = snapshot.comments.iter().map(|c| (c.id, c.clone())).collect();
         self.downtimes = snapshot.downtimes.iter().map(|d| (d.id, d.clone())).collect();
         self.meta = Some((snapshot.next_comment, snapshot.next_downtime, snapshot.notifications_enabled));
+        self.program = Some(snapshot.program.clone());
         Ok(Some(snapshot))
     }
 
@@ -201,8 +224,27 @@ impl Store {
         let mut objects = Vec::new();
         for object in &snapshot.objects {
             let key = (object.host.clone(), object.service.clone().unwrap_or_default());
-            if self.objects.get(&key) != Some(object) {
+            let before = self.objects.get(&key);
+            if before != Some(object) {
                 statements.push(object_upsert(object, now));
+                if before.map(|o| &o.settings) != Some(&object.settings) {
+                    statements.push(Statement {
+                        sql: "DELETE FROM settings WHERE host = ?1 AND service = ?2",
+                        values: vec![key.0.as_str().into(), key.1.as_str().into()],
+                    });
+                    for setting in &object.settings {
+                        statements.push(Statement {
+                            sql: "INSERT INTO settings (host, service, name, value, configured) VALUES (?1, ?2, ?3, ?4, ?5)",
+                            values: vec![
+                                key.0.as_str().into(),
+                                key.1.as_str().into(),
+                                setting.name.as_str().into(),
+                                setting.value.as_str().into(),
+                                setting.configured.as_str().into(),
+                            ],
+                        });
+                    }
+                }
                 objects.push((key, object.clone()));
             }
         }
@@ -239,6 +281,15 @@ impl Store {
             pairs.push(("next_downtime", meta.1.to_string()));
             pairs.push(("notifications_enabled", (meta.2 as u8).to_string()));
         }
+        if self.program.as_ref() != Some(&snapshot.program) {
+            statements.push(Statement { sql: "DELETE FROM meta WHERE key LIKE 'program.%'", values: vec![] });
+            for setting in &snapshot.program {
+                statements.push(Statement {
+                    sql: "INSERT INTO meta (key, value) VALUES (?1, ?2)",
+                    values: vec![format!("program.{}", setting.name).into(), format!("{}\t{}", setting.value, setting.configured).into()],
+                });
+            }
+        }
         for (key, value) in pairs {
             statements.push(Statement {
                 sql: "INSERT INTO meta (key, value) VALUES (?1, ?2) \
@@ -260,6 +311,7 @@ impl Store {
         self.comments = comments;
         self.downtimes = downtimes;
         self.meta = Some(meta);
+        self.program = Some(snapshot.program.clone());
         Ok(())
     }
 }
@@ -450,6 +502,7 @@ fn object_from(r: &Row) -> ObjState {
         active_checks_enabled: int(&r[38]) != 0,
         config_notifications_enabled: int(&r[39]) != 0,
         config_active_checks_enabled: int(&r[40]) != 0,
+        settings: Vec::new(),
     }
 }
 
@@ -664,6 +717,14 @@ CREATE TABLE IF NOT EXISTS log (
 );
 CREATE INDEX IF NOT EXISTS log_time ON log (time);
 CREATE INDEX IF NOT EXISTS log_object ON log (host, service, time);
+CREATE TABLE IF NOT EXISTS settings (
+    host TEXT NOT NULL,
+    service TEXT NOT NULL,
+    name TEXT NOT NULL,
+    value TEXT NOT NULL,
+    configured TEXT NOT NULL,
+    PRIMARY KEY (host, service, name)
+);
 
 CREATE VIEW IF NOT EXISTS v1_host_status AS
     SELECT host, CASE state WHEN 0 THEN 'UP' WHEN 1 THEN 'DOWN' ELSE 'UNREACHABLE' END AS state,
@@ -852,7 +913,12 @@ mod tests {
             next_comment: 4,
             next_downtime: 2,
             notifications_enabled: false,
+            program: vec![Setting { name: "enable_event_handlers".into(), value: "0".into(), configured: "1".into() }],
         };
+        snapshot.objects[1].settings = vec![
+            Setting { name: "check_interval".into(), value: "7".into(), configured: "5".into() },
+            Setting { name: "modified".into(), value: "4".into(), configured: "0".into() },
+        ];
         snapshot.objects[1].ack = Some(AckState {
             author: "ann".into(),
             comment: "looking".into(),
