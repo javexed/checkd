@@ -64,6 +64,9 @@ pub struct RunArgs {
     pub shadow: Option<PathBuf>,
     /// The remote workers' file.
     pub workers: Option<PathBuf>,
+    /// Livestatus over TCP for any client, at this address (without
+    /// failover; with it, the address is for the other node).
+    pub livestatus_tcp: Option<String>,
     /// Where the state is kept while a PostgreSQL store cannot be
     /// written. Filled in by `run` when not given.
     pub journal: Option<PathBuf>,
@@ -399,7 +402,22 @@ async fn serve(
         }
     }
 
-    let tcp = args.failover.as_ref().map(|f| f.livestatus_tcp.clone());
+    let tcp = match (&args.failover, &args.livestatus_tcp) {
+        (Some(failover), _) => Some(failover.livestatus_tcp.clone()),
+        (None, Some(addr)) => {
+            // Livestatus has no login and no encryption: anyone who reaches
+            // the port reads everything and can send commands.
+            let local = addr.parse::<std::net::SocketAddr>().is_ok_and(|a| a.ip().is_loopback());
+            if !local && std::env::var("CHECKD_LIVESTATUS_ALLOW_NETWORK").as_deref() != Ok("1") {
+                return Err(format!(
+                    "--livestatus-tcp {addr}: Livestatus over TCP has no login and no encryption, and takes commands; \
+                     listen on 127.0.0.1, or set CHECKD_LIVESTATUS_ALLOW_NETWORK=1 for a network you trust"
+                ));
+            }
+            Some(addr.clone())
+        }
+        (None, None) => None,
+    };
     let mut livestatus = if args.livestatus.is_some() || tcp.is_some() {
         Some(crate::livestatus::listen(args.livestatus.as_deref(), tcp.as_deref())?)
     } else {

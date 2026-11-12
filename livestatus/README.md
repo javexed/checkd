@@ -185,6 +185,19 @@ the log lines and the errors of bad commands. What the reference does:
 These queries are the project's own, so they and the reference's answers
 are in git, unlike Thruk's.
 
+## Over TCP
+
+    checkd run --livestatus-tcp 127.0.0.1:6557 naemon.cfg
+
+answers Livestatus over TCP too, as Naemon's Livestatus module does with
+`inet_addr`, for clients such as Thruk on another machine through a
+tunnel. Livestatus has no login and no encryption, and it takes
+commands: anyone who reaches the port reads everything and can, for
+one, stop all checks. So checkd listens on a loopback address only,
+unless `CHECKD_LIVESTATUS_ALLOW_NETWORK=1` says the network is trusted.
+Reaching it from another machine is better done through an SSH tunnel,
+or with nuthatch, which has logins.
+
 ## AuthUser
 
 A query's `AuthUser` limits what it is given to what that contact may
@@ -238,7 +251,6 @@ again, and checkd has no unmonitored time.
 - History older than the newest 200,000 lines of the log.
 - The Livestatus module's options `service_authorization=strict` and
   `group_authorization=loose`: `AuthUser` follows the defaults only.
-- Livestatus over TCP.
 - The external commands Thruk sends that are not about acknowledgements,
   downtimes, comments, notifications, checks and passive results.
 - Pages beyond the 54, Thruk's panorama, reports and business processes.

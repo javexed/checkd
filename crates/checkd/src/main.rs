@@ -100,8 +100,11 @@ options of run:
                         (0.0.0.0:6558)
   --peer <addr>         where the other node answers its heartbeat
   --livestatus-tcp <addr>
-                        answer Livestatus over TCP too, for the other node
-                        to forward to (0.0.0.0:6557)
+                        answer Livestatus over TCP too. With --failover:
+                        for the other node to forward to (0.0.0.0:6557).
+                        Without: for any client, on a loopback address
+                        unless CHECKD_LIVESTATUS_ALLOW_NETWORK=1, since
+                        Livestatus has no login and takes commands
   --advertise <host>    the name the other node reaches this one at
                         (the node's name)
   --isolated keep|hold  when neither the database nor the other node
@@ -160,6 +163,7 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
     let mut http = None;
     let mut workers = None;
     let mut journal = None;
+    let mut livestatus_tcp: Option<String> = None;
     let (mut perfdata_graphite, mut perfdata_influx) = (None, None);
     let mut failover = run::Failover {
         lease: 15.0,
@@ -188,7 +192,11 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
             }
             "--peer-listen" => failover.peer_listen = value("an address")?,
             "--peer" => failover.peer = Some(value("an address")?),
-            "--livestatus-tcp" => failover.livestatus_tcp = value("an address")?,
+            "--livestatus-tcp" => {
+                let addr = value("an address")?;
+                failover.livestatus_tcp = addr.clone();
+                livestatus_tcp = Some(addr);
+            }
             "--advertise" => failover.advertise = value("a host name")?,
             "--isolated" => {
                 failover.hold = match value("keep or hold")?.as_str() {
@@ -245,6 +253,8 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<run::RunArgs, Str
         http,
         workers,
         journal,
+        // Without failover, a TCP address given is one for any client.
+        livestatus_tcp: if failover.node.is_empty() { livestatus_tcp } else { None },
         perfdata_graphite,
         perfdata_influx,
         failover: (!failover.node.is_empty()).then(|| {
