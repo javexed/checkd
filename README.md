@@ -1,3 +1,5 @@
+<img src="docs/logo.svg" alt="checkd logo: a chickadee on a branch" width="128" align="right">
+
 # checkd
 
 A monitoring engine in Rust that aims to replace the Naemon / Nagios Core
