@@ -10,6 +10,7 @@ All three are off unless asked for.
 |---|---|
 | `GET /api/v1/<table>` | the rows of a Livestatus table, as a JSON list of objects |
 | `POST /api/v1/command` | carries out the body as one external command |
+| `GET` or `POST /api/v1/push/<token>` | a result for the service with that token: [push](push.md) |
 | `GET /metrics` | the engine's health in Prometheus' text format |
 
 `<table>` is any table Livestatus answers: `hosts`, `services`, `status`,
@@ -32,7 +33,8 @@ without the time: `ACKNOWLEDGE_SVC_PROBLEM;web;disk;2;1;1;ann;looking`.
 Commands go through the same parser and leave the same lines in the log.
 
 With `CHECKD_HTTP_TOKEN` set, every request needs `Authorization: Bearer
-<token>`, and commands are taken. Without it, reads are answered and
+<token>` (but a push, which has a token of its own), and commands are
+taken. Without it, reads are answered and
 commands refused: the API is read-only. The server speaks plain HTTP; put
 it behind a proxy that does TLS where the network is not trusted.
 

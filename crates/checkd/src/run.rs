@@ -503,6 +503,14 @@ async fn serve(
     let mut effects = Vec::new();
     // Livestatus requests that wait for something to happen, and what has
     // happened since they were last looked at.
+    let (mut pushes, push_notes) = crate::push::Pushes::new(engine, now());
+    for note in push_notes {
+        log.line(&note);
+    }
+    if pushes.any() && http.is_none() {
+        log.line("Warning: services have a _PUSH_TOKEN, and no pushes can come: checkd was started without --http");
+    }
+    let mut push_tick = tokio::time::interval(Duration::from_secs(5));
     let mut parked: Vec<Parked> = Vec::new();
     let mut happened = 0u8;
     engine.start(&mut effects);
@@ -679,7 +687,30 @@ async fn serve(
                     engine.command(&line, now(), &mut effects);
                 }
             }
+            _ = push_tick.tick(), if pushes.any_expected() => {
+                for line in pushes.overdue(now()) {
+                    happened |= COMMANDED;
+                    counts.commands += 1;
+                    engine.command(&line, now(), &mut effects);
+                }
+            }
             Some(ask) = async { http.as_mut()?.recv().await }, if http.is_some() => {
+                if let Some(token) = ask.path.strip_prefix("/api/v1/push/") {
+                    let param = |name: &str| ask.query.iter().find(|(n, _)| n == name).map(|(_, v)| v.as_str());
+                    let output = param("output").unwrap_or(&ask.body);
+                    let reply = match pushes.take(token, param("state").unwrap_or(""), output, now()) {
+                        Ok(Some(line)) => {
+                            happened |= COMMANDED;
+                            counts.commands += 1;
+                            engine.command(&line, now(), &mut effects);
+                            crate::http::Reply::text(200, "ok\n")
+                        }
+                        Ok(None) => crate::http::Reply::text(404, "not found\n"),
+                        Err(why) => crate::http::Reply::text(400, format!("{why}\n")),
+                    };
+                    let _ = ask.reply.send(reply);
+                    continue;
+                }
                 #[cfg(feature = "workers")]
                 let pool_stats = pools.as_ref().map(|(pools, _)| pools.stats(now())).unwrap_or_default();
                 #[cfg(not(feature = "workers"))]

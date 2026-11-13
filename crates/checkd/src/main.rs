@@ -12,6 +12,7 @@ mod failover;
 mod http;
 mod livestatus;
 mod perfexport;
+mod push;
 mod postgres;
 mod run;
 mod runner;

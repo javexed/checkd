@@ -86,6 +86,9 @@ A command line that begins with `checkd:` is a check checkd makes
 itself, without a plugin: ping, a TCP port, a web page, a certificate
 ([docs/builtin.md](docs/builtin.md)).
 
+A job elsewhere can push its result to a service over HTTP, and the
+service raises the alarm when none comes in time ([docs/push.md](docs/push.md)).
+
 A number of
 settings that belong to checks are not acted on yet, and `checkd run`
 warns when a config sets one of them:

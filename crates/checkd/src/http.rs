@@ -6,12 +6,14 @@
 //!   `state = 2;;host_name = web`), `limit`.
 //! - `POST /api/v1/command` takes the body as one external command, as the
 //!   command file would (`NAME;argument;...`, without the time).
+//! - `GET` or `POST /api/v1/push/<token>` is a result for the service
+//!   whose `_PUSH_TOKEN` the token is (`crate::push`).
 //! - `GET /metrics` gives the engine's own health in Prometheus' text
 //!   format.
 //!
 //! With `CHECKD_HTTP_TOKEN` set, every request needs it as
-//! `Authorization: Bearer <token>`. Without it, commands are refused: the
-//! API is then read-only.
+//! `Authorization: Bearer <token>`, but for a push, which has a token of
+//! its own. Without it, commands are refused: the API is then read-only.
 //!
 //! A request goes to the engine's loop, which answers it between events,
 //! as it does Livestatus requests. Plain HTTP only: put it behind a proxy
@@ -134,7 +136,8 @@ pub async fn listen(addr: &str) -> Result<mpsc::UnboundedReceiver<Ask>, String> 
                     })
                     .collect();
                 let authorized = token.is_some() && bearer.as_deref() == token.as_deref();
-                let reply = if token.is_some() && !authorized {
+                // A push carries its own token, in its path.
+                let reply = if token.is_some() && !authorized && !path.starts_with("/api/v1/push/") {
                     Reply::text(401, "a bearer token is needed\n")
                 } else {
                     let (send, answer) = oneshot::channel();
