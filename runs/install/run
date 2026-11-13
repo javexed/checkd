@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# The install notes (docs/install.md), followed on a machine of its own:
+# a container that runs systemd and nothing else, without a network. The
+# binary, the unit file and a small config go in as the notes say; then
+# the service is started, reloaded, given a config that cannot be used,
+# stopped, started again, and killed.
+#
+#   runs/install/run
+#
+# The container is Arch Linux, as this machine is, so that the binary
+# built here runs there. It has CAP_SYS_ADMIN, which systemd needs for
+# its control groups and for the unit's own sandboxing (PrivateTmp,
+# ProtectSystem), and no network. Says "ok" or what failed, and ends
+# with 1 when something did.
+set -euo pipefail
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(cd "$here/../.." && pwd)
+name=checkd-install-$$
+cd "$root"
+cargo build --quiet --release --locked -p checkd --example unixcat
+cargo build --quiet --release --locked -p checkd
+
+docker run -d -t --name "$name" --network none --cap-add SYS_ADMIN --cgroupns=private \
+    --tmpfs /run --tmpfs /tmp -e container=docker archlinux:latest \
+    sh -c 'mount -o remount,rw /sys/fs/cgroup && systemd-machine-id-setup >/dev/null &&
+           systemctl mask -q systemd-firstboot.service && exec /sbin/init' >/dev/null
+trap 'docker rm -f "$name" >/dev/null 2>&1' EXIT
+in_it() { docker exec "$name" "$@"; }
+tries=0
+until [ "$(in_it systemctl is-system-running 2>/dev/null)" = running ]; do
+    tries=$((tries + 1))
+    [ "$tries" -lt 60 ] || { echo "systemd did not come up in the container" >&2; exit 2; }
+    sleep 1
+done
+
+failed=0
+check() { # check <what> <command...>: the command must succeed
+    what=$1; shift
+    if "$@" >/tmp/checkd-install-out.$$ 2>&1; then echo "ok    $what"
+    else echo "FAIL  $what"; sed 's/^/        /' /tmp/checkd-install-out.$$ | head -20; failed=1; fi
+    rm -f /tmp/checkd-install-out.$$
+}
+ask() { printf '%s\n\n' "$1" | docker exec -i "$name" unixcat /run/checkd/live; }
+wait_for() { # wait_for <seconds> <command...>
+    for _ in $(seq "$1"); do if "${@:2}" >/dev/null 2>&1; then return 0; fi; sleep 1; done
+    return 1
+}
+
+# What the notes leave to the reader: a config, with the paths they name.
+docker cp -q "$here/site" "$name:/srv/site"
+docker cp -q target/release/checkd "$name:/srv/checkd"
+docker cp -q target/release/examples/unixcat "$name:/usr/local/bin/unixcat"
+docker cp -q contrib/systemd/checkd.service "$name:/srv/checkd.service"
+
+# docs/install.md, "Install", line for line.
+in_it sh -ec '
+    install -m 755 /srv/checkd /usr/local/bin/checkd
+    useradd --system --home /var/lib/checkd --shell /usr/sbin/nologin checkd
+    install -d -o checkd /etc/checkd
+    install -o checkd -m 644 /srv/site/* /etc/checkd/
+    checkd verify /etc/checkd/naemon.cfg
+    install -m 644 /srv/checkd.service /etc/systemd/system/
+    systemctl daemon-reload
+    systemctl enable --now checkd
+' >/dev/null 2>/tmp/checkd-install-err.$$ || { echo "FAIL  the install steps"; cat /tmp/checkd-install-err.$$; failed=1; }
+rm -f /tmp/checkd-install-err.$$
+
+check "the service is active" in_it systemctl is-active -q checkd
+check "it runs as the user checkd" in_it sh -c '[ "$(ps -o user= -p "$(systemctl show -p MainPID --value checkd)")" = checkd ]'
+answers() { [ -n "$(ask 'GET status
+Columns: program_start')" ]; }
+check "Livestatus answers at /run/checkd/live" wait_for 10 answers
+checked() { [ "$(ask 'GET services
+Stats: has_been_checked = 1')" = "$1" ]; }
+check "both services are checked within 30 s" wait_for 30 checked 2
+check "the log is in /var/log/checkd" in_it test -s /var/log/checkd/checkd.log
+
+# Reload: a new host comes in, and what is known of the others stays.
+in_it sh -c 'cat /srv/site/more.cfg.add >> /etc/checkd/objects.cfg'
+check "systemctl reload takes a config that can be used" in_it systemctl reload checkd
+hosts() { [ "$(ask 'GET hosts
+Stats: state >= 0')" = "$1" ]; }
+check "the new host is there after the reload" wait_for 10 hosts 2
+check "the services are still known as checked" checked 2
+
+# A config that cannot be used: the reload is refused, the service goes on.
+in_it sh -c 'echo "define host { host_name broken }" >> /etc/checkd/objects.cfg'
+refused() { ! in_it systemctl reload checkd; }
+check "systemctl reload refuses a config with errors" refused
+check "the service goes on with the config it had" hosts 2
+in_it sh -c 'sed -i "/host_name broken/d" /etc/checkd/objects.cfg'
+
+# Stop and start: the state is saved and read back.
+check "systemctl stop ends it" in_it systemctl stop checkd
+check "the state is in /var/lib/checkd" in_it test -s /var/lib/checkd/checkd.sqlite
+check "systemctl start brings it back" in_it systemctl start checkd
+check "what was checked before is known at once" wait_for 5 checked 2
+
+# Killed: systemd starts it again.
+before=$(in_it systemctl show -p MainPID --value checkd)
+in_it kill -KILL "$before"
+again() { pid=$(in_it systemctl show -p MainPID --value checkd); [ "$pid" != 0 ] && [ "$pid" != "$before" ] && in_it systemctl is-active -q checkd; }
+check "killed, it is started again" wait_for 15 again
+check "no unit failed" in_it sh -c '[ -z "$(systemctl --failed --no-legend)" ]'
+
+[ "$failed" = 0 ] && echo "the install notes work as written" || { in_it journalctl -u checkd --no-pager -n 30; exit 1; }

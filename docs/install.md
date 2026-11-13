@@ -1,8 +1,13 @@
 # Installing checkd
 
-The system service below follows from the tests; the user service at the
-end runs on a desktop machine. Both unit files pass
-`systemd-analyze verify`.
+`runs/install/run` follows the system service's steps below, line for
+line, in a container that runs systemd and nothing else, and then looks:
+the service runs as its user, checks and answers Livestatus, reloads,
+refuses to reload a config with errors and goes on, keeps its state over
+a stop and a start, and is started again when killed. The user service
+at the end runs on a desktop machine. Both unit files pass
+`systemd-analyze verify`. Not tried: the worker's unit, failover under
+systemd, and a distribution other than Arch Linux.
 
 ## Build
 
