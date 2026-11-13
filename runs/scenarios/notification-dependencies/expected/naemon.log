@@ -1,0 +1,55 @@
+[1794614137] Naemon 1.5.2 starting... (PID=16)
+[1794614137] Local time is Fri Nov 13 23:55:37 UTC 2026
+[1794614137] LOG VERSION: 2.0
+[1794614137] qh: Socket '/tmp/oracle/naemon.qh' successfully initialized
+[1794614137] nerd: Channel hostchecks registered successfully
+[1794614137] nerd: Channel servicechecks registered successfully
+[1794614137] nerd: Fully initialized and ready to rock!
+[1794614137] Successfully launched command file worker with pid 17
+[1794614137] Reading all config object data
+[1794614137] Loading neb modules
+[1794614137] Warning: Nothing specified for illegal_macro_output_chars variable!
+[1794614137] Naemon successfully initialized (PID=16)
+[1794614145] SERVICE ALERT: a;m;CRITICAL;SOFT;1;m is 2 at second 8
+[1794614146] SERVICE ALERT: a;dep-w;CRITICAL;SOFT;1;dep-w is 2 at second 9
+[1794614146] SERVICE ALERT: a;m;CRITICAL;SOFT;2;m is 2 at second 9
+[1794614147] SERVICE ALERT: a;leaf;CRITICAL;SOFT;1;leaf is 2 at second 10
+[1794614147] SERVICE ALERT: a;leaf-alone;CRITICAL;SOFT;1;leaf-alone is 2 at second 10
+[1794614147] SERVICE ALERT: a;dep-c;CRITICAL;SOFT;1;dep-c is 2 at second 10
+[1794614147] SERVICE ALERT: a;dep-w;CRITICAL;SOFT;2;dep-w is 2 at second 10
+[1794614147] SERVICE ALERT: a;m;CRITICAL;HARD;3;m is 2 at second 10
+[1794614147] SERVICE NOTIFICATION: ann;a;m;CRITICAL;n-svc;m is 2 at second 10
+[1794614148] SERVICE ALERT: a;leaf-alone;CRITICAL;SOFT;2;leaf-alone is 2 at second 11
+[1794614148] SERVICE ALERT: a;leaf;CRITICAL;SOFT;2;leaf is 2 at second 11
+[1794614148] SERVICE ALERT: a;dep-c;CRITICAL;SOFT;2;dep-c is 2 at second 11
+[1794614148] SERVICE NOTIFICATION SUPPRESSED: a;m;Re-notification blocked for this problem.
+[1794614148] SERVICE ALERT: a;dep-w;CRITICAL;HARD;3;dep-w is 2 at second 11
+[1794614148] SERVICE NOTIFICATION: ann;a;dep-w;CRITICAL;n-svc;dep-w is 2 at second 11
+[1794614149] SERVICE ALERT: a;leaf;CRITICAL;HARD;3;leaf is 2 at second 12
+[1794614149] SERVICE NOTIFICATION SUPPRESSED: a;leaf;Notification blocked due to dependency of another object.
+[1794614149] SERVICE ALERT: a;leaf-alone;CRITICAL;HARD;3;leaf-alone is 2 at second 12
+[1794614149] SERVICE NOTIFICATION: ann;a;leaf-alone;CRITICAL;n-svc;leaf-alone is 2 at second 12
+[1794614149] SERVICE ALERT: a;dep-c;CRITICAL;HARD;3;dep-c is 2 at second 12
+[1794614149] SERVICE NOTIFICATION SUPPRESSED: a;dep-c;Notification blocked due to dependency of another object.
+[1794614152] SERVICE NOTIFICATION SUPPRESSED: a;dep-w;Re-notification blocked for this problem because not enough time has passed since last notification.
+[1794614153] SERVICE NOTIFICATION SUPPRESSED: a;leaf-alone;Re-notification blocked for this problem because not enough time has passed since last notification.
+[1794614156] SERVICE NOTIFICATION: ann;a;dep-w;CRITICAL;n-svc;dep-w is 2 at second 19
+[1794614157] SERVICE NOTIFICATION: ann;a;leaf-alone;CRITICAL;n-svc;leaf-alone is 2 at second 20
+[1794614164] SERVICE ALERT: a;m;OK;HARD;3;m is 0 at second 27
+[1794614164] SERVICE NOTIFICATION: ann;a;m;OK;n-svc;m is 0 at second 27
+[1794614164] SERVICE NOTIFICATION: ann;a;dep-w;CRITICAL;n-svc;dep-w is 2 at second 27
+[1794614165] SERVICE NOTIFICATION: ann;a;leaf;CRITICAL;n-svc;leaf is 2 at second 28
+[1794614165] SERVICE NOTIFICATION: ann;a;leaf-alone;CRITICAL;n-svc;leaf-alone is 2 at second 28
+[1794614165] SERVICE NOTIFICATION: ann;a;dep-c;CRITICAL;n-svc;dep-c is 2 at second 28
+[1794614169] SERVICE ALERT: a;dep-c;OK;HARD;3;dep-c is 0 at second 32
+[1794614169] SERVICE NOTIFICATION: ann;a;dep-c;OK;n-svc;dep-c is 0 at second 32
+[1794614169] SERVICE ALERT: a;leaf-alone;OK;HARD;3;leaf-alone is 0 at second 32
+[1794614169] SERVICE NOTIFICATION: ann;a;leaf-alone;OK;n-svc;leaf-alone is 0 at second 32
+[1794614169] SERVICE ALERT: a;leaf;OK;HARD;3;leaf is 0 at second 32
+[1794614169] SERVICE NOTIFICATION: ann;a;leaf;OK;n-svc;leaf is 0 at second 32
+[1794614172] SERVICE ALERT: a;dep-w;OK;HARD;3;dep-w is 0 at second 35
+[1794614172] SERVICE NOTIFICATION: ann;a;dep-w;OK;n-svc;dep-w is 0 at second 35
+[1794614182] Caught 'Terminated', shutting down...
+[1794614182] Retention data successfully saved.
+[1794614182] Successfully shutdown... (PID=16)
+[1794614182] Event broker module 'NERD' deinitialized successfully.

@@ -49,7 +49,7 @@ use std::collections::BTreeMap;
 use checkd_config::model::Contact;
 use checkd_config::values::Opts;
 
-use crate::engine::{Effect, Engine, JobKind, Ms, Obj, HOST_STATES, SERVICE_STATES};
+use crate::engine::{About, Effect, Engine, JobKind, Ms, Obj, HOST_STATES, SERVICE_STATES};
 
 /// What a notification is about.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -211,6 +211,7 @@ const REASON_PERIOD: &str =
     "Notification blocked by timeperiod; notifications should not be sent out at this time.";
 const REASON_HOST: &str =
     "Notification blocked for service because its associated host is either down or unreachable.";
+const REASON_DEPENDENCY: &str = "Notification blocked due to dependency of another object.";
 const REASON_HOST_DOWNTIME: &str =
     "Notification blocked for service because its associated host is currently in a scheduled downtime.";
 const REASON_DELAY: &str = "Notification blocked because first_notification_delay is configured and not enough time has elapsed since the object changed to a non-UP/non-OK state (or since program start).";
@@ -333,6 +334,15 @@ impl Engine {
                 }
                 let timeout = self.settings.notification_timeout as Ms * 1000;
                 self.run_job(obj, JobKind::Notification, line, timeout, now, out);
+                if let Some(Effect::Run(job)) = out.last_mut() {
+                    job.about = Some(Box::new(About {
+                        contact: contact.name.clone(),
+                        kind: notice.kind.clone(),
+                        what: self.log_name(obj).replace(';', "/"),
+                        state: shown.clone(),
+                        output,
+                    }));
+                }
             }
         }
         if recovery {
@@ -409,6 +419,12 @@ impl Engine {
         }
         if state == 0 {
             return Ok(());
+        }
+        // A notification dependency: seen in the reference for a problem.
+        // Where it stands among the other reasons, and whether it holds
+        // a recovery back, was not seen.
+        if self.kept_quiet(obj, now.div_euclid(1000)) {
+            return Err(REASON_DEPENDENCY);
         }
         if let Obj::Service(at) = obj {
             let host = self.services[at].host;

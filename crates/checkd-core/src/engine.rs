@@ -93,6 +93,23 @@ pub struct Job {
     pub line: String,
     /// How long it may run.
     pub timeout: Ms,
+    /// For a notification: whom it tells of what.
+    pub about: Option<Box<About>>,
+    /// Further variables of the command's environment.
+    pub env: Vec<(String, String)>,
+}
+
+/// What a notification command tells, and whom: for a driver that puts
+/// several to one contact together.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct About {
+    pub contact: String,
+    /// PROBLEM, RECOVERY, ACKNOWLEDGEMENT and so on.
+    pub kind: String,
+    /// The host, or `host/service`.
+    pub what: String,
+    pub state: String,
+    pub output: String,
 }
 
 /// How a command ended.
@@ -285,7 +302,10 @@ struct Dep {
     master: Obj,
     period: Option<String>,
     inherits: bool,
+    /// The master's states in which the object is not checked.
     criteria: Opts,
+    /// The master's states in which the object does not notify.
+    notification: Opts,
 }
 
 struct Running {
@@ -444,7 +464,7 @@ impl Engine {
 
         let mut host_deps: Vec<Vec<Dep>> = hosts.iter().map(|_| Vec::new()).collect();
         for dep in &objects.host_dependencies {
-            if dep.execution_failure.is_none() {
+            if dep.execution_failure.is_none() && dep.notification_failure.is_none() {
                 continue;
             }
             if let (Some(&master), Some(&dependent)) =
@@ -455,12 +475,13 @@ impl Engine {
                     period: dep.period.clone(),
                     inherits: dep.inherits_parent,
                     criteria: dep.execution_failure.clone(),
+                    notification: dep.notification_failure.clone(),
                 });
             }
         }
         let mut service_deps: Vec<Vec<Dep>> = services.iter().map(|_| Vec::new()).collect();
         for dep in &objects.service_dependencies {
-            if dep.execution_failure.is_none() {
+            if dep.execution_failure.is_none() && dep.notification_failure.is_none() {
                 continue;
             }
             if let (Some(&master), Some(&dependent)) = (
@@ -472,6 +493,7 @@ impl Engine {
                     period: dep.period.clone(),
                     inherits: dep.inherits_parent,
                     criteria: dep.execution_failure.clone(),
+                    notification: dep.notification_failure.clone(),
                 });
             }
         }
@@ -594,6 +616,11 @@ impl Engine {
     }
 
     /// The configuration the engine was made from.
+    /// `$USERn$` of the resource file.
+    pub fn user_macro(&self, n: u32) -> Option<&str> {
+        self.user_macros.get(&n).map(String::as_str)
+    }
+
     pub fn objects(&self) -> &Objects {
         &self.objects
     }
@@ -945,12 +972,27 @@ impl Engine {
             obj,
             line,
             timeout,
+            about: None,
+            env: Vec::new(),
         }));
     }
 
     /// Whether an execution dependency keeps the object from being
     /// checked now.
     fn held_back(&self, obj: Obj, second: i64, depth: usize) -> bool {
+        self.depends(obj, second, depth, false)
+    }
+
+    /// Whether a notification dependency keeps the object from notifying
+    /// now.
+    pub(crate) fn kept_quiet(&self, obj: Obj, second: i64) -> bool {
+        self.depends(obj, second, 0, true)
+    }
+
+    /// Whether a dependency of the one kind or the other holds now: on a
+    /// master in one of the states it names, or, where it inherits, on
+    /// one of the master's own.
+    fn depends(&self, obj: Obj, second: i64, depth: usize, notification: bool) -> bool {
         if depth > 32 {
             return false;
         }
@@ -970,7 +1012,8 @@ impl Engine {
             } else {
                 master.last_hard_state
             };
-            let letter = if !master.checked && dep.criteria.has('p') {
+            let criteria = if notification { &dep.notification } else { &dep.criteria };
+            let letter = if !master.checked && criteria.has('p') {
                 'p'
             } else {
                 match dep.master {
@@ -978,10 +1021,10 @@ impl Engine {
                     Obj::Service(_) => SERVICE_LETTERS[state as usize],
                 }
             };
-            if dep.criteria.has(letter) {
+            if criteria.has(letter) {
                 return true;
             }
-            if dep.inherits && self.held_back(dep.master, second, depth + 1) {
+            if dep.inherits && self.depends(dep.master, second, depth + 1, notification) {
                 return true;
             }
         }

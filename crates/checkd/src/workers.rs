@@ -591,7 +591,7 @@ mod tests {
             kind: JobKind::ServiceCheck,
             obj: Obj::Service(0),
             line: "/bin/true".into(),
-            timeout: 5_000,
+            timeout: 5_000, about: None, env: Vec::new()
         }
     }
 

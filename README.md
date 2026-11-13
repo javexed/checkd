@@ -89,6 +89,9 @@ itself, without a plugin: ping, a TCP port, a web page, a certificate
 A job elsewhere can push its result to a service over HTTP, and the
 service raises the alarm when none comes in time ([docs/push.md](docs/push.md)).
 
+Several notifications to one contact within a short time can go out as
+one ([docs/digest.md](docs/digest.md)).
+
 A number of
 settings that belong to checks are not acted on yet, and `checkd run`
 warns when a config sets one of them:

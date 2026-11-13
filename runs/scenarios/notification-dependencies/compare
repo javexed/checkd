@@ -1,0 +1,9 @@
+# The reference checks m, the service others depend on, once more a
+# second after results of those that depend on it came in (at 11.0 s),
+# and counts its interval from there. checkd does not: when the
+# reference does this is not found out yet. So m itself is checked at
+# other times, and recovers a second earlier. What this scenario is
+# about, who notifies while m is CRITICAL and who does not, is compared.
+ignore m checked at other times: see above
+ignore n-ann-a-m follows m
+ignore-log a;m follows m

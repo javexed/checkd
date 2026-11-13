@@ -72,7 +72,8 @@ pub fn start(job: Job, done: mpsc::UnboundedSender<(u64, JobResult)>, running: &
     let running = running.clone();
     tokio::spawn(async move {
         let line = job.line.clone();
-        let spawned = tokio::task::spawn_blocking(move || spawn(&line)).await;
+        let env = job.env.clone();
+        let spawned = tokio::task::spawn_blocking(move || spawn(&line, &env)).await;
         let (child, group) = match spawned {
             Ok(Ok(started)) => started,
             Ok(Err(result)) => {
@@ -96,7 +97,7 @@ pub fn start(job: Job, done: mpsc::UnboundedSender<(u64, JobResult)>, running: &
 
 /// Starts the process of a command line. A command that cannot be started
 /// gives its result at once.
-fn spawn(line: &str) -> Result<(Child, Option<i32>), JobResult> {
+fn spawn(line: &str, more_env: &[(String, String)]) -> Result<(Child, Option<i32>), JobResult> {
     let (program, mut command) = match cmdline::plan(line) {
         Start::Direct { env, argv } => {
             let program = argv.first().cloned().unwrap_or_default();
@@ -113,6 +114,7 @@ fn spawn(line: &str) -> Result<(Child, Option<i32>), JobResult> {
     // A group of its own, so that the command can be stopped together
     // with everything it started.
     command
+        .envs(more_env.iter().map(|(name, value)| (name, value)))
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -238,7 +240,7 @@ mod load {
                 let began = std::time::Instant::now();
                 let running = Running::default();
                 for id in 0..n as u64 {
-                    let job = Job { id, kind: JobKind::ServiceCheck, obj: Obj::Service(0), line: "/bin/true".into(), timeout: 60_000 };
+                    let job = Job { id, kind: JobKind::ServiceCheck, obj: Obj::Service(0), line: "/bin/true".into(), timeout: 60_000 , about: None, env: Vec::new() };
                     start(job, done.clone(), &running);
                 }
                 let started = began.elapsed();
@@ -280,7 +282,7 @@ mod memory {
             let mut marks = Vec::new();
             for round in 0..10u64 {
                 for n in 0..20_000u64 {
-                    let job = Job { id: round * 20_000 + n, kind: JobKind::ServiceCheck, obj: Obj::Service(0), line: "/bin/true".into(), timeout: 60_000 };
+                    let job = Job { id: round * 20_000 + n, kind: JobKind::ServiceCheck, obj: Obj::Service(0), line: "/bin/true".into(), timeout: 60_000 , about: None, env: Vec::new() };
                     start(job, done.clone(), &running);
                     if n % 500 == 499 {
                         for _ in 0..500 {
@@ -304,11 +306,11 @@ mod size {
     #[test]
     fn a_waiting_task_is_small() {
         let (done, _results) = mpsc::unbounded_channel::<(u64, JobResult)>();
-        let job = Job { id: 1, kind: checkd_core::engine::JobKind::ServiceCheck, obj: checkd_core::engine::Obj::Service(0), line: "x".into(), timeout: 1 };
+        let job = Job { id: 1, kind: checkd_core::engine::JobKind::ServiceCheck, obj: checkd_core::engine::Obj::Service(0), line: "x".into(), timeout: 1 , about: None, env: Vec::new() };
         let running = Running::default();
         let task = async move {
             let line = job.line.clone();
-            let spawned = tokio::task::spawn_blocking(move || spawn(&line)).await;
+            let spawned = tokio::task::spawn_blocking(move || spawn(&line, &[])).await;
             if let Ok(Ok((child, group))) = spawned {
                 let result = finish(child, group, job.timeout).await;
                 running.remove(job.id);

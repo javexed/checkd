@@ -7,6 +7,7 @@ mod otel;
 #[path = "otel_off.rs"]
 mod otel;
 mod builtin;
+mod digest;
 #[cfg(feature = "postgres")]
 mod failover;
 mod http;

@@ -283,7 +283,7 @@ async fn session(
                     }));
                     continue;
                 }
-                let job = Job { id, kind: JobKind::ServiceCheck, obj: Obj::Host(0), line, timeout };
+                let job = Job { id, kind: JobKind::ServiceCheck, obj: Obj::Host(0), line, timeout, about: None, env: Vec::new() };
                 crate::runner::start(job, done.clone(), &running);
             }
             Some((id, result)) = results.recv() => {

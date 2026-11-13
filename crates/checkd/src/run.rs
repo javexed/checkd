@@ -511,6 +511,13 @@ async fn serve(
         log.line("Warning: services have a _PUSH_TOKEN, and no pushes can come: checkd was started without --http");
     }
     let mut push_tick = tokio::time::interval(Duration::from_secs(5));
+    let (mut digests, digest_notes) = crate::digest::Digests::new(engine);
+    for note in digest_notes {
+        log.line(&note);
+    }
+    // Where the result of a digest's command goes: nowhere. The engine
+    // knows nothing of that command.
+    let (unheard, _) = mpsc::unbounded_channel();
     let mut parked: Vec<Parked> = Vec::new();
     let mut happened = 0u8;
     engine.start(&mut effects);
@@ -627,7 +634,24 @@ async fn serve(
                 next_save = now() + SAVE_EVERY;
             }
         }
+        // Notifications held for a digest that are due: one alone joins
+        // the jobs, several are done with and one command runs for them.
+        for release in digests.due(now()) {
+            match release {
+                crate::digest::Release::Single(job) => jobs.push(job),
+                crate::digest::Release::Together { done: ids, digest, log: line } => {
+                    log.line(&line);
+                    counts.notifications += 1;
+                    for id in ids {
+                        let result = JobResult { outcome: checkd_core::engine::Outcome::Exited(0), stdout: String::new(), stderr: String::new() };
+                        let _ = done.send((id, result));
+                    }
+                    start(digest, unheard.clone(), &running);
+                }
+            }
+        }
         for job in jobs {
+            let Some(job) = digests.hold(job, now()) else { continue };
             if job.kind == JobKind::Notification {
                 counts.notifications += 1;
             }
@@ -660,9 +684,11 @@ async fn serve(
         };
         let flush = telemetry.next_flush();
         let save_in = Duration::from_millis((next_save - now()).max(0) as u64);
+        let digest_in = digests.next().map(|at| Duration::from_millis((at - now()).max(0) as u64));
         let park_in = parked.iter().map(|p| p.until).min().map(|at| Duration::from_millis((at - now()).max(0) as u64));
         tokio::select! {
             _ = tokio::time::sleep(park_in.unwrap_or_default()), if park_in.is_some() => {}
+            _ = tokio::time::sleep(digest_in.unwrap_or_default()), if digest_in.is_some() => {}
             _ = tokio::time::sleep(save_in), if store.is_some() => {
                 if let Some(store) = store.as_deref_mut() {
                     lost |= save(engine, store, &mut unsaved, log, &mut store_failing, args.journal.as_deref());
@@ -843,6 +869,9 @@ async fn serve(
         }
     };
 
+    if digests.held() > 0 {
+        log.line(&format!("Warning: {} notifications held for a digest are not sent: checkd ends before their wait is over", digests.held()));
+    }
     // Nobody is left waiting: what waits is answered with what is known.
     for p in parked.drain(..) {
         let source = checkd_livestatus::Source { engine, now: now(), log: &history, program: &program, window: None };

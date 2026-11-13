@@ -759,7 +759,7 @@ mod tests {
             kind,
             obj: Obj::Host(0),
             line: String::new(),
-            timeout: 1000,
+            timeout: 1000, about: None, env: Vec::new()
         }
     }
 
