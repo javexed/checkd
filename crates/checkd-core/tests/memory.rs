@@ -6,6 +6,27 @@ use std::path::Path;
 
 use checkd_core::engine::{Effect, Engine, JobResult, Outcome};
 
+/// Counts what is allocated and not yet freed: what the program holds,
+/// apart from what the allocator keeps around it.
+struct Counting;
+static LIVE: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+unsafe impl std::alloc::GlobalAlloc for Counting {
+    unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
+        LIVE.fetch_add(layout.size() as i64, std::sync::atomic::Ordering::Relaxed);
+        unsafe { std::alloc::System.alloc(layout) }
+    }
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: std::alloc::Layout) {
+        LIVE.fetch_sub(layout.size() as i64, std::sync::atomic::Ordering::Relaxed);
+        unsafe { std::alloc::System.dealloc(ptr, layout) }
+    }
+}
+#[global_allocator]
+static ALLOCATOR: Counting = Counting;
+
+fn live() -> i64 {
+    LIVE.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 fn rss_kb() -> i64 {
     std::fs::read_to_string("/proc/self/status")
         .unwrap()
@@ -110,11 +131,14 @@ fn memory_per_service() {
     std::fs::write(dir.join("objects.cfg"), objects).unwrap();
     std::fs::write(dir.join("naemon.cfg"), "cfg_file=objects.cfg\ninterval_length=1\n").unwrap();
     let before = rss_kb();
+    let held_before = live();
     let loaded = checkd_config::load(Path::new(&dir.join("naemon.cfg")), &Default::default());
     let after_load = rss_kb();
     let (main, objects) = (loaded.main.unwrap(), loaded.objects.unwrap());
+    println!("held after loading: {} bytes a service", (live() - held_before) / 40_000);
     let (engine, _) = Engine::new(objects, &main, Box::new(checkd_core::timeperiod::Fixed(0)), 1_800_000_000_000);
     let after_engine = rss_kb();
+    println!("held by the program: {} bytes a service", (live() - held_before) / 40_000);
     // What the C allocator keeps of what loading freed.
     unsafe extern "C" {
         fn malloc_trim(pad: usize) -> i32;

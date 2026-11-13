@@ -27,13 +27,15 @@ Loading a config of 80,000 services (`checkd verify`): 1.1 s; Naemon's
 
 - checkd keeps up to about 15,000 checks a second here; Naemon to about
   7,500, beyond which its checks fall behind.
-- checkd takes more memory: the table gives its peak, about 6.3 KB a
-  service while the configuration is loaded; once loaded it gives back
-  what loading freed, and holds about 5 KB a service (204 MB at 40,000,
-  393 MB at 80,000), against about 2.5 KB for Naemon. It does not grow
-  under load (flat over 120 s at 80,000 services). Of those 5 KB about
-  half is the configuration kept twice, as read and in the engine's own
-  form.
+- checkd takes more memory. The table is from before hosts and services
+  with the same settings came to share them (below); only the 40,000
+  services at 4,000 a second were measured again since, 2026-11-13:
+  195 MB at the peak, where the table says 254 MB, and 174 MB held once
+  the configuration is loaded, where it was 204 MB. That is about 4.3 KB
+  a service against about 2 KB for Naemon (78 MB). It does not grow
+  under load (flat over 120 s at 80,000 services, before the change).
+  In the load test every service has the same settings, which is the
+  best case for sharing.
 - CPU time is not compared: checkd starts plugins from threads of its own
   process, Naemon from separate worker processes.
 
@@ -49,6 +51,17 @@ Loading a config of 80,000 services (`checkd verify`): 1.1 s; Naemon's
 - **Memory for checks waiting to start.** Each held two 8 KB read
   buffers from the moment it was asked for, so a backlog under overload
   cost over 1 GB. The buffers are now made when the command runs.
+- **The configuration kept twice.** Every host and service had its
+  settings once as the configuration gave them and once more in the
+  engine, about half a kilobyte each. Objects with the same settings now
+  hold one copy, shared by the configuration and the engine; a command
+  that changes a setting gives that one object a copy of its own. With
+  a configuration of 40,000 like services loaded and no check run yet,
+  the process went from 3.6 KB to 2.7 KB a service
+  (`memory_per_service` in `crates/checkd-core/tests/memory.rs`). Of
+  those 2.7 KB, 1.6 KB is what the configuration and the engine hold;
+  the rest is gaps that loading leaves between what stays, too small to
+  give back.
 - **The cache horizon.** With the default `cached_service_check_horizon`
   (15 s) longer than the check interval, both engines run every other
   check only; the load test sets it to 0.

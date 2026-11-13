@@ -50,6 +50,7 @@
 
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap};
+use std::sync::Arc;
 
 use checkd_config::maincfg::MainConfig;
 use checkd_config::model::{Checkable, Objects, ServiceId};
@@ -131,7 +132,9 @@ pub enum Effect {
 /// The state of one host or service, and the settings its checks go by.
 #[derive(Clone, Debug)]
 pub struct Item {
-    pub cfg: Checkable,
+    /// The configuration's own, shared with it, until a command changes a
+    /// setting: then this object gets one of its own ([`Item::cfg_mut`]).
+    pub cfg: Arc<Checkable>,
     pub(crate) check_ms: Ms,
     pub(crate) retry_ms: Ms,
     /// Host: 0 up, 1 down, 2 unreachable. Service: 0 OK, 1 warning,
@@ -191,7 +194,13 @@ pub const MOD_MAX_ATTEMPTS: u32 = 4096;
 pub const MOD_CUSTOM_VARIABLE: u32 = 32768;
 
 impl Item {
-    fn new(cfg: &Checkable, state: u8, settings: &Settings) -> Item {
+    /// The settings, to change one. Only called when there is something
+    /// to change: from then on the object holds settings of its own.
+    pub fn cfg_mut(&mut self) -> &mut Checkable {
+        Arc::make_mut(&mut self.cfg)
+    }
+
+    fn new(cfg: &Arc<Checkable>, state: u8, settings: &Settings) -> Item {
         let ms = |units: f64| (units * settings.interval_length * 1000.0).round() as Ms;
         Item {
             check_ms: ms(cfg.check_interval),

@@ -370,7 +370,26 @@ pub fn build(mut raw: Vec<RawObject>, settings: &Settings, diags: &mut Diagnosti
     builder.service_escalations(take(ObjType::ServiceEscalation));
     builder.check_references();
     builder.check_loops();
+    share_settings(&mut builder.out);
     builder.out
+}
+
+/// Hosts and services whose settings are the same, as those made from
+/// one template mostly are, hold the same settings from here on: a large
+/// configuration keeps a handful of them, not one for every object.
+fn share_settings(objects: &mut Objects) {
+    let mut seen: HashMap<String, Arc<Checkable>> = HashMap::new();
+    let mut share = |check: &mut Arc<Checkable>| {
+        // What two settings print as is the same when they are.
+        let shared = seen.entry(format!("{check:?}")).or_insert_with(|| check.clone());
+        *check = shared.clone();
+    };
+    for host in objects.hosts.values_mut() {
+        share(&mut host.check);
+    }
+    for service in objects.services.values_mut() {
+        share(&mut service.check);
+    }
 }
 
 /// Typed access to resolved settings. The values were checked when the
@@ -1038,7 +1057,7 @@ impl Builder<'_> {
                 alias: bag.literal("alias").unwrap_or_else(|| name.clone()),
                 address: bag.literal("address").unwrap_or_else(|| name.clone()),
                 parents: bag.list("parents"),
-                check: self.checkable(&bag, true, &what),
+                check: Arc::new(self.checkable(&bag, true, &what)),
                 vrml_image: bag.owned("vrml_image"),
                 statusmap_image: bag.owned("statusmap_image"),
                 coords_2d: bag
@@ -1308,7 +1327,7 @@ impl Builder<'_> {
                 description,
                 parents: Vec::new(),
                 is_volatile: bag.flag("is_volatile", false),
-                check: self.checkable(&bag, false, &what),
+                check: Arc::new(self.checkable(&bag, false, &what)),
             };
             if service.check.check_command.is_none() {
                 self.error(&bag.loc, format!("{what} has no check_command"));
@@ -1470,7 +1489,7 @@ impl Builder<'_> {
                 let Some(host) = self.out.hosts.get_mut(&name) else {
                     continue;
                 };
-                fill_extinfo(&mut host.check, &bag);
+                fill_extinfo(Arc::make_mut(&mut host.check), &bag);
                 fill(&mut host.vrml_image, bag.owned("vrml_image"));
                 fill(&mut host.statusmap_image, bag.owned("statusmap_image"));
                 fill(
@@ -1500,7 +1519,7 @@ impl Builder<'_> {
                     .kept()
                 {
                     if let Some(service) = self.out.services.get_mut(&(host.clone(), description)) {
-                        fill_extinfo(&mut service.check, &bag);
+                        fill_extinfo(Arc::make_mut(&mut service.check), &bag);
                     }
                 }
             }

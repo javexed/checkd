@@ -8,6 +8,7 @@
 //! Restore before [`Engine::start`]: the start plans the checks, and
 //! knows then which objects were checked before.
 
+use std::sync::Arc;
 use checkd_config::model::Checkable;
 
 use crate::engine::{Engine, Ms, Obj};
@@ -218,10 +219,10 @@ impl Engine {
     /// An object's settings as the configuration gives them.
     fn configured_checkable(&self, obj: Obj) -> Option<&Checkable> {
         match obj {
-            Obj::Host(at) => self.objects.hosts.get(&self.hosts[at].name).map(|h| &h.check),
+            Obj::Host(at) => self.objects.hosts.get(&self.hosts[at].name).map(|h| &*h.check),
             Obj::Service(at) => {
                 let entry = &self.services[at];
-                self.objects.services.get(&(entry.host_name.clone(), entry.description.clone())).map(|s| &s.check)
+                self.objects.services.get(&(entry.host_name.clone(), entry.description.clone())).map(|s| &*s.check)
             }
         }
     }
@@ -416,16 +417,22 @@ impl Engine {
                 comment_id: ack.comment_id,
             });
             item.notice.downtime_depth = 0;
-            if saved.config_notifications_enabled == config_notifications {
-                item.cfg.notifications_enabled = saved.notifications_enabled;
+            // Only what differs is written: an object whose settings are
+            // the configuration's goes on sharing them.
+            if saved.config_notifications_enabled == config_notifications
+                && item.cfg.notifications_enabled != saved.notifications_enabled
+            {
+                item.cfg_mut().notifications_enabled = saved.notifications_enabled;
             }
-            if saved.config_active_checks_enabled == config_checks {
-                item.cfg.active_checks_enabled = saved.active_checks_enabled;
+            if saved.config_active_checks_enabled == config_checks
+                && item.cfg.active_checks_enabled != saved.active_checks_enabled
+            {
+                item.cfg_mut().active_checks_enabled = saved.active_checks_enabled;
             }
             let configured = self.configured_checkable(obj).map(|cfg| object_settings(cfg, 0)).unwrap_or_default();
             let item = self.item_mut(obj);
             for setting in still_configured(&saved.settings, &configured) {
-                put_setting(&mut item.cfg, &mut item.modified, &setting.name, &setting.value);
+                put_setting(Arc::make_mut(&mut item.cfg), &mut item.modified, &setting.name, &setting.value);
             }
         }
         self.comments.clear();

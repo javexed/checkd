@@ -88,8 +88,8 @@ warns when a config sets one of them:
 [crates/checkd-core/README.md](crates/checkd-core/README.md). It has not
 been run on a config from a real installation. Under a generated load it
 keeps up with about 15,000 checks a second where Naemon keeps up with
-about 7,500, and takes about 5 KB of memory a service against Naemon's
-2.5 KB: [docs/load.md](docs/load.md).
+about 7,500, and takes about 4.3 KB of memory a service against
+Naemon's 2 KB: [docs/load.md](docs/load.md).
 
 ## Try it
 

@@ -340,15 +340,22 @@ impl Engine {
     /// set to what it is already is not marked.
     fn switch(&mut self, obj: Obj, what: Switch, on: bool) {
         let item = self.item_mut(obj);
-        let (value, bit) = match what {
-            Switch::Notifications => (&mut item.cfg.notifications_enabled, MOD_NOTIFICATIONS),
-            Switch::ActiveChecks => (&mut item.cfg.active_checks_enabled, MOD_ACTIVE_CHECKS),
-            Switch::PassiveChecks => (&mut item.cfg.passive_checks_enabled, MOD_PASSIVE_CHECKS),
-            Switch::EventHandler => (&mut item.cfg.event_handler_enabled, MOD_EVENT_HANDLER),
-            Switch::FlapDetection => (&mut item.cfg.flap_detection_enabled, MOD_FLAP_DETECTION),
+        let (is, bit) = match what {
+            Switch::Notifications => (item.cfg.notifications_enabled, MOD_NOTIFICATIONS),
+            Switch::ActiveChecks => (item.cfg.active_checks_enabled, MOD_ACTIVE_CHECKS),
+            Switch::PassiveChecks => (item.cfg.passive_checks_enabled, MOD_PASSIVE_CHECKS),
+            Switch::EventHandler => (item.cfg.event_handler_enabled, MOD_EVENT_HANDLER),
+            Switch::FlapDetection => (item.cfg.flap_detection_enabled, MOD_FLAP_DETECTION),
         };
-        if *value != on {
-            *value = on;
+        if is != on {
+            let cfg = item.cfg_mut();
+            *match what {
+                Switch::Notifications => &mut cfg.notifications_enabled,
+                Switch::ActiveChecks => &mut cfg.active_checks_enabled,
+                Switch::PassiveChecks => &mut cfg.passive_checks_enabled,
+                Switch::EventHandler => &mut cfg.event_handler_enabled,
+                Switch::FlapDetection => &mut cfg.flap_detection_enabled,
+            } = on;
             item.modified |= bit;
         }
         if matches!(what, Switch::ActiveChecks) && on && self.item(obj).next_check.is_none() {
@@ -506,7 +513,7 @@ impl Engine {
             "CHANGE_NORMAL_SVC_CHECK_INTERVAL" | "CHANGE_NORMAL_HOST_CHECK_INTERVAL" => {
                 let obj = v[0].obj();
                 let item = self.item_mut(obj);
-                item.cfg.check_interval = v[1].int() as f64;
+                item.cfg_mut().check_interval = v[1].int() as f64;
                 item.modified |= MOD_NORMAL_INTERVAL;
                 self.reset_intervals(obj);
                 true
@@ -514,14 +521,14 @@ impl Engine {
             "CHANGE_RETRY_SVC_CHECK_INTERVAL" | "CHANGE_RETRY_HOST_CHECK_INTERVAL" => {
                 let obj = v[0].obj();
                 let item = self.item_mut(obj);
-                item.cfg.retry_interval = v[1].int() as f64;
+                item.cfg_mut().retry_interval = v[1].int() as f64;
                 item.modified |= MOD_RETRY_INTERVAL;
                 self.reset_intervals(obj);
                 true
             }
             "CHANGE_MAX_SVC_CHECK_ATTEMPTS" | "CHANGE_MAX_HOST_CHECK_ATTEMPTS" => {
                 let item = self.item_mut(v[0].obj());
-                item.cfg.max_check_attempts = v[1].int().max(1) as u32;
+                item.cfg_mut().max_check_attempts = v[1].int().max(1) as u32;
                 item.modified |= MOD_MAX_ATTEMPTS;
                 true
             }
@@ -530,8 +537,8 @@ impl Engine {
                 // counts as a change all the same.
                 let item = self.item_mut(v[0].obj());
                 let wanted = v[1].text().trim_start_matches('_').to_string();
-                if let Some(var) = item.cfg.custom.iter_mut().find(|(n, _)| n.eq_ignore_ascii_case(&wanted)) {
-                    var.1 = v[2].text().to_string();
+                if let Some(at) = item.cfg.custom.iter().position(|(n, _)| n.eq_ignore_ascii_case(&wanted)) {
+                    item.cfg_mut().custom[at].1 = v[2].text().to_string();
                 }
                 item.modified |= MOD_CUSTOM_VARIABLE;
                 true

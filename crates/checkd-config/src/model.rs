@@ -2,6 +2,7 @@
 //! expanded and defaults filled in.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
 use crate::timeperiod::{Exception, TimeRange};
 use crate::values::Opts;
@@ -108,7 +109,9 @@ pub struct Host {
     pub alias: String,
     pub address: String,
     pub parents: Vec<String>,
-    pub check: Checkable,
+    /// Shared: objects with the same settings hold the same one, and so
+    /// does whoever runs the checks, until it changes one.
+    pub check: Arc<Checkable>,
     pub vrml_image: Option<String>,
     pub statusmap_image: Option<String>,
     pub coords_2d: Option<(i32, i32)>,
@@ -124,7 +127,9 @@ pub struct Service {
     pub description: String,
     pub parents: Vec<ServiceId>,
     pub is_volatile: bool,
-    pub check: Checkable,
+    /// Shared: objects with the same settings hold the same one, and so
+    /// does whoever runs the checks, until it changes one.
+    pub check: Arc<Checkable>,
 }
 
 /// `Id` is a host name or a [`ServiceId`].
