@@ -71,6 +71,17 @@ beside a production engine and reports where states differ. See
 [livestatus/README.md](livestatus/README.md), which lists every
 difference and why.
 
+A request can wait until something happens: with `WaitTrigger` and a
+`WaitTimeout` in milliseconds (five minutes at most) it is answered when
+the trigger fires or the time is up, so that a client learns of a change
+the moment it happens without asking again and again. `check` fires when
+a result comes in, `log` on a log line, `command` on an external
+command, `all` on any of these; `state`, `downtime` and `comment` fire
+on a log line or a command, which is sometimes when nothing of theirs
+changed and never too late; `program` fires on nothing. A request with a
+`WaitCondition` is answered at once: conditions are not worked out. At
+most 64 requests wait at a time; one more is answered at once.
+
 A number of
 settings that belong to checks are not acted on yet, and `checkd run`
 warns when a config sets one of them:

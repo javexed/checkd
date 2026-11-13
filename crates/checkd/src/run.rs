@@ -501,6 +501,10 @@ async fn serve(
     // The process group of every command that is running.
     let running = Running::default();
     let mut effects = Vec::new();
+    // Livestatus requests that wait for something to happen, and what has
+    // happened since they were last looked at.
+    let mut parked: Vec<Parked> = Vec::new();
+    let mut happened = 0u8;
     engine.start(&mut effects);
     // The engine has now planned every first check. The file moves them.
     if let Some(path) = &args.first_checks {
@@ -558,6 +562,7 @@ async fn serve(
         for effect in batch {
             match effect {
                 Effect::Log(line) => {
+                    happened |= LOGGED;
                     log.line(&line);
                     let second = now().div_euclid(1000);
                     if livestatus.is_some() {
@@ -579,6 +584,19 @@ async fn serve(
                 }
             }
         }
+        // Those that waited for what just happened are answered, with the
+        // state as it is after it; and those whose time is up.
+        if !parked.is_empty() {
+            let at = now();
+            let (due, stay): (Vec<Parked>, Vec<Parked>) =
+                parked.into_iter().partition(|p| p.until <= at || fires(p.trigger, happened));
+            parked = stay;
+            for p in due {
+                let source = checkd_livestatus::Source { engine, now: at, log: &history, program: &program, window: None };
+                let _ = p.ask.reply.send(checkd_livestatus::handle(&source, &p.ask.text));
+            }
+        }
+        happened = 0;
         // What happened is on record before anything it asks for is run.
         // A store that fails is tried again on the timer only, so that it
         // does not hold up every event.
@@ -634,7 +652,9 @@ async fn serve(
         };
         let flush = telemetry.next_flush();
         let save_in = Duration::from_millis((next_save - now()).max(0) as u64);
+        let park_in = parked.iter().map(|p| p.until).min().map(|at| Duration::from_millis((at - now()).max(0) as u64));
         tokio::select! {
+            _ = tokio::time::sleep(park_in.unwrap_or_default()), if park_in.is_some() => {}
             _ = tokio::time::sleep(save_in), if store.is_some() => {
                 if let Some(store) = store.as_deref_mut() {
                     lost |= save(engine, store, &mut unsaved, log, &mut store_failing, args.journal.as_deref());
@@ -643,6 +663,7 @@ async fn serve(
             }
             _ = tokio::time::sleep(wait) => engine.advance(now(), &mut effects),
             Some((id, result)) = results.recv() => {
+                happened |= RESULT;
                 let read = otel::nanos();
                 let outcome = result.outcome.clone();
                 engine.job_done(now(), id, result, &mut effects);
@@ -650,6 +671,7 @@ async fn serve(
             }
             Some(note) = notes.recv() => log.line(&note),
             Some(line) = commands.recv() => {
+                happened |= COMMANDED;
                 counts.commands += 1;
                 if restart_asked(&line) {
                     reload_asked = Some("RESTART_PROGRAM");
@@ -664,6 +686,7 @@ async fn serve(
                 let pool_stats = Vec::new();
                 let reply = answer_http(engine, &ask, &history, &program, &counts, running.count(), store_failing, &pool_stats);
                 if ask.method == "POST" && ask.path == "/api/v1/command" && ask.authorized {
+                    happened |= COMMANDED;
                     counts.commands += 1;
                     let line = format!("[{}] {}", now().div_euclid(1000), ask.body.trim());
                     if restart_asked(&line) {
@@ -676,7 +699,9 @@ async fn serve(
             }
             _ = reaper.tick(), if spool.is_some() => {
                 if let Some(dir) = &spool {
-                    read_spool(engine, dir, &mut effects);
+                    if read_spool(engine, dir, &mut effects) > 0 {
+                        happened |= RESULT;
+                    }
                 }
             }
             _ = shadow_tick.tick(), if args.shadow.is_some() => {
@@ -694,6 +719,13 @@ async fn serve(
             Some(ask) = async { livestatus.as_mut()?.recv().await }, if livestatus.is_some() => {
                 program.requests += 1;
                 program.connections += 1;
+                // One that waits is kept until what it waits for happens.
+                // Beyond a number of them, a request is answered at once.
+                if let Some(wait) = checkd_livestatus::wait_of(&ask.text).filter(|_| parked.len() < PARKED) {
+                    let until = now() + wait.timeout_ms.min(LONGEST_WAIT) as Ms;
+                    parked.push(Parked { ask, trigger: wait.trigger, until });
+                    continue;
+                }
                 let response = {
                     let source = checkd_livestatus::Source {
                         engine,
@@ -705,6 +737,7 @@ async fn serve(
                     checkd_livestatus::handle(&source, &ask.text)
                 };
                 if let Some(command) = &response.command {
+                    happened |= COMMANDED;
                     counts.commands += 1;
                     if restart_asked(command) {
                         reload_asked = Some("RESTART_PROGRAM");
@@ -779,6 +812,11 @@ async fn serve(
         }
     };
 
+    // Nobody is left waiting: what waits is answered with what is known.
+    for p in parked.drain(..) {
+        let source = checkd_livestatus::Source { engine, now: now(), log: &history, program: &program, window: None };
+        let _ = p.ask.reply.send(checkd_livestatus::handle(&source, &p.ask.text));
+    }
     let reloading = why == RELOAD;
     if !reloading {
         log.line(&format!("{why}, shutting down..."));
@@ -1021,20 +1059,74 @@ impl Perfdata {
 /// Takes the files NRDP and the like left in the check result directory:
 /// each with an `.ok` file beside it once it is written whole. Both are
 /// removed when the result is taken.
-fn read_spool(engine: &mut Engine, dir: &Path, effects: &mut Vec<Effect>) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
+fn read_spool(engine: &mut Engine, dir: &Path, effects: &mut Vec<Effect>) -> usize {
+    let Ok(entries) = std::fs::read_dir(dir) else { return 0 };
     let mut names: Vec<PathBuf> = entries
         .flatten()
         .map(|e| e.path())
         .filter(|p| p.extension().is_none() && p.with_extension("ok").exists())
         .collect();
     names.sort();
+    let taken = names.len();
     for path in names {
         if let Ok(text) = std::fs::read_to_string(&path) {
             engine.check_result_file(&text, now(), effects);
         }
         let _ = std::fs::remove_file(path.with_extension("ok"));
         let _ = std::fs::remove_file(&path);
+    }
+    taken
+}
+
+/// A Livestatus request that waits (`WaitTrigger`), and until when.
+struct Parked {
+    ask: crate::livestatus::Ask,
+    trigger: checkd_livestatus::request::Trigger,
+    until: Ms,
+}
+
+/// How many requests may wait at a time, and the longest one may.
+const PARKED: usize = 64;
+const LONGEST_WAIT: u64 = 300_000;
+
+/// What can happen between two looks at the waiting requests.
+const RESULT: u8 = 1;
+const LOGGED: u8 = 2;
+const COMMANDED: u8 = 4;
+
+/// Whether what happened is what a trigger waits for.
+///
+/// States, downtimes and comments change by a result that is logged or
+/// by a command, so those triggers fire on either: sometimes when nothing
+/// of theirs changed, never too late. A result that changes nothing fires
+/// `check` and `all` only; `check` fires on a command too, which may bring
+/// a passive result. `program` fires on nothing: the request is answered
+/// when its time is up, or when checkd stops or reloads.
+fn fires(trigger: checkd_livestatus::request::Trigger, happened: u8) -> bool {
+    use checkd_livestatus::request::Trigger;
+    let on = match trigger {
+        Trigger::All => RESULT | LOGGED | COMMANDED,
+        Trigger::Check => RESULT | COMMANDED,
+        Trigger::Log => LOGGED,
+        Trigger::Command => COMMANDED,
+        Trigger::State | Trigger::Downtime | Trigger::Comment => LOGGED | COMMANDED,
+        Trigger::Program => 0,
+    };
+    happened & on != 0
+}
+
+#[cfg(test)]
+mod wait_tests {
+    use super::*;
+    use checkd_livestatus::request::Trigger;
+
+    #[test]
+    fn a_trigger_fires_on_what_can_change_what_it_is_about() {
+        assert!(fires(Trigger::Check, RESULT) && fires(Trigger::Check, COMMANDED) && !fires(Trigger::Check, LOGGED));
+        assert!(fires(Trigger::State, LOGGED) && fires(Trigger::State, COMMANDED) && !fires(Trigger::State, RESULT));
+        assert!(fires(Trigger::Log, LOGGED) && !fires(Trigger::Log, RESULT | COMMANDED));
+        assert!(fires(Trigger::All, RESULT) && !fires(Trigger::All, 0));
+        assert!(!fires(Trigger::Program, RESULT | LOGGED | COMMANDED));
     }
 }
 

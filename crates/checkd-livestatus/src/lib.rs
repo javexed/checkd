@@ -35,6 +35,19 @@ pub struct Response {
     pub command: Option<String>,
 }
 
+/// What a request waits for before it is to be answered, if anything.
+/// The one who holds the engine does the waiting, and then calls `handle`.
+pub fn wait_of(text: &str) -> Option<request::Wait> {
+    // Most requests wait for nothing, and are read once only.
+    if !text.contains("WaitTrigger") {
+        return None;
+    }
+    match request::parse(text) {
+        Ok(Request::Get(query)) => query.wait,
+        _ => None,
+    }
+}
+
 /// Answers one request.
 pub fn handle(source: &Source, text: &str) -> Response {
     match request::parse(text) {

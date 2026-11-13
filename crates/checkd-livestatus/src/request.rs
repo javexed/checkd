@@ -90,6 +90,45 @@ pub struct Query {
     /// CSV: between rows, between columns, between list items, between
     /// the parts of a list item.
     pub separators: [char; 4],
+    /// Answered only once something happens, or the time is up.
+    pub wait: Option<Wait>,
+}
+
+/// What a request waits for before it is answered: `WaitTrigger` with a
+/// `WaitTimeout`. A request with a `WaitCondition` does not wait: the
+/// conditions are not worked out here, and it is answered at once.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Wait {
+    pub trigger: Trigger,
+    pub timeout_ms: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Trigger {
+    All,
+    Check,
+    State,
+    Log,
+    Downtime,
+    Comment,
+    Command,
+    Program,
+}
+
+impl Trigger {
+    fn parse(text: &str) -> Option<Trigger> {
+        Some(match text {
+            "all" => Trigger::All,
+            "check" => Trigger::Check,
+            "state" => Trigger::State,
+            "log" => Trigger::Log,
+            "downtime" => Trigger::Downtime,
+            "comment" => Trigger::Comment,
+            "command" => Trigger::Command,
+            "program" => Trigger::Program,
+            _ => return None,
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -142,7 +181,11 @@ pub fn parse(text: &str) -> Result<Request, Refused> {
         column_headers: None,
         auth_user: None,
         separators: ['\n', ';', ',', '|'],
+        wait: None,
     };
+    let mut trigger: Option<Trigger> = None;
+    let mut timeout_ms = 0u64;
+    let mut conditional = false;
     let mut filters: Vec<Filter> = Vec::new();
     let mut stats: Vec<Stat> = Vec::new();
     let mut problem: Option<String> = None;
@@ -245,9 +288,13 @@ pub fn parse(text: &str) -> Result<Request, Refused> {
                         query.separators[place] = char::from_u32(*n).unwrap_or(';');
                     }
                 }
+                "WaitTrigger" => trigger = Trigger::parse(value.trim()),
+                "WaitTimeout" => timeout_ms = value.trim().parse().unwrap_or(0),
+                "WaitCondition" | "WaitConditionAnd" | "WaitConditionOr" | "WaitConditionNegate" => {
+                    conditional = true
+                }
                 // Accepted, and not acted on.
-                "Localtime" | "WaitObject" | "WaitCondition" | "WaitConditionAnd" | "WaitConditionOr"
-                | "WaitConditionNegate" | "WaitTrigger" | "WaitTimeout" => {}
+                "Localtime" | "WaitObject" => {}
                 _ => return Err(format!("Undefined request header '{line}'")),
             }
             Ok(())
@@ -265,6 +312,9 @@ pub fn parse(text: &str) -> Result<Request, Refused> {
         _ => Some(Filter::And(filters)),
     };
     query.stats = stats;
+    if let (Some(trigger), false, true) = (trigger, conditional, timeout_ms > 0) {
+        query.wait = Some(Wait { trigger, timeout_ms });
+    }
     if let Some(message) = problem {
         return Err(Refused {
             code: 400,
@@ -322,6 +372,25 @@ mod tests {
         assert_eq!(
             query.filter,
             Some(Filter::Cmp { column: "message".into(), op: Op::MatchIcase, value: "a b  c".into() })
+        );
+    }
+
+    #[test]
+    fn a_wait_needs_a_trigger_and_a_time_and_no_condition() {
+        let wait = |text: &str| match parse(text).unwrap() {
+            Request::Get(query) => query.wait,
+            Request::Command(_) => None,
+        };
+        assert_eq!(
+            wait("GET status\nWaitTrigger: check\nWaitTimeout: 2000\n"),
+            Some(Wait { trigger: Trigger::Check, timeout_ms: 2000 })
+        );
+        assert_eq!(wait("GET status\nWaitTrigger: check\n"), None);
+        assert_eq!(wait("GET status\nWaitTimeout: 2000\n"), None);
+        assert_eq!(wait("GET status\nWaitTrigger: sometimes\nWaitTimeout: 2000\n"), None);
+        assert_eq!(
+            wait("GET hosts\nWaitObject: a\nWaitCondition: state = 0\nWaitTrigger: check\nWaitTimeout: 2000\n"),
+            None
         );
     }
 
