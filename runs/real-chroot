@@ -87,13 +87,17 @@ printf '%s\n' "${names[@]}" | xargs -P "$jobs" -I{} bash -c 'one {}'
 compare() {
     CHECKD_REAL=$work cargo test --quiet --locked -p checkd-core --test scenarios real -- --nocapture
 }
-# A run is timed to the millisecond, and several at a time on a busy
-# machine can put one a few milliseconds off. What differs is run again,
-# alone, up to three times, before it counts as a difference.
+# In some scenarios two results come in a millisecond or two apart, and
+# which the engine reads first decides what follows: for the reference
+# as for checkd, so a run can differ from the recording with nothing
+# wrong (about one run in five of retries-not-logged, one in two of
+# host-flap-record-steady). The play on the simulated clock, in the unit
+# tests, holds those to the reference's order. Here, what differs is run
+# again, alone, up to eight times: a real difference differs every time.
 tries=0
 until compare > "$work/.compared" 2>&1; do
     tries=$((tries + 1))
-    [ "$tries" -le 3 ] || { cat "$work/.compared"; rm -rf "$base"; exit 1; }
+    [ "$tries" -le 8 ] || { cat "$work/.compared"; rm -rf "$base"; exit 1; }
     again=$(grep -oE '^[a-z0-9-]+: ([0-9]+ differences|no run of checkd)' "$work/.compared" | cut -d: -f1 || true)
     for name in $again; do
         echo "$name differed; again, alone ($tries)"

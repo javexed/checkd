@@ -16,6 +16,9 @@ directory holds those runs and what compares them.
 - `real`, `real-entry.sh`: runs checkd itself on the scenarios.
   `real-chroot` does the same where there is no Docker, in a Debian 13
   container as root: it is what CI runs (the `engine.yml` workflow).
+  A scenario that differs there is run again, alone, up to eight times:
+  where two results fall a millisecond apart, a run can differ from the
+  recording with nothing wrong.
 - `otel`: shows that an OpenTelemetry collector takes what checkd sends.
 - `store/`: kills checkd and starts it again, on SQLite and on
   PostgreSQL, and looks at what it kept.
