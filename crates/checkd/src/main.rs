@@ -6,6 +6,7 @@ mod otel;
 #[cfg(not(feature = "otel"))]
 #[path = "otel_off.rs"]
 mod otel;
+mod builtin;
 #[cfg(feature = "postgres")]
 mod failover;
 mod http;
@@ -33,6 +34,7 @@ const USAGE: &str = "\
 usage: checkd verify [options] <main-config-file>
        checkd run [options] <main-config-file>
        checkd state <store>
+       checkd check checkd:<check> [options]
        checkd worker [options]
        checkd make-certs <dir> <engine host name>...
 
@@ -46,6 +48,10 @@ commands from the command file, and keeps its state in a store, until it
 gets SIGTERM or SIGINT.
 
 state prints what a store holds: sqlite:<file> or postgres:<connection>.
+
+check makes one of checkd's own checks once and says what it found, as
+the engine would run it for a command line that begins with checkd:
+(docs/builtin.md). For example: checkd check checkd:tcp -H localhost -p 22
 
 worker runs the jobs of an engine started with --workers, on another
 machine; checkd worker --help says how. make-certs writes a certificate
@@ -147,6 +153,8 @@ struct Args {
 }
 
 enum Asked {
+    /// One of checkd's own checks, made once.
+    Check(String),
     State(String),
     Verify(Args),
     Run(run::RunArgs),
@@ -271,6 +279,13 @@ fn parse_args(mut args: impl Iterator<Item = String>) -> Result<Asked, String> {
     match args.next().as_deref() {
         Some("verify") => {}
         Some("run") => return parse_run(args).map(Asked::Run),
+        Some("check") => {
+            let words: Vec<String> = args.collect();
+            return match words.first() {
+                Some(first) if builtin::is_builtin(first) => Ok(Asked::Check(words.join(" "))),
+                _ => Err(format!("check takes one of checkd's own checks, such as: checkd check checkd:tcp -H localhost -p 22\n\n{USAGE}")),
+            };
+        }
         Some("state") => {
             return match (args.next(), args.next()) {
                 (Some(spec), None) => Ok(Asked::State(spec)),
@@ -336,6 +351,24 @@ fn main() -> ExitCode {
         Ok(Asked::Verify(args)) => args,
         Ok(Asked::Run(args)) => return run::run(args),
         Ok(Asked::State(spec)) => return run::show_state(&spec),
+        Ok(Asked::Check(line)) => {
+            let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
+                Ok(runtime) => runtime,
+                Err(err) => {
+                    eprintln!("checkd: {err}");
+                    return ExitCode::from(3);
+                }
+            };
+            let result = runtime.block_on(builtin::run(&line, 60_000));
+            print!("{}", result.stdout);
+            return match result.outcome {
+                checkd_core::engine::Outcome::Exited(code) => ExitCode::from(code.clamp(0, 3) as u8),
+                _ => {
+                    println!("no answer within 60 seconds");
+                    ExitCode::from(3)
+                }
+            };
+        }
         #[cfg(feature = "workers")]
         Ok(Asked::Worker(args)) => return worker::run(args),
         #[cfg(feature = "workers")]

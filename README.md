@@ -82,6 +82,10 @@ changed and never too late; `program` fires on nothing. A request with a
 `WaitCondition` is answered at once: conditions are not worked out. At
 most 64 requests wait at a time; one more is answered at once.
 
+A command line that begins with `checkd:` is a check checkd makes
+itself, without a plugin: ping, a TCP port, a web page, a certificate
+([docs/builtin.md](docs/builtin.md)).
+
 A number of
 settings that belong to checks are not acted on yet, and `checkd run`
 warns when a config sets one of them:

@@ -61,6 +61,14 @@ impl Running {
 /// the process is started on a thread of the runtime's pool, many at once,
 /// and the engine's thread goes on at once.
 pub fn start(job: Job, done: mpsc::UnboundedSender<(u64, JobResult)>, running: &Running) {
+    // One of checkd's own checks starts no process.
+    if crate::builtin::is_builtin(&job.line) {
+        tokio::spawn(async move {
+            let result = crate::builtin::run(&job.line, job.timeout).await;
+            let _ = done.send((job.id, result));
+        });
+        return;
+    }
     let running = running.clone();
     tokio::spawn(async move {
         let line = job.line.clone();
