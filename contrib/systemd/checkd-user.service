@@ -1,0 +1,26 @@
+# checkd as a systemd user service, without root: config in ~/.config/checkd,
+# state in ~/.local/state/checkd, Livestatus at $XDG_RUNTIME_DIR/checkd/live.
+#
+#   systemctl --user reload checkd     read the config again
+#   journalctl --user -u checkd        checkd's own messages
+[Unit]
+Description=checkd monitoring engine (user service)
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=%h/.local/bin/checkd verify --quiet %h/.config/checkd/naemon.cfg
+ExecStart=%h/.local/bin/checkd run --livestatus %t/checkd/live %h/.config/checkd/naemon.cfg
+ExecReload=%h/.local/bin/checkd verify --quiet %h/.config/checkd/naemon.cfg
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=2s
+KillMode=mixed
+TimeoutStopSec=30s
+StateDirectory=checkd
+RuntimeDirectory=checkd
+RuntimeDirectoryPreserve=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target

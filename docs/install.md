@@ -1,7 +1,8 @@
 # Installing checkd
 
-Not yet tried on a machine of its own: these steps follow from the tests,
-and the unit files pass `systemd-analyze verify`.
+The system service below follows from the tests; the user service at the
+end runs on a desktop machine. Both unit files pass
+`systemd-analyze verify`.
 
 ## Build
 
@@ -46,3 +47,24 @@ the engine's address, the CA certificate and the worker's token
 Each node runs the unit with `--failover <node> --peer <other>:6558
 --store postgres:...` added to `ExecStart`; the unit restarts checkd
 when it ends after losing the lease ([failover](failover.md)).
+
+## Without root: a user service
+
+For one machine watched from a desktop account. Binary in
+`~/.local/bin`, config in `~/.config/checkd`, state in
+`~/.local/state/checkd` (`StateDirectory=` of a user unit):
+
+    install -m 755 target/release/checkd ~/.local/bin/checkd
+    install -m 644 contrib/systemd/checkd-user.service \
+        ~/.config/systemd/user/checkd.service
+    systemctl --user daemon-reload
+    systemctl --user enable --now checkd
+    loginctl enable-linger "$USER"    # keep it running when logged out
+
+The unit gives the Livestatus socket on the command line,
+`$XDG_RUNTIME_DIR/checkd/live`; the config's `command_file` and
+`lock_file` go under `$XDG_RUNTIME_DIR/checkd` too. Plugins run as the
+user, so a check that needs root (`check_icmp` without its capability,
+say) does not work here. Notification commands that reach the desktop
+need the session bus, for example
+`/usr/bin/env DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus /usr/bin/notify-send ...`.
