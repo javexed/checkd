@@ -73,6 +73,6 @@ What to know:
   are not sent; the log says how many.
 - The engine counts each held notification as sent when the digest goes
   out, whether or not the digest command succeeds.
-- Notifications run by remote workers are not held: digests are for
-  commands the engine runs itself.
+- A digest's command runs on the engine's machine, also where the
+  notifications themselves would have gone to a remote worker.
 - Naemon takes the two custom variables and does nothing with them.
