@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use checkd_core::engine::{Engine, Obj};
 
-fn engine() -> Engine {
+fn engine(test: &str) -> Engine {
     let mut objects = String::from(
         "define command {\n command_name ok\n command_line /bin/true\n}\n\
          define timeperiod {\n timeperiod_name always\n alias always\n monday 00:00-24:00\n}\n\
@@ -20,7 +20,8 @@ fn engine() -> Engine {
             if name == "c" { " notes not as the others\n" } else { "" }
         ));
     }
-    let dir = std::env::temp_dir().join(format!("checkd-shared-{}", std::process::id()));
+    // The tests run at the same time: a directory each.
+    let dir = std::env::temp_dir().join(format!("checkd-shared-{}-{test}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("objects.cfg"), objects).unwrap();
     std::fs::write(dir.join("naemon.cfg"), "cfg_file=objects.cfg\ninterval_length=60\n").unwrap();
@@ -31,7 +32,7 @@ fn engine() -> Engine {
 
 #[test]
 fn the_same_settings_are_held_once() {
-    let engine = engine();
+    let engine = engine("once");
     let (a, b, c) = (Obj::Service(0), Obj::Service(1), Obj::Service(2));
     assert!(Arc::ptr_eq(&engine.item(a).cfg, &engine.item(b).cfg));
     assert!(!Arc::ptr_eq(&engine.item(a).cfg, &engine.item(c).cfg));
@@ -42,7 +43,7 @@ fn the_same_settings_are_held_once() {
 
 #[test]
 fn a_command_changes_the_settings_of_its_object_only() {
-    let mut engine = engine();
+    let mut engine = engine("command");
     let (a, b) = (Obj::Service(0), Obj::Service(1));
     let mut effects = Vec::new();
     for line in ["DISABLE_SVC_NOTIFICATIONS;web;a", "CHANGE_MAX_SVC_CHECK_ATTEMPTS;web;a;7"] {
