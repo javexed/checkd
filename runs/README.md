@@ -14,6 +14,8 @@ directory holds those runs and what compares them.
   performance data files.
 - `lib/plugins/`: the scripted check plugins the configs call.
 - `real`, `real-entry.sh`: runs checkd itself on the scenarios.
+  `real-chroot` does the same where there is no Docker, in a Debian 13
+  container as root: it is what CI runs (the `engine.yml` workflow).
 - `otel`: shows that an OpenTelemetry collector takes what checkd sends.
 - `store/`: kills checkd and starts it again, on SQLite and on
   PostgreSQL, and looks at what it kept.
@@ -28,6 +30,9 @@ directory holds those runs and what compares them.
   `../docs/workers.md`.
 - `load/`: Naemon and checkd on the same generated config, checks a
   second, latency and memory. See `../docs/load.md`.
+- `install/`: the install notes followed in a container that runs
+  systemd: start, reload, a config that cannot be used, stop and start,
+  and a kill. See `../docs/install.md`.
 - `timeperiods/`: timeperiods against the reference, see
   [timeperiods/README.md](timeperiods/README.md).
 

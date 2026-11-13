@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# What runs/real does, where there is no Docker: in a container that is
+# itself Debian 13, as the oracle image is (the CI job's). Each scenario
+# runs in a directory of its own made the root with chroot, so that it
+# sees the paths the reference saw, and several run at a time.
+#
+#   runs/real-chroot [<scenario>...]
+#
+# Needs root, for chroot. The runs are made as user 1000. In place of the
+# reference's unixcat, which only the oracle image has, the Livestatus
+# queries are put with crates/checkd/examples/unixcat.rs. What each run
+# wrote stays in runs/real-work/<scenario>.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(dirname "$here")
+work=$here/real-work
+jobs=${JOBS:-8}
+[ "$(id -u)" = 0 ] || { echo "runs/real-chroot: needs root; elsewhere use runs/real" >&2; exit 2; }
+
+cd "$root"
+cargo build --quiet --locked -p checkd --example unixcat
+cargo build --quiet --locked -p checkd
+target=${CARGO_TARGET_DIR:-$root/target}/debug
+if [ $# -gt 0 ]; then
+    names=("$@")
+    SCENARIO=$(IFS=,; echo "$*")
+    export SCENARIO
+else
+    names=()
+    for dir in "$here"/scenarios/*/; do
+        names+=("$(basename "$dir")")
+    done
+fi
+
+rm -rf "$work"
+mkdir -p "$work"
+CHECKD_REAL_PLAN=$work cargo test --quiet --locked -p checkd-core --test scenarios plan >/dev/null
+
+# What a run needs of a system: the shell, the usual tools, and the
+# libraries they and checkd are linked to. Made once; each scenario gets
+# links to it.
+base=$work/.base
+mkdir -p "$base"/usr/bin "$base"/usr/lib "$base"/usr/lib64 "$base"/dev
+for link in bin lib lib64 sbin; do ln -s "usr/${link/sbin/bin}" "$base/$link"; done
+put() {
+    cp -L "$1" "$base/usr/bin/$(basename "${2:-$1}")"
+    # A program linked to nothing has no libraries to bring.
+    for lib in $(ldd "$1" 2>/dev/null | grep -o '/[^ ]*' || true); do
+        [ -e "$base$lib" ] || cp -L --parents "$lib" "$base"
+    done
+}
+tools=$(dpkg -L coreutils dash grep sed mawk findutils | grep -E '^/(usr/)?s?bin/' | sort -u)
+for tool in $tools; do
+    if [ -f "$tool" ]; then put "$tool"; fi
+done
+ln -sf dash "$base/usr/bin/sh"
+ln -sf mawk "$base/usr/bin/awk"
+put "$target/examples/unixcat"
+cp "$target/checkd" "$base/checkd"
+put "$target/checkd" .libs-only && rm "$base/usr/bin/.libs-only"
+mknod -m 666 "$base/dev/null" c 1 3
+cp "$here/real-entry.sh" "$base/real-entry"
+
+one() {
+    name=$1
+    [ -f "$work/$name/seconds" ] || return 0
+    at=$work/$name/root
+    rm -rf "$at" "$work/$name/out"
+    cp -al "$base" "$at"
+    mkdir -p "$at/in" "$at/shared" "$at/plan" "$at/out" "$at/case" "$at/tmp"
+    cp -r "$here/scenarios/$name/." "$at/in/"
+    cp -r "$here/lib/." "$at/shared/"
+    cp "$work/$name"/seconds "$work/$name"/start "$work/$name"/firsts "$at/plan/" 2>/dev/null || true
+    chmod -R a+rX "$at/in" "$at/shared" "$at/plan"
+    chmod 1777 "$at/tmp" "$at/case"
+    chown 1000:1000 "$at/out"
+    env -i PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HOME=/ \
+        chroot --userspec=1000:1000 "$at" /bin/sh /real-entry || true
+    mv "$at/out" "$work/$name/out"
+    rm -rf "$at"
+}
+export -f one
+export here root work base
+printf '%s\n' "${names[@]}" | xargs -P "$jobs" -I{} bash -c 'one {}'
+
+compare() {
+    CHECKD_REAL=$work cargo test --quiet --locked -p checkd-core --test scenarios real -- --nocapture
+}
+# A run is timed to the millisecond, and several at a time on a busy
+# machine can put one a few milliseconds off. What differs is run again,
+# alone, up to three times, before it counts as a difference.
+tries=0
+until compare > "$work/.compared" 2>&1; do
+    tries=$((tries + 1))
+    [ "$tries" -le 3 ] || { cat "$work/.compared"; rm -rf "$base"; exit 1; }
+    again=$(grep -oE '^[a-z0-9-]+: ([0-9]+ differences|no run of checkd)' "$work/.compared" | cut -d: -f1 || true)
+    for name in $again; do
+        echo "$name differed; again, alone ($tries)"
+        one "$name"
+    done
+done
+cat "$work/.compared"
+rm -rf "$base"
+# The Livestatus answers, where a scenario asked for them.
+CHECKD_REAL=$work cargo test --quiet --locked -p checkd-livestatus --test answers answers -- --nocapture
