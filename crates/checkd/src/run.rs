@@ -230,13 +230,19 @@ fn run_once(args: &mut RunArgs, pipe: &mut Option<Pipe>, carried: Option<Box<Sna
         _ => "none".to_string(),
     };
     // A PostgreSQL store has a journal on this machine for when it cannot
-    // be written: beside the retention file unless given. Not in failover,
-    // where only the leader may write and a journal of a node that lost
-    // the lease would be wrong to replay.
+    // be written: beside the retention file unless given, else in the
+    // state directory systemd gives. Not in failover, where only the
+    // leader may write and a journal of a node that lost the lease would
+    // be wrong to replay.
     if !spec.starts_with("postgres:") || args.failover.is_some() {
         args.journal = None;
     } else if args.journal.is_none() {
-        args.journal = retention.as_deref().and_then(Path::parent).map(|dir| dir.join("checkd-journal.sqlite"));
+        args.journal = default_journal(retention.as_deref(), std::env::var_os("STATE_DIRECTORY").as_deref());
+        if args.journal.is_none() {
+            eprintln!(
+                "Warning: no journal for the PostgreSQL store: while it cannot be written, what waits stays in memory and a restart loses it. Give --journal or a state_retention_file"
+            );
+        }
     }
     // With a journal on disk, checkd starts from it even while the
     // database does not answer, and connects when it does.
@@ -1137,6 +1143,40 @@ pub fn show_state(spec: &str) -> ExitCode {
         );
     }
     ExitCode::SUCCESS
+}
+
+/// Where the journal of a PostgreSQL store goes when `--journal` is not
+/// given: beside the retention file, else in the first of systemd's state
+/// directories (`StateDirectory=`), else nowhere.
+fn default_journal(retention: Option<&Path>, state_directory: Option<&std::ffi::OsStr>) -> Option<PathBuf> {
+    const NAME: &str = "checkd-journal.sqlite";
+    if let Some(dir) = retention.and_then(Path::parent) {
+        return Some(dir.join(NAME));
+    }
+    let dirs = state_directory?.to_str()?;
+    let first = dirs.split(':').next().filter(|dir| !dir.is_empty())?;
+    Some(Path::new(first).join(NAME))
+}
+
+#[cfg(test)]
+mod journal_tests {
+    use super::default_journal;
+    use std::ffi::OsStr;
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn the_journal_goes_beside_the_retention_file_first() {
+        let got = default_journal(Some(Path::new("/var/lib/checkd/retention.dat")), Some(OsStr::new("/elsewhere")));
+        assert_eq!(got, Some(PathBuf::from("/var/lib/checkd/checkd-journal.sqlite")));
+    }
+
+    #[test]
+    fn without_a_retention_file_it_goes_in_the_state_directory() {
+        let got = default_journal(None, Some(OsStr::new("/var/lib/checkd:/var/lib/other")));
+        assert_eq!(got, Some(PathBuf::from("/var/lib/checkd/checkd-journal.sqlite")));
+        assert_eq!(default_journal(None, Some(OsStr::new(""))), None);
+        assert_eq!(default_journal(None, None), None);
+    }
 }
 
 /// Puts the saved state back into the engine: from the store, or, when it

@@ -82,7 +82,8 @@ options of run:
   --journal <file>      with a PostgreSQL store, the SQLite file the state
                         is kept in while the store cannot be written;
                         without it, checkd-journal.sqlite beside the
-                        state_retention_file. Not with --failover
+                        state_retention_file, or in systemd's
+                        $STATE_DIRECTORY. Not with --failover
   --livestatus <socket> answer Livestatus queries at this Unix socket;
                         without it, at the socket of a Livestatus
                         broker_module line of the configuration

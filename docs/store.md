@@ -56,7 +56,9 @@ configured.
 
 checkd goes on monitoring, and keeps its state in a journal on its own
 disk: an SQLite file, `checkd-journal.sqlite` beside the configuration's
-`state_retention_file`, or the file given with `--journal`.
+`state_retention_file`, or, without one, in the state directory systemd
+gives (`StateDirectory=` in the unit), or the file given with
+`--journal`. This is on without being asked for.
 
 - While the database does not answer, each batch of events goes to the
   journal, and the database is tried again every five seconds.
@@ -65,8 +67,8 @@ disk: an SQLite file, `checkd-journal.sqlite` beside the configuration's
 - Once the database answers, the state and the log lines the journal
   holds are written to it in one transaction, and the journal is
   removed.
-- Without a `state_retention_file` and without `--journal` there is no
-  journal: what waits stays in memory, up to 100,000 log lines, and a
+- With none of these there is no journal, and checkd says so when it
+  starts: what waits stays in memory, up to 100,000 log lines, and a
   restart in that time loses it.
 - Not with `--failover`: only the node that holds the lease writes, and a
   journal of a node that lost the lease would be wrong to replay. The
