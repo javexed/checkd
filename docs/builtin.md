@@ -43,5 +43,8 @@ what it found and ends with its state, for trying a line out.
 - A name that is not known, a port that is closed and a host that does
   not answer are CRITICAL; a line that cannot be understood is UNKNOWN.
 
+`checkd:aggregate` is one more, of another kind: a service worked out
+from other hosts and services ([aggregate](aggregate.md)).
+
 Not there: SNMP, DNS records, authentication, a client certificate,
 following redirects, a proxy. For those there are plugins.

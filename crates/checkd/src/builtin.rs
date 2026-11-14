@@ -132,7 +132,8 @@ pub async fn run(line: &str, timeout: Ms) -> JobResult {
             "tcp" => tcp(&options).await,
             "http" => http(&options).await,
             "cert" => cert(&options).await,
-            other => Err(format!("checkd has no check '{other}': ping, tcp, http, cert")),
+            "aggregate" => Err("an aggregate is worked out by the engine that has the hosts and services, not here".to_string()),
+            other => Err(format!("checkd has no check '{other}': ping, tcp, http, cert, aggregate")),
         }
     };
     match tokio::time::timeout(Duration::from_millis(timeout.max(0) as u64), work).await {

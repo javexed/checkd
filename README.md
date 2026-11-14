@@ -96,6 +96,9 @@ One command puts every host or service that fits a pattern in a
 downtime, and a timeperiod can bring a downtime round again
 ([docs/downtimes.md](docs/downtimes.md)).
 
+A service can stand for others: OK while enough of its members are
+([docs/aggregate.md](docs/aggregate.md)).
+
 A number of
 settings that belong to checks are not acted on yet, and `checkd run`
 warns when a config sets one of them:

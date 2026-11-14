@@ -6,6 +6,7 @@ mod otel;
 #[cfg(not(feature = "otel"))]
 #[path = "otel_off.rs"]
 mod otel;
+mod aggregate;
 mod builtin;
 mod digest;
 #[cfg(feature = "postgres")]

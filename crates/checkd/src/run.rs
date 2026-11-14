@@ -656,6 +656,11 @@ async fn serve(
             }
         }
         for job in jobs {
+            // An aggregate is worked out here, from what the engine knows.
+            if crate::aggregate::is_aggregate(&job.line) {
+                let _ = done.send((job.id, crate::aggregate::evaluate(engine, &job.line)));
+                continue;
+            }
             let Some(job) = digests.hold(job, now()) else { continue };
             if job.kind == JobKind::Notification {
                 counts.notifications += 1;
