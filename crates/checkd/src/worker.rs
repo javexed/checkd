@@ -104,7 +104,8 @@ fn say(line: &str) {
 
 /// Why a job is not run, when `--restrict-path` is given.
 pub fn refused(line: &str, allowed: &[String]) -> Option<String> {
-    if allowed.is_empty() {
+    // checkd's own checks start no program.
+    if allowed.is_empty() || crate::builtin::is_builtin(line) {
         return None;
     }
     match cmdline::plan(line) {
@@ -387,6 +388,7 @@ mod tests {
         assert!(refused("/usr/lib/nagios/plugins/../../../bin/sh", &allowed).is_some());
         assert!(refused("/usr/lib/nagios/plugins/check_x | tee /tmp/y", &allowed).is_some());
         assert_eq!(refused("anything at all", &[]), None);
+        assert_eq!(refused("checkd:tcp -H x -p 22", &allowed), None);
     }
 
     #[cfg(windows)]
