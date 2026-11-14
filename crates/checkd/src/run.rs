@@ -128,7 +128,7 @@ pub fn run(mut args: RunArgs) -> ExitCode {
 /// Loads the configuration and runs it until it is stopped, or told to
 /// read the configuration again.
 fn run_once(args: &mut RunArgs, pipe: &mut Option<Pipe>, carried: Option<Box<Snapshot>>) -> Ended {
-    let loaded = load(
+    let loaded = checkd_config::load_compact(
         &args.main,
         &Options {
             path_map: args.path_map.clone(),

@@ -35,7 +35,7 @@ impl fmt::Display for Diagnostic {
 
 /// Everything found so far. Loading goes on after an error where it can, so
 /// that one run reports as many faults as possible.
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct Diagnostics {
     pub errors: Vec<Diagnostic>,
     pub warnings: Vec<Diagnostic>,

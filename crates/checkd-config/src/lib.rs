@@ -44,6 +44,27 @@ pub struct Loaded {
     pub diags: Diagnostics,
 }
 
+/// Loads a configuration for a program that keeps it for long.
+///
+/// Loading frees much more than it keeps, and what it keeps lies
+/// scattered among what it freed: the C allocator can give almost none of
+/// that back, and a large configuration held three times its size. So
+/// the loading is done on a thread of its own, whose memory is apart
+/// from the caller's; what was loaded is copied, close together, into
+/// the caller's; and the thread's memory, then all free, goes back.
+pub fn load_compact(main: &Path, options: &Options) -> Loaded {
+    let loaded = std::thread::scope(|scope| scope.spawn(|| load(main, options)).join());
+    let loaded = match loaded {
+        Ok(loaded) => loaded,
+        Err(panic) => std::panic::resume_unwind(panic),
+    };
+    Loaded {
+        main: loaded.main.clone(),
+        objects: loaded.objects.as_ref().map(Objects::copy),
+        diags: loaded.diags.clone(),
+    }
+}
+
 /// Loads the configuration whose main file is at `main`.
 pub fn load(main: &Path, options: &Options) -> Loaded {
     let mut diags = Diagnostics::default();

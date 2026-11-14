@@ -58,3 +58,16 @@ fn a_command_changes_the_settings_of_its_object_only() {
     engine.command("[1800000000] ENABLE_SVC_NOTIFICATIONS;web;b", 1_800_000_000_000, &mut effects);
     assert!(Arc::ptr_eq(&engine.item(b).cfg, &configured));
 }
+
+#[test]
+fn a_copy_shares_nothing_with_what_it_was_made_of() {
+    let engine = engine("copy");
+    let objects = engine.objects();
+    let copy = objects.copy();
+    let key = |name: &str| ("web".to_string(), name.to_string());
+    // Among themselves the copies share as the originals do.
+    assert!(Arc::ptr_eq(&copy.services[&key("a")].check, &copy.services[&key("b")].check));
+    assert!(!Arc::ptr_eq(&copy.services[&key("a")].check, &copy.services[&key("c")].check));
+    assert!(!Arc::ptr_eq(&copy.services[&key("a")].check, &objects.services[&key("a")].check));
+    assert_eq!(format!("{:?}", copy.services[&key("c")]), format!("{:?}", objects.services[&key("c")]));
+}

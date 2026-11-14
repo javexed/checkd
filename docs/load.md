@@ -27,15 +27,24 @@ Loading a config of 80,000 services (`checkd verify`): 1.1 s; Naemon's
 
 - checkd keeps up to about 15,000 checks a second here; Naemon to about
   7,500, beyond which its checks fall behind.
-- checkd takes more memory. The table is from before hosts and services
-  with the same settings came to share them (below); only the 40,000
-  services at 4,000 a second were measured again since, 2026-11-13:
-  195 MB at the peak, where the table says 254 MB, and 174 MB held once
-  the configuration is loaded, where it was 204 MB. That is about 4.3 KB
-  a service against about 2 KB for Naemon (78 MB). It does not grow
-  under load (flat over 120 s at 80,000 services, before the change).
-  In the load test every service has the same settings, which is the
-  best case for sharing.
+- Memory. The table is from before two changes (below). Measured
+  again since, 2026-11-13, once the configuration is loaded:
+
+  | Services | Checks a second | Naemon | checkd | checkd before |
+  |---|---|---|---|---|
+  | 40,000 | 4,000 | 78 MB | 97 MB | 204 MB |
+  | 80,000 | 4,000 | 151 MB | 134 MB | |
+  | 80,000 | 16,000 asked, 14,000 run | 190 MB | 340 to 380 MB | 393 MB |
+
+  So about 1.7 to 2.4 KB a service at a rate checkd keeps up with
+  easily, about what Naemon takes. Near the most it can run, checkd
+  takes as much as before the changes: that memory goes with the rate,
+  not with the configuration, and where it is was not found out (not in
+  the allocator's pools for the threads that start commands: holding
+  those to four changed nothing). While it loads, checkd takes more for
+  a moment: 253 MB at 40,000 services, 440 MB at 80,000. In the load
+  test every service has the same settings, which is the best case for
+  the first change.
 - CPU time is not compared: checkd starts plugins from threads of its own
   process, Naemon from separate worker processes.
 
@@ -62,6 +71,14 @@ Loading a config of 80,000 services (`checkd verify`): 1.1 s; Naemon's
   those 2.7 KB, 1.6 KB is what the configuration and the engine hold;
   the rest is gaps that loading leaves between what stays, too small to
   give back.
+- **What loading leaves behind.** Loading frees much more than it
+  keeps, and what it keeps lay scattered among what it freed, in tens
+  of thousands of gaps too small to give back: with 40,000 services, 68
+  MB in use held 168 MB. The configuration is now loaded on a thread of
+  its own and copied, close together, to where the engine keeps it; the
+  thread's memory, then all free, goes back
+  (`checkd_config::load_compact`). The same 40,000 services, loaded and
+  not yet under load: 65 MB.
 - **The cache horizon.** With the default `cached_service_check_horizon`
   (15 s) longer than the check interval, both engines run every other
   check only; the load test sets it to 0.

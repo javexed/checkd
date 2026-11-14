@@ -174,3 +174,23 @@ pub struct Objects {
     pub host_dependencies: Vec<Dependency<String>>,
     pub host_escalations: Vec<Escalation<String>>,
 }
+
+impl Objects {
+    /// A copy that shares nothing with this one: settings that several
+    /// objects share here are shared among the same objects there.
+    pub fn copy(&self) -> Objects {
+        let mut copy = self.clone();
+        let mut fresh: std::collections::HashMap<*const Checkable, Arc<Checkable>> = std::collections::HashMap::new();
+        let mut own = |check: &mut Arc<Checkable>| {
+            let shared = fresh.entry(Arc::as_ptr(check)).or_insert_with(|| Arc::new((**check).clone()));
+            *check = shared.clone();
+        };
+        for host in copy.hosts.values_mut() {
+            own(&mut host.check);
+        }
+        for service in copy.services.values_mut() {
+            own(&mut service.check);
+        }
+        copy
+    }
+}

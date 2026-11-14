@@ -52,6 +52,7 @@ fn memory_with_late_results() {
 }
 
 fn run(late: i64) {
+    let held_before = live();
     let dir = std::env::temp_dir().join(format!("checkd-memory-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut objects = String::from(
@@ -105,6 +106,7 @@ fn run(late: i64) {
         }
     }
     println!("checks, MB: {marks:?}");
+    println!("held after {checks} checks: {} bytes a service", (live() - held_before) / 10_000);
     let grown = marks.last().unwrap().1 - marks.first().unwrap().1;
     assert!(grown < 20, "the engine grew by {grown} MB over {checks} checks");
 }
