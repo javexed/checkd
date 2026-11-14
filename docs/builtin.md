@@ -65,8 +65,12 @@ sends a title and a message to an address, and starts no program.
 | `ntfy` | to an ntfy server; the address ends with the topic, and `-p 1` to `5` is the priority |
 | `slack` | `{"text": "*title*\nmessage"}`, as Slack's incoming webhooks and those made like them take |
 
-- The title and the message are words of the line, in quotes; whatever a
-  macro puts in them is sent as it is and is never a shell's to read.
+- The title and the message are words of the line, in quotes. The
+  engine settles the words of a `checkd:` line from what the
+  configuration wrote, before it fills in what a check printed: output
+  with quotes, spaces or what looks like an option stays inside the word
+  its macro stood in, and no shell reads any of it. (`$ARGn$` and
+  `$USERn$` are the configuration's, and do make words.)
 - Over HTTPS the certificate must be one the built-in authorities vouch
   for. An answer that is not 2xx, or none, is a failure, and in the log
   as one for a notification command.

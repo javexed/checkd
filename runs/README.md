@@ -104,7 +104,7 @@ result 2 ms after the check was started. The second form shows both
 sides in full.
 
 Five scenarios need real programs or a real shell and are not played
-here (`skip` in their `compare` file). The other 57 are.
+here (`skip` in their `compare` file). The other 59 are.
 
 ### In real time
 
@@ -113,7 +113,7 @@ here (`skip` in their `compare` file). The other 57 are.
 This runs the `checkd` binary on each scenario inside the oracle image,
 where the reference made its recordings: the same shell, the same paths,
 the same plugins. Nothing of the reference is run. Each run takes as long
-as the reference's did, eight at a time, about thirteen minutes for all 62.
+as the reference's did, eight at a time, about thirteen minutes for all of them.
 At the end it compares the Livestatus answers of the scenarios that ask
 queries: `livestatus-thruk`, `livestatus-commands` and
 `livestatus-authuser` (what a query's `AuthUser` may see).

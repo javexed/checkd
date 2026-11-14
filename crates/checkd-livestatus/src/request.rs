@@ -149,6 +149,10 @@ pub struct Refused {
     pub keep_alive: bool,
 }
 
+/// How often one request may combine or negate filters (`And`, `Or`,
+/// `Negate` and their `Stats` forms).
+pub const MOST_COMBINED: usize = 500;
+
 fn bad(message: impl Into<String>) -> Refused {
     Refused {
         code: 400,
@@ -193,9 +197,23 @@ pub fn parse(text: &str) -> Result<Request, Refused> {
     // it was asked for before the fault.
     let mut fixed16_then = false;
 
+    // Each header that combines or negates filters nests them one deeper,
+    // and what is nested is walked by calling itself: a request is held to
+    // a depth no stack minds.
+    let mut combined = 0usize;
     for line in lines {
         if line.trim().is_empty() {
             break;
+        }
+        if line.starts_with("Negate") || line.starts_with("And") || line.starts_with("Or") || line.starts_with("Stats") && !line.starts_with("Stats:") {
+            combined += 1;
+            if combined > MOST_COMBINED {
+                if problem.is_none() {
+                    fixed16_then = query.fixed16;
+                }
+                problem.get_or_insert(format!("A request combines or negates filters at most {MOST_COMBINED} times"));
+                break;
+            }
         }
         let Some((header, value)) = line.split_once(':') else {
             if problem.is_none() {
@@ -392,6 +410,16 @@ mod tests {
             wait("GET hosts\nWaitObject: a\nWaitCondition: state = 0\nWaitTrigger: check\nWaitTimeout: 2000\n"),
             None
         );
+    }
+
+    #[test]
+    fn filters_nest_only_so_deep() {
+        let nested = |n: usize| format!("GET hosts\nFilter: state = 0\n{}", "Negate:\n".repeat(n));
+        assert!(parse(&nested(MOST_COMBINED)).is_ok());
+        let refused = parse(&nested(MOST_COMBINED + 1)).unwrap_err();
+        assert_eq!(refused.code, 400);
+        // A hundred thousand of them are refused as readily, and nothing is built.
+        assert!(parse(&nested(100_000)).is_err());
     }
 
     #[test]

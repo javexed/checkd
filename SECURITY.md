@@ -53,8 +53,11 @@ problem here.
 
 - The store (SQLite or PostgreSQL) holds host names, addresses, states,
   plugin output, comments, downtimes and the log. With PostgreSQL on
-  another machine, all of that is there too. A store's password is read
-  from a file, not from the command line.
+  another machine, all of that is there too. A store's password can be
+  read from a file (`CHECKD_STORE_PASSWORD_FILE`) or from `PGPASSWORD`,
+  so that it need not be on the command line, where other users of the
+  machine can see it; one written in `--store postgres:...` is taken
+  too, and is seen there.
 - Tokens of pushed results are custom variables in the config: whoever
   can read the config, or custom variables over Livestatus, can read
   them.

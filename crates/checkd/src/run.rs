@@ -345,7 +345,9 @@ async fn serve(
     }
 
     let (done, mut results) = mpsc::unbounded_channel::<(u64, JobResult)>();
-    let spool = engine.settings().check_result_path.clone().map(PathBuf::from);
+    // Beside production (--shadow) its check result files are left to it:
+    // taking one here would keep the result from the engine it was for.
+    let spool = engine.settings().check_result_path.clone().map(PathBuf::from).filter(|_| args.shadow.is_none());
     // Remote workers: the file is read now, so that a mistake in it shows
     // at once; a standby listens for workers only once it leads.
     #[cfg(feature = "workers")]
@@ -458,7 +460,9 @@ async fn serve(
             }
         }
     }
-    let mut perfdata = Perfdata::open(engine.settings());
+    // Nor are production's performance data files written, or its
+    // commands for them run.
+    let mut perfdata = if args.shadow.is_some() { Perfdata { files: [None, None] } } else { Perfdata::open(engine.settings()) };
     // The check result directory, read on the reaper's interval.
     let mut reaper = tokio::time::interval(Duration::from_secs(
         engine.settings().check_result_reaper_frequency as u64,
@@ -659,7 +663,7 @@ async fn serve(
         for job in jobs {
             // An aggregate is worked out here, from what the engine knows.
             if crate::aggregate::is_aggregate(&job.line) {
-                let _ = done.send((job.id, crate::aggregate::evaluate(engine, &job.line)));
+                let _ = done.send((job.id, crate::aggregate::evaluate(engine, &job.line, Some(job.obj))));
                 continue;
             }
             if crate::trend::is_trend(&job.line) {

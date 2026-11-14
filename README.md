@@ -27,9 +27,15 @@ push its result in.
 - **Version 0.0.0.** Options, file layouts and the extensions below may
   change. Nothing is packaged; you build it.
 
-If you run Naemon in production, try `checkd verify` on your config and
-`checkd run --shadow` beside your engine before anything else: both only
-read.
+If you run Naemon in production, start with `checkd verify` on your
+config: it only reads. `checkd run --shadow <Naemon's Livestatus
+socket>` then runs beside your engine and says where states differ. It
+sends no notification, runs no event handler, and leaves the command
+file, the log, the check result files and the performance data files
+alone; but it does run every check itself, a second time beside
+Naemon's. Do not start a plain `checkd run` on the config of an engine
+that is running: both would take commands, send notifications and write
+the same files.
 
 ## How close it is to Naemon
 

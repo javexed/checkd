@@ -79,6 +79,21 @@ fn decode(text: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
+/// The longest a request's first line and each header line may be.
+const MOST_HEAD: u64 = 64 * 1024;
+/// How long a client has for each part of its request.
+const TAKES_AT_MOST: std::time::Duration = std::time::Duration::from_secs(15);
+
+/// Reads one line of a request's head. False at the end of what was sent,
+/// on an error, and for a line longer than a head line may be.
+async fn read_head_line<R: tokio::io::AsyncBufRead + Unpin>(reader: &mut R, line: &mut String) -> bool {
+    let mut limited = reader.take(MOST_HEAD);
+    match limited.read_line(line).await {
+        Ok(0) | Err(_) => false,
+        Ok(_) => line.ends_with('\n'),
+    }
+}
+
 /// Starts listening. Requests come out of the answer.
 pub async fn listen(addr: &str) -> Result<mpsc::UnboundedReceiver<Ask>, String> {
     let listener = TcpListener::bind(addr)
@@ -93,9 +108,13 @@ pub async fn listen(addr: &str) -> Result<mpsc::UnboundedReceiver<Ask>, String> 
             let token = token.clone();
             tokio::spawn(async move {
                 let (read, mut write) = stream.into_split();
-                let mut reader = BufReader::new(read);
+                // A request is its head and at most a megabyte of body, and
+                // is here within a quarter of a minute: a client that sends
+                // without end, or not at all, is let go.
+                let mut reader = BufReader::new(read.take(MOST_HEAD + (1 << 20)));
                 let mut first = String::new();
-                if reader.read_line(&mut first).await.is_err() {
+                let head = tokio::time::timeout(TAKES_AT_MOST, read_head_line(&mut reader, &mut first)).await;
+                if !matches!(head, Ok(true)) {
                     return;
                 }
                 let mut parts = first.split_whitespace();
@@ -105,9 +124,10 @@ pub async fn listen(addr: &str) -> Result<mpsc::UnboundedReceiver<Ask>, String> 
                 let mut bearer = None;
                 loop {
                     let mut line = String::new();
-                    match reader.read_line(&mut line).await {
-                        Ok(0) | Err(_) => break,
-                        Ok(_) => {}
+                    match tokio::time::timeout(TAKES_AT_MOST, read_head_line(&mut reader, &mut line)).await {
+                        Ok(true) => {}
+                        Ok(false) if line.is_empty() => break,
+                        _ => return,
                     }
                     let line = line.trim_end();
                     if line.is_empty() {
@@ -123,7 +143,7 @@ pub async fn listen(addr: &str) -> Result<mpsc::UnboundedReceiver<Ask>, String> 
                     }
                 }
                 let mut body = vec![0u8; length.min(1 << 20)];
-                if !body.is_empty() && reader.read_exact(&mut body).await.is_err() {
+                if !body.is_empty() && !matches!(tokio::time::timeout(TAKES_AT_MOST, reader.read_exact(&mut body)).await, Ok(Ok(_))) {
                     return;
                 }
                 let (path, query) = target.split_once('?').unwrap_or((&target, ""));
@@ -181,18 +201,24 @@ pub async fn listen(addr: &str) -> Result<mpsc::UnboundedReceiver<Ask>, String> 
     Ok(inbox)
 }
 
+/// A value of the query string without what would end its line.
+fn one_line(value: &str) -> String {
+    value.chars().map(|c| if c == '\n' || c == '\r' { ' ' } else { c }).collect()
+}
+
 /// The Livestatus request a `GET /api/v1/<table>` stands for.
 pub fn livestatus_request(table: &str, query: &[(String, String)]) -> String {
     let mut request = format!("GET {table}\n");
     for (key, value) in query {
         match key.as_str() {
-            "columns" => request.push_str(&format!("Columns: {}\n", value.replace(',', " "))),
+            // A value is one line: it cannot bring header lines of its own.
+            "columns" => request.push_str(&format!("Columns: {}\n", one_line(value).replace(',', " "))),
             "filter" => {
                 for filter in value.split(";;").filter(|f| !f.trim().is_empty()) {
-                    request.push_str(&format!("Filter: {}\n", filter.trim()));
+                    request.push_str(&format!("Filter: {}\n", one_line(filter).trim()));
                 }
             }
-            "limit" => request.push_str(&format!("Limit: {value}\n")),
+            "limit" => request.push_str(&format!("Limit: {}\n", one_line(value))),
             _ => {}
         }
     }

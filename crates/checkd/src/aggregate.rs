@@ -11,37 +11,10 @@ use checkd_core::engine::{Engine, JobResult, Obj, Outcome, HOST_STATES, SERVICE_
 
 /// Whether a command line is an aggregate.
 pub fn is_aggregate(line: &str) -> bool {
-    line.trim_start().split_whitespace().next() == Some("checkd:aggregate")
+    own_words(line).first().map(String::as_str) == Some("checkd:aggregate")
 }
 
-/// The words of a line; quotes keep a word with spaces together.
-pub(crate) fn words(line: &str) -> Vec<String> {
-    let mut words = Vec::new();
-    let mut word = String::new();
-    let mut quote = None;
-    let mut begun = false;
-    for c in line.chars() {
-        match quote {
-            Some(q) if c == q => quote = None,
-            Some(_) => word.push(c),
-            None if c == '\'' || c == '"' => {
-                quote = Some(c);
-                begun = true;
-            }
-            None if c.is_whitespace() => {
-                if begun || !word.is_empty() {
-                    words.push(std::mem::take(&mut word));
-                    begun = false;
-                }
-            }
-            None => word.push(c),
-        }
-    }
-    if begun || !word.is_empty() {
-        words.push(word);
-    }
-    words
-}
+use checkd_core::cmdline::own_words;
 
 fn answer(code: i32, text: String, perfdata: &str) -> JobResult {
     let word = ["OK", "WARNING", "CRITICAL", "UNKNOWN"][code as usize];
@@ -50,8 +23,10 @@ fn answer(code: i32, text: String, perfdata: &str) -> JobResult {
 }
 
 /// The state of an aggregate, as the result of a check.
-pub fn evaluate(engine: &Engine, line: &str) -> JobResult {
-    let words = words(line.trim_start());
+/// `of` is the service the check is of: it is not counted among its own
+/// members, or a pattern that fits it would hold it in a problem for good.
+pub fn evaluate(engine: &Engine, line: &str, of: Option<Obj>) -> JobResult {
+    let words = own_words(line);
     let mut least: Option<String> = None;
     let mut members: Vec<Obj> = Vec::new();
     let mut at = 1;
@@ -69,7 +44,7 @@ pub fn evaluate(engine: &Engine, line: &str) -> JobResult {
             return answer(3, format!("'{word}' is no host or service of this configuration"), "");
         }
         for obj in found {
-            if !members.contains(&obj) {
+            if Some(obj) != of && !members.contains(&obj) {
                 members.push(obj);
             }
         }
@@ -161,7 +136,7 @@ mod tests {
     }
 
     fn state(engine: &Engine, line: &str) -> (i32, String) {
-        let result = evaluate(engine, line);
+        let result = evaluate(engine, line, None);
         match result.outcome {
             Outcome::Exited(code) => (code, result.stdout.trim().to_string()),
             other => panic!("{other:?}"),
@@ -192,6 +167,9 @@ mod tests {
         give(&mut engine, "PROCESS_HOST_CHECK_RESULT;web1;1;gone");
         assert_eq!(state(&engine, "checkd:aggregate @webs").0, 2);
         assert_eq!(state(&engine, "checkd:aggregate --min 2 @webs").0, 1);
+        // The aggregate itself is not one of its members.
+        let itself = engine.matching("db1", "http")[0];
+        assert!(evaluate(&engine, "checkd:aggregate db1/http web2/http", Some(itself)).stdout.contains("0 of 1 are OK"));
         // What cannot be worked out.
         for line in ["checkd:aggregate", "checkd:aggregate nosuch", "checkd:aggregate --min 5 @webs", "checkd:aggregate --min x @webs", "checkd:aggregate web1/nosuch"] {
             assert_eq!(state(&engine, line).0, 3, "{line}");
@@ -200,7 +178,7 @@ mod tests {
 
     #[test]
     fn the_words_of_a_line() {
-        assert_eq!(words("checkd:aggregate --min 2 web1/http 'db1/disk space' \"@webs/a b\""), [
+        assert_eq!(own_words("checkd:aggregate --min 2 web1/http 'db1/disk space' \"@webs/a b\""), [
             "checkd:aggregate",
             "--min",
             "2",

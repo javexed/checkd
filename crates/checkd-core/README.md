@@ -40,7 +40,7 @@ Each module's header comment gives the rules it follows.
 
 ## What it is tested against
 
-- `tests/scenarios.rs` plays the 60 scenarios of `runs/scenarios` and
+- `tests/scenarios.rs` plays the scenarios of `runs/scenarios` and
   compares log lines and plugin calls with the reference's recordings.
   [`../../runs/README.md`](../../runs/README.md) says what is compared,
   how closely, and where checkd does something else on purpose.
@@ -53,12 +53,14 @@ Each module's header comment gives the rules it follows.
 ## Not in it yet
 
 Custom notifications, triggered downtimes and global notification
-handlers are written but not compared with the reference. Notification
-dependencies are not done. Of what belongs to checks and state, these
-are not done: a limit on checks running at once, freshness
-checks, obsessing, performance data handling, environment macros,
-aggressive host checking, predictive dependency checks, service parents
-and `use_timezone`.
+handlers are written but not compared with the reference. Of what
+belongs to checks and state, these are not done: a limit on checks
+running at once, freshness checks (`check_freshness` and
+`freshness_threshold` are read and nothing is done with them: a passive
+service that stops reporting stays as it was), obsessing, the commands
+`host_perfdata_command` and `service_perfdata_command`, environment
+macros, aggressive host checking, predictive dependency checks, service
+parents and `use_timezone`.
 
 The first checks after a start are spread by a rule of checkd's own, each
 object in turn over its check interval. The reference's spread is partly

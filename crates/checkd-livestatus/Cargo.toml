@@ -4,6 +4,7 @@ version = "0.0.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "The Livestatus query language of checkd"
+publish = false
 
 [dependencies]
 checkd-config = { path = "../checkd-config" }

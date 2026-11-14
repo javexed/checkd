@@ -13,7 +13,7 @@ use std::collections::{HashMap, VecDeque};
 use checkd_core::engine::{Engine, JobResult, Ms, Outcome};
 
 pub fn is_trend(line: &str) -> bool {
-    line.trim_start().split_whitespace().next() == Some("checkd:trend")
+    checkd_core::cmdline::own_words(line).first().map(String::as_str) == Some("checkd:trend")
 }
 
 /// The most that is kept of one number.
@@ -100,7 +100,7 @@ fn rounded(value: f64) -> String {
 
 impl Trends {
     pub fn evaluate(&mut self, engine: &Engine, line: &str, now: Ms) -> JobResult {
-        let words = crate::aggregate::words(line.trim_start());
+        let words = checkd_core::cmdline::own_words(line);
         let (mut of, mut label) = (None, None);
         let (mut full, mut warn, mut crit, mut over) = (None, 7.0, 2.0, 24.0);
         let mut at = 1;
@@ -229,7 +229,7 @@ mod tests {
         let mut trends = Trends::default();
         let start: Ms = 1_800_000_000_000;
         let line = "checkd:trend nas/disk / --warn 7 --crit 2";
-        let mut at = |engine: &mut Engine, trends: &mut Trends, hour: i64, used: f64| {
+        let at = |engine: &mut Engine, trends: &mut Trends, hour: i64, used: f64| {
             let now = start + hour * 3_600_000;
             let mut effects = Vec::new();
             engine.command(&format!("[{}] PROCESS_SERVICE_CHECK_RESULT;nas;disk;0;fine|/={used}MB;;;0;1000", now / 1000), now, &mut effects);

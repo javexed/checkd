@@ -67,6 +67,9 @@ pub fn listen(path: Option<&Path>, tcp: Option<&str>) -> Result<mpsc::UnboundedR
     Ok(inbox)
 }
 
+/// The longest a request may be.
+const MOST_REQUEST: usize = 1 << 20;
+
 /// One connection: requests in, answers out.
 async fn serve<R, W>(read: R, mut write: W, asks: mpsc::UnboundedSender<Ask>)
 where
@@ -85,6 +88,10 @@ where
                     break;
                 }
                 Ok(_) => {
+                    // No request is a megabyte long: one that goes on is let go.
+                    if text.len() + line.len() > MOST_REQUEST {
+                        return;
+                    }
                     if line.trim_end_matches(['\n', '\r']).is_empty() {
                         if text.is_empty() {
                             continue;

@@ -202,3 +202,50 @@ mod tests {
         );
     }
 }
+
+/// What stands between the words of one of checkd's own command lines
+/// once the engine has filled it in: a character no word can have.
+pub const BETWEEN: char = '\u{1f}';
+
+/// Whether a command line is one of checkd's own (`checkd:...`), which
+/// starts no process and is read by no shell.
+pub fn own(line: &str) -> bool {
+    line.trim_start().starts_with("checkd:")
+}
+
+/// The words of one of checkd's own command lines. As the engine gives
+/// it, they are apart already; as a person types it, quotes keep a word
+/// with spaces together.
+pub fn own_words(line: &str) -> Vec<String> {
+    if line.contains(BETWEEN) { line.split(BETWEEN).map(str::to_string).collect() } else { words(line.trim_start()) }
+}
+
+/// The words of a line; single or double quotes keep a word with spaces
+/// together, and there is no escaping.
+pub fn words(line: &str) -> Vec<String> {
+    let mut words = Vec::new();
+    let mut word = String::new();
+    let mut quote = None;
+    let mut begun = false;
+    for c in line.chars() {
+        match quote {
+            Some(q) if c == q => quote = None,
+            Some(_) => word.push(c),
+            None if c == '\'' || c == '"' => {
+                quote = Some(c);
+                begun = true;
+            }
+            None if c.is_whitespace() => {
+                if begun || !word.is_empty() {
+                    words.push(std::mem::take(&mut word));
+                    begun = false;
+                }
+            }
+            None => word.push(c),
+        }
+    }
+    if begun || !word.is_empty() {
+        words.push(word);
+    }
+    words
+}

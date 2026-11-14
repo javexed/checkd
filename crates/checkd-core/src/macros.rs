@@ -22,6 +22,7 @@
 
 use checkd_config::model::Group;
 
+use crate::cmdline;
 use crate::engine::{Engine, Ms, Obj, HOST_STATES, SERVICE_STATES};
 use crate::notify::{self, Notice};
 use crate::settings::DateFormat;
@@ -47,6 +48,10 @@ impl Engine {
         let mut parts = split_args(command);
         let name = parts.remove(0);
         let line = &self.objects.commands.get(name.trim())?.line;
+        if cmdline::own(line) {
+            let raw: Vec<String> = parts.iter().map(|part| part.to_string()).collect();
+            return Some(self.own_line(line, self.ctx(obj, &raw), now));
+        }
         let ctx = self.ctx(obj, &[]);
         let args: Vec<String> = parts
             .iter()
@@ -55,11 +60,66 @@ impl Engine {
         Some(self.expand_in(line, self.ctx(obj, &args), now, 0))
     }
 
+    /// The line of one of checkd's own commands (`checkd:...`), which no
+    /// shell reads. Its words are settled by what the configuration
+    /// wrote, the command line and its arguments, before anything the
+    /// moment brings is filled in: a plugin's output with a quote or a
+    /// space in it stays inside the word its macro stood in, and cannot
+    /// become an option. The words come out with `cmdline::BETWEEN`
+    /// between them.
+    fn own_line(&self, line: &str, ctx: Ctx, now: Ms) -> String {
+        let written = self.expand_given(line, ctx);
+        cmdline::words(&written)
+            .iter()
+            .map(|word| self.expand_in(word, ctx, now, 0).replace(cmdline::BETWEEN, " "))
+            .collect::<Vec<_>>()
+            .join(&cmdline::BETWEEN.to_string())
+    }
+
+    /// Fills in `$ARGn$` and `$USERn$` only: what the configuration gave.
+    fn expand_given(&self, text: &str, ctx: Ctx) -> String {
+        let mut out = String::with_capacity(text.len());
+        let mut rest = text;
+        while let Some(open) = rest.find('$') {
+            out.push_str(&rest[..open]);
+            let after = &rest[open + 1..];
+            let Some(close) = after.find('$') else {
+                out.push_str(&rest[open..]);
+                return out;
+            };
+            let name = &after[..close];
+            let given = if number_after(name, "ARG").is_some_and(|n| (1..=32).contains(&n)) {
+                Some(ctx.args.get(number_after(name, "ARG").unwrap_or(0).wrapping_sub(1)).cloned().unwrap_or_default())
+            } else if number_after(name, "USER").is_some_and(|n| (1..=256).contains(&n)) {
+                Some(self.user_macros.get(&(number_after(name, "USER").unwrap_or(0) as u32)).cloned().unwrap_or_default())
+            } else {
+                None
+            };
+            match given {
+                Some(value) => out.push_str(&value),
+                None => {
+                    out.push('$');
+                    out.push_str(name);
+                    out.push('$');
+                }
+            }
+            rest = &after[close + 1..];
+        }
+        out.push_str(rest);
+        out
+    }
+
     /// The command line of a notification command for one contact.
     pub(crate) fn notice_line(&self, command: &str, obj: Obj, notice: &Notice, now: Ms) -> Option<String> {
         let mut parts = split_args(command);
         let name = parts.remove(0);
         let line = &self.objects.commands.get(name.trim())?.line;
+        if cmdline::own(line) {
+            let raw: Vec<String> = parts.iter().map(|part| part.to_string()).collect();
+            let mut ctx = self.ctx(obj, &raw);
+            ctx.notice = Some(notice);
+            return Some(self.own_line(line, ctx, now));
+        }
         let mut ctx = self.ctx(obj, &[]);
         ctx.notice = Some(notice);
         let args: Vec<String> = parts.iter().map(|part| self.expand_in(part, ctx, now, 0)).collect();

@@ -32,7 +32,7 @@ const WORDS: [&str; 4] = ["OK", "WARNING", "CRITICAL", "UNKNOWN"];
 
 /// Whether a command line is one of checkd's own checks.
 pub fn is_builtin(line: &str) -> bool {
-    line.trim_start().starts_with("checkd:")
+    checkd_core::cmdline::own(line)
 }
 
 /// What a check found: the state, the text after it, the performance data.
@@ -118,9 +118,10 @@ fn limit(value: Option<f64>) -> String {
 /// plugin: a check still at work then gives the result of one that timed
 /// out.
 pub async fn run(line: &str, timeout: Ms) -> JobResult {
-    // Words, and quotes around those with spaces; nothing is a shell's.
-    // What a macro brought, plugin output say, is only ever a word.
-    let words = crate::aggregate::words(line.trim_start());
+    // The engine settles the words before it fills in what the moment
+    // brings (`checkd_core::macros`), so that plugin output is only ever
+    // inside a word. A line a person typed is split here, by its quotes.
+    let words = checkd_core::cmdline::own_words(line);
     let kind = words.first().map(String::as_str).unwrap_or("").trim_start_matches("checkd:").to_string();
     let name = kind.to_uppercase();
     let options = match Options::read(&words[1..]) {

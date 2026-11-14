@@ -603,6 +603,9 @@ impl Engine {
     pub fn quiet(&mut self) {
         self.settings.enable_notifications = false;
         self.settings.enable_event_handlers = false;
+        // Performance data is the running engine's to write and to hand
+        // to its commands.
+        self.settings.process_performance_data = false;
     }
 
     /// Has every result give its performance data as `Effect::Sample`.
