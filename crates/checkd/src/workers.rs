@@ -245,8 +245,10 @@ fn custom(engine: &Engine, obj: Obj, name: &str) -> Option<String> {
 ///
 /// Before the groups, checkd adds one rule of its own: a service whose host
 /// has an agent, a worker entry with the pool `host_<host name>`, runs
-/// there. The host's own check stays where it was, so that a host whose
-/// agent is gone still shows as up or down.
+/// there, unless its custom variable `_CHECKD_RUN_ON` is `engine`; and one
+/// whose `_CHECKD_RUN_ON` is `agent` goes there even without an agent. The
+/// host's own check stays where it was, so that a host whose agent is gone
+/// still shows as up or down.
 pub fn check_route(engine: &Engine, config: &Config, obj: Obj) -> Route {
     let (host, service) = match obj {
         Obj::Host(at) => (at, None),
@@ -258,9 +260,15 @@ pub fn check_route(engine: &Engine, config: &Config, obj: Obj) -> Route {
             return Route::Pool(pool);
         }
     }
-    if service.is_some() {
+    // `_CHECKD_RUN_ON engine`: a check of the host from outside (a port, a
+    // web page, a certificate), which its agent would make from inside.
+    // `_CHECKD_RUN_ON agent`: a check of the machine itself (its disks),
+    // which the engine would make of its own: without an agent it is the
+    // pool's orphan, never run here.
+    let run_on = custom(engine, obj, "CHECKD_RUN_ON").map(|v| v.to_ascii_lowercase());
+    if service.is_some() && run_on.as_deref() != Some("engine") {
         let pool = format!("host_{}", engine.hosts()[host].name);
-        if config.workers.iter().any(|w| w.pools.contains(&pool)) {
+        if run_on.as_deref() == Some("agent") || config.workers.iter().any(|w| w.pools.contains(&pool)) {
             return Route::Pool(pool);
         }
     }
@@ -405,7 +413,9 @@ impl Shared {
         let _ = write.write_all(b"REFUSED unknown worker or wrong token\n").await;
         return;
     };
-    let welcome = format!("WELCOME {}\n", worker.pools.join(","));
+    // An agent is asked for its inventory, which nuthatch reads beside its token.
+    let inventory = agents.clone().filter(|_| worker.agent).map(|dir| dir.join(format!("{}.inventory.json", worker.name)));
+    let welcome = format!("WELCOME {}{}\n", worker.pools.join(","), if inventory.is_some() { " inventory" } else { "" });
     if write.write_all(welcome.as_bytes()).await.is_err() {
         return;
     }
@@ -456,6 +466,20 @@ impl Shared {
         let words: Vec<&str> = line.split_whitespace().collect();
         match words.as_slice() {
             ["PING"] => {}
+            ["INVENTORY", len] => {
+                let Some(file) = &inventory else { break };
+                let Ok(len) = len.parse::<usize>() else { break };
+                if len > MAX_INVENTORY {
+                    break;
+                }
+                let mut body = vec![0u8; len];
+                if reader.read_exact(&mut body).await.is_err() {
+                    break;
+                }
+                if let Err(err) = keep_inventory(file, &body) {
+                    eprintln!("Warning: cannot keep the inventory of agent {}: {err}", worker.name);
+                }
+            }
             ["SLOTS", n] => {
                 let _ = events.send(Event::Slots(id, n.parse().unwrap_or(0)));
             }
@@ -489,6 +513,21 @@ impl Shared {
     writer.abort();
     let _ = events.send(Event::Left(id));
     }
+}
+
+/// The most an agent's inventory may be.
+const MAX_INVENTORY: usize = 1 << 20;
+
+/// Writes an agent's inventory beside its token, whole or not at all. It
+/// must be a JSON object; what is in it is the agent's word, for nuthatch
+/// to read as such.
+fn keep_inventory(file: &Path, body: &[u8]) -> Result<(), String> {
+    if body.first() != Some(&b'{') || body.last() != Some(&b'}') || std::str::from_utf8(body).is_err() {
+        return Err("not a JSON object".to_string());
+    }
+    let part = file.with_extension("json.part");
+    std::fs::write(&part, body).map_err(|err| err.to_string())?;
+    std::fs::rename(&part, file).map_err(|err| err.to_string())
 }
 
 /// Compares tokens in a time that does not tell how much of them matched.
@@ -817,6 +856,19 @@ mod tests {
     }
 
     #[test]
+    fn an_inventory_is_kept_whole_or_not_at_all() {
+        let dir = std::env::temp_dir().join(format!("checkd-inventory-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("lin1.inventory.json");
+        keep_inventory(&file, br#"{"version":1}"#).unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), r#"{"version":1}"#);
+        assert!(keep_inventory(&file, b"rm -rf /").is_err());
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), r#"{"version":1}"#);
+        assert!(!dir.join("lin1.inventory.json.part").exists());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
     fn a_hosts_agent_takes_its_services_but_not_its_host_check() {
         let dir = std::env::temp_dir().join(format!("checkd-agent-route-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -826,7 +878,9 @@ mod tests {
              define timeperiod {\n timeperiod_name always\n alias always\n monday 00:00-24:00\n}\n\
              define host {\n host_name win1\n address 192.0.2.1\n check_command ok\n max_check_attempts 1\n check_period always\n}\n\
              define host {\n host_name lin1\n address 192.0.2.2\n check_command ok\n max_check_attempts 1\n check_period always\n}\n\
-             define service {\n host_name win1,lin1\n service_description disk\n check_command ok\n max_check_attempts 1\n check_period always\n}\n",
+             define service {\n host_name win1,lin1\n service_description disk\n check_command ok\n max_check_attempts 1\n check_period always\n}\n\
+             define service {\n host_name win1\n service_description rdp\n check_command ok\n max_check_attempts 1\n check_period always\n _CHECKD_RUN_ON engine\n}\n\
+             define service {\n host_name lin1\n service_description memory\n check_command ok\n max_check_attempts 1\n check_period always\n _CHECKD_RUN_ON agent\n}\n",
         )
         .unwrap();
         std::fs::write(dir.join("naemon.cfg"), "cfg_file=objects.cfg\n").unwrap();
@@ -843,6 +897,12 @@ mod tests {
         assert_eq!(check_route(&engine, &config, Obj::Service(on(win1))), Route::Pool("host_win1".into()));
         assert_eq!(check_route(&engine, &config, Obj::Host(win1)), Route::Local);
         assert_eq!(check_route(&engine, &config, Obj::Service(on(lin1))), Route::Local);
+        // A check from outside stays on the engine.
+        let rdp = engine.services().iter().position(|s| s.description == "rdp").unwrap();
+        assert_eq!(check_route(&engine, &config, Obj::Service(rdp)), Route::Local);
+        // A check of the machine itself waits for an agent, never runs here.
+        let memory = engine.services().iter().position(|s| s.description == "memory").unwrap();
+        assert_eq!(check_route(&engine, &config, Obj::Service(memory)), Route::Pool("host_lin1".into()));
     }
 
     #[test]

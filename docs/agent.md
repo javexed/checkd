@@ -23,6 +23,16 @@ stopped still shows up or down. While no agent of a host is connected, its
 services get `orphan_return` (UNKNOWN by default), with an output that
 names the pool.
 
+A service that checks the host from outside (a port, a web page, a
+certificate) keeps to the engine with the custom variable
+
+    _CHECKD_RUN_ON  engine
+
+and one that only makes sense on the host (`checkd:disk`,
+`checkd:memory`) keeps to the agent with `_CHECKD_RUN_ON agent`: without
+an agent it gets `orphan_return`, and the engine never makes it of its
+own machine instead.
+
 The rule comes after `queue_custom_variable` and before the group rules of
 [workers.md](workers.md#where-a-job-runs).
 
@@ -51,6 +61,21 @@ in the pool `waiting_<host>`, which no check goes to, so the host's checks
 stay where they were. nuthatch's Agents page writes one, prints the command
 that installs the agent, and once the agent has connected renames it to
 `<host>.token` and reloads checkd.
+
+## Inventory
+
+Once connected, an agent of an `agents=` directory sends what its
+machine is and runs: the system and its version, processors, memory,
+disks, the services running and the TCP ports listened on. It sends it
+again once a day. checkd writes it to `<host>.inventory.json` beside the
+token, where nuthatch reads it to propose checks. Gathering it only
+reads: on Linux from `/proc`, `statvfs` and `systemctl list-units`; on
+Windows by one fixed PowerShell script (`local.rs`). An agent of a
+`worker=` line is not asked.
+
+The inventory is the agent's word: whoever holds the host's token can
+say what they like in it. nuthatch treats it as such, as text it
+proposes from and never runs.
 
 ## Building
 
@@ -94,6 +119,7 @@ Windows build under Wine against a real engine.
 - A command line that needs a shell runs under `cmd.exe /d /s /c`.
 - At its timeout a command is stopped with everything it started
   (`taskkill /t`).
-- `checkd:ping` is not available; `checkd:tcp`, `checkd:http` and
-  `checkd:cert` are.
+- `checkd:ping` and `checkd:load` are not available; `checkd:tcp`,
+  `checkd:http`, `checkd:cert`, `checkd:disk`, `checkd:memory`,
+  `checkd:cpu` and `checkd:service` are.
 - `--load-limit*` has no effect: Windows has no load average.

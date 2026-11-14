@@ -6,6 +6,15 @@
 //!     checkd:http -H <host> [-p <port>] [-u <path>] [-S] [-e <codes>] [-s <text>] [-w <s>] [-c <s>]
 //!     checkd:cert -H <host> [-p <port>] [-w <days>] [-c <days>]
 //!
+//! and some of the machine they run on (`local.rs`), for an agent or the
+//! engine's own host:
+//!
+//!     checkd:disk -p <path> [-w <% used>] [-c <% used>]
+//!     checkd:memory [-w <% used>] [-c <% used>]
+//!     checkd:load [-w <1,5,15>] [-c <1,5,15>]
+//!     checkd:cpu [-w <% busy>] [-c <% busy>]
+//!     checkd:service -s <name>
+//!
 //! and one that is not a check but a way to tell someone, for a
 //! notification command:
 //!
@@ -144,8 +153,13 @@ pub async fn run(line: &str, timeout: Ms) -> JobResult {
             "http" => http(&options).await,
             "cert" => cert(&options).await,
             "notify" => notify(&options).await,
+            "disk" => disk(&options),
+            "memory" => memory(&options),
+            "load" => load(&options),
+            "cpu" => cpu(&options).await,
+            "service" => service(&options).await,
             "aggregate" | "trend" => Err("this one is worked out by the engine that has the hosts and services, not here".to_string()),
-            other => Err(format!("checkd has no check '{other}': ping, tcp, http, cert, dummy, aggregate, trend, notify")),
+            other => Err(format!("checkd has no check '{other}': ping, tcp, http, cert, disk, memory, load, cpu, service, dummy, aggregate, trend, notify")),
         }
     };
     match tokio::time::timeout(Duration::from_millis(timeout.max(0) as u64), work).await {
@@ -153,6 +167,87 @@ pub async fn run(line: &str, timeout: Ms) -> JobResult {
         Ok(Err(why)) => answer(&name, (UNKNOWN, why, String::new())),
         Err(_) => JobResult { outcome: Outcome::TimedOut, stdout: String::new(), stderr: String::new() },
     }
+}
+
+/// Bytes as a person reads them.
+fn size(bytes: u64) -> String {
+    let units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
+    let mut value = bytes as f64;
+    let mut unit = 0;
+    while value >= 1024.0 && unit < units.len() - 1 {
+        value /= 1024.0;
+        unit += 1;
+    }
+    if unit == 0 { format!("{bytes} B") } else { format!("{value:.1} {}", units[unit]) }
+}
+
+fn disk(options: &Options) -> Result<Found, String> {
+    let path = options.text("-p").filter(|p| !p.is_empty()).ok_or("-p <path> is needed")?;
+    let (warn, crit) = (options.number("-w")?, options.number("-c")?);
+    let space = crate::local::space(path)?;
+    let used = space.used_pct();
+    Ok((
+        over(used, warn, crit),
+        format!("{path} {used:.0}% used, {} free of {}", size(space.free), size(space.total)),
+        format!("used={used:.1}%;{};{};0;100 free={}B;;;0;{}", limit(warn), limit(crit), space.free, space.total),
+    ))
+}
+
+fn memory(options: &Options) -> Result<Found, String> {
+    let (warn, crit) = (options.number("-w")?, options.number("-c")?);
+    let (total, available) = crate::local::memory()?;
+    let used = if total == 0 { 0.0 } else { (total - available.min(total)) as f64 * 100.0 / total as f64 };
+    Ok((
+        over(used, warn, crit),
+        format!("{used:.0}% used, {} available of {}", size(available), size(total)),
+        format!("used={used:.1}%;{};{};0;100 available={available}B;;;0;{total}", limit(warn), limit(crit)),
+    ))
+}
+
+/// `-w 4,3,2`: limits over 1, 5 and 15 minutes; one number is all three.
+fn triple(options: &Options, flag: &str) -> Result<[Option<f64>; 3], String> {
+    let Some(text) = options.text(flag) else { return Ok([None; 3]) };
+    let parts: Vec<&str> = text.split(',').collect();
+    let number = |t: &str| t.trim().parse::<f64>().map_err(|_| format!("{flag} takes numbers, not '{text}'"));
+    match parts.as_slice() {
+        [one] => {
+            let n = number(one)?;
+            Ok([Some(n); 3])
+        }
+        [a, b, c] => Ok([Some(number(a)?), Some(number(b)?), Some(number(c)?)]),
+        _ => Err(format!("{flag} takes one number or three, as 4,3,2")),
+    }
+}
+
+fn load(options: &Options) -> Result<Found, String> {
+    let (warn, crit) = (triple(options, "-w")?, triple(options, "-c")?);
+    let now = crate::local::load().ok_or("this system has no load average")?;
+    let state = (0..3).map(|i| over(now[i], warn[i], crit[i])).max().unwrap_or(OK);
+    let perf: Vec<String> = ["load1", "load5", "load15"]
+        .iter()
+        .enumerate()
+        .map(|(i, name)| format!("{name}={:.2};{};{};0", now[i], limit(warn[i]), limit(crit[i])))
+        .collect();
+    Ok((
+        state,
+        format!("load average {:.2}, {:.2}, {:.2} on {} processors", now[0], now[1], now[2], crate::local::cpus()),
+        perf.join(" "),
+    ))
+}
+
+async fn cpu(options: &Options) -> Result<Found, String> {
+    let (warn, crit) = (options.number("-w")?, options.number("-c")?);
+    let busy = crate::local::cpu_busy().await?;
+    Ok((over(busy, warn, crit), format!("{busy:.0}% busy"), format!("busy={busy:.1}%;{};{};0;100", limit(warn), limit(crit))))
+}
+
+async fn service(options: &Options) -> Result<Found, String> {
+    let name = options.text("-s").filter(|s| !s.is_empty()).ok_or("-s <name> is needed")?;
+    Ok(match crate::local::service(name).await? {
+        None => (CRITICAL, format!("{name}: no such service"), String::new()),
+        Some((true, state)) => (OK, format!("{name} is {state}"), String::new()),
+        Some((false, state)) => (CRITICAL, format!("{name} is {state}"), String::new()),
+    })
 }
 
 /// The addresses of a name, or the address it is.
@@ -871,6 +966,27 @@ mod tests {
             // Nobody there: said, as a failure.
             let result = run("checkd:notify -u http://127.0.0.1:1/x -t T", 5000).await;
             assert!(matches!(result.outcome, Outcome::Exited(2)), "{result:?}");
+        });
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn checks_of_this_machine() {
+        runtime().block_on(async {
+            let disk = run("checkd:disk -p / -w 101 -c 102", 5000).await;
+            assert!(matches!(disk.outcome, Outcome::Exited(0)), "{disk:?}");
+            assert!(disk.stdout.starts_with("DISK OK - / ") && disk.stdout.contains("|used="), "{disk:?}");
+            assert!(matches!(run("checkd:disk -p / -w -1", 5000).await.outcome, Outcome::Exited(1)));
+            assert!(matches!(run("checkd:disk -p /no/such/place", 5000).await.outcome, Outcome::Exited(3)));
+            assert!(matches!(run("checkd:disk", 5000).await.outcome, Outcome::Exited(3)));
+            let memory = run("checkd:memory -w 101", 5000).await;
+            assert!(memory.stdout.starts_with("MEMORY OK - ") && memory.stdout.contains("|used="), "{memory:?}");
+            let load = run("checkd:load -w 1000,1000,1000 -c 2000", 5000).await;
+            assert!(load.stdout.contains("load1=") && load.stdout.contains(";2000;0 "), "{load:?}");
+            assert!(matches!(run("checkd:load -w 1,2", 5000).await.outcome, Outcome::Exited(3)));
+            let cpu = run("checkd:cpu", 5000).await;
+            assert!(cpu.stdout.starts_with("CPU OK - ") && cpu.stdout.contains("|busy="), "{cpu:?}");
+            assert!(matches!(run("checkd:service -s --now", 5000).await.outcome, Outcome::Exited(3)));
         });
     }
 

@@ -20,6 +20,8 @@
 //!   other job is answered with UNKNOWN and says why.
 //! - `--load-limit1/5/15 <n>`: while the machine's load average is above
 //!   the limit, the worker takes no new jobs.
+//! - An agent sends what its machine is and runs (`local.rs`) when the
+//!   engine asks for it in its WELCOME, and again once a day.
 
 use std::path::PathBuf;
 use std::time::Duration;
@@ -355,9 +357,12 @@ async fn session(
         .await
         .map_err(|_| "no answer to HELLO within 10 seconds".to_string())?
         .map_err(|err| err.to_string())?;
-    let pools = match answer.trim_end().split_once(' ') {
-        Some(("WELCOME", pools)) => pools.to_string(),
-        _ if answer.trim_end() == "WELCOME" => String::new(),
+    // WELCOME <pools> [inventory]: an engine that keeps agents' inventories
+    // asks for one.
+    let words: Vec<&str> = answer.split_whitespace().collect();
+    let (pools, wants_inventory) = match words.as_slice() {
+        ["WELCOME"] => (String::new(), false),
+        ["WELCOME", pools, rest @ ..] => (pools.to_string(), rest.contains(&"inventory")),
         _ => return Err(format!("the engine said: {}", answer.trim_end())),
     };
     say(&format!("Connected to {engine}, for pools {pools}"));
@@ -367,6 +372,18 @@ async fn session(
     let mut ping = tokio::time::interval(Duration::from_secs(10));
     let mut load_tick = tokio::time::interval(Duration::from_secs(5));
     let mut offered = slots;
+    // What this machine is, at once and then once a day, when asked for.
+    let (inventories, mut inventory) = mpsc::unbounded_channel::<String>();
+    let taking = wants_inventory.then(|| {
+        tokio::spawn(async move {
+            loop {
+                if inventories.send(crate::local::inventory().await).is_err() {
+                    return;
+                }
+                tokio::time::sleep(Duration::from_secs(24 * 3600)).await;
+            }
+        })
+    });
     // Frames are read by a task of their own: a read cut off half way by
     // another event would lose its part.
     let (frames, mut jobs) = mpsc::unbounded_channel::<Result<(u64, i64, String), String>>();
@@ -435,6 +452,13 @@ async fn session(
                     break Ok(true);
                 }
             }
+            Some(text) = inventory.recv() => {
+                let mut frame = format!("INVENTORY {}\n", text.len()).into_bytes();
+                frame.extend_from_slice(text.as_bytes());
+                if write.write_all(&frame).await.is_err() {
+                    break Ok(true);
+                }
+            }
             _ = ping.tick() => {
                 if write.write_all(b"PING\n").await.is_err() {
                     break Ok(true);
@@ -453,6 +477,9 @@ async fn session(
         }
     };
     reading.abort();
+    if let Some(taking) = taking {
+        taking.abort();
+    }
     // The engine gives what was running to another worker.
     running.stop_all();
     outcome

@@ -43,6 +43,23 @@ what it found and ends with its state, for trying a line out.
 - A name that is not known, a port that is closed and a host that does
   not answer are CRITICAL; a line that cannot be understood is UNKNOWN.
 
+## The machine itself
+
+Five more look at the machine they run on: the engine's own host, or,
+sent to an agent ([agent.md](agent.md)), the agent's host. They read
+only, and need no plugin on the host.
+
+| Check | Options | OK when |
+|---|---|---|
+| `checkd:disk` | `-p path` (`C:` on Windows), `-w %`, `-c %` | the filesystem is used no more than the share (as `df` counts it) |
+| `checkd:memory` | `-w %`, `-c %` | memory is used no more than the share (what is not available without swapping) |
+| `checkd:load` | `-w 1,5,15`, `-c 1,5,15` (or one number for all three) | the load average is within the limits; Linux only |
+| `checkd:cpu` | `-w %`, `-c %` | the processors are busy no more than the share, over one second |
+| `checkd:service` | `-s name` | the service runs: a systemd unit that is active, or a Windows service that is running; one that is not there is CRITICAL |
+
+Their performance data: `used=` (%) and `free=` (bytes) for disk, `used=`
+and `available=` for memory, `load1=`, `load5=`, `load15=`, and `busy=`.
+
 `checkd:aggregate` is one more, of another kind: a service worked out
 from other hosts and services ([aggregate](aggregate.md)).
 

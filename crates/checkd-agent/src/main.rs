@@ -9,6 +9,8 @@
 
 #[path = "../../checkd/src/builtin.rs"]
 mod builtin;
+#[path = "../../checkd/src/local.rs"]
+mod local;
 #[path = "../../checkd/src/runner.rs"]
 mod runner;
 #[path = "../../checkd/src/tls.rs"]

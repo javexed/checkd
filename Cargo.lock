@@ -185,6 +185,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "webpki-roots",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

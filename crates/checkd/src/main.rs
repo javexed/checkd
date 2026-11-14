@@ -13,6 +13,9 @@ mod digest;
 mod failover;
 mod http;
 mod livestatus;
+// The inventory in it is the agent's.
+#[allow(dead_code)]
+mod local;
 mod perfexport;
 mod push;
 mod recurring;

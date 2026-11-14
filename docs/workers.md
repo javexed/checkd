@@ -65,7 +65,11 @@ mod_gearman's names. For a check, the first of these that applies:
 1. `queue_custom_variable=WORKER`: the object's custom variable `_WORKER`
    names its pool. A service without one takes its host's.
 2. A host's agent: when a worker has the pool `host_<host name>`, that
-   host's services go there ([agent.md](agent.md)). Not the host check.
+   host's services go there ([agent.md](agent.md)). Not the host check,
+   and not a service whose custom variable `_CHECKD_RUN_ON` is `engine`:
+   a check of the host from outside, such as a port or a certificate. A
+   service whose `_CHECKD_RUN_ON` is `agent` goes to the pool even when
+   the host has no agent, where `orphan_return` answers it.
 3. `localservicegroups`, `localhostgroups`: services in these service
    groups, and hosts in these host groups with their services, run on the
    engine.
