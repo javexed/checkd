@@ -71,6 +71,11 @@ config Naemon takes too.
   ([docs/failover.md](docs/failover.md)).
 - **Remote workers**, in place of mod_gearman, over TLS
   ([docs/workers.md](docs/workers.md)). Not yet tried under load.
+- **An agent** for Linux and Windows hosts, `checkd-agent`: the worker on
+  its own, which runs one host's checks there over an outgoing TLS
+  connection ([docs/agent.md](docs/agent.md)). Tested on Linux, and
+  for Windows under Wine (`runs/agent-windows/run`), not yet on a Windows
+  machine.
 - **Checks without a plugin**: ping, a TCP port, a web page, a
   certificate; and a notification to ntfy, Slack or a webhook without a
   script ([docs/builtin.md](docs/builtin.md)).

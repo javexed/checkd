@@ -80,7 +80,7 @@ pub fn parse(mut args: impl Iterator<Item = String>) -> Result<WorkerArgs, Strin
             "--token-file" => out.token_file = PathBuf::from(value("a file name")?),
             "--ca" => out.ca = PathBuf::from(value("a file name")?),
             "--max-jobs" => out.max_jobs = number(value("a number")?)?.max(1.0) as usize,
-            "--restrict-path" => out.restrict_path.push(value("a directory")?.trim_end_matches('/').to_string() + "/"),
+            "--restrict-path" => out.restrict_path.push(value("a directory")?.trim_end_matches(['/', '\\']).to_string() + "/"),
             "--load-limit1" => out.load_limits[0] = Some(number(value("a number")?)?),
             "--load-limit5" => out.load_limits[1] = Some(number(value("a number")?)?),
             "--load-limit15" => out.load_limits[2] = Some(number(value("a number")?)?),
@@ -111,8 +111,9 @@ pub fn refused(line: &str, allowed: &[String]) -> Option<String> {
         Start::Shell => Some("the command line needs a shell, which --restrict-path does not allow".into()),
         Start::Direct { argv, .. } => {
             let program = argv.first().cloned().unwrap_or_default();
-            let clean = !program.split('/').any(|part| part == "..");
-            if clean && allowed.iter().any(|dir| program.starts_with(dir.as_str())) {
+            let path = comparable(&program);
+            let clean = !path.split('/').any(|part| part == "..");
+            if clean && allowed.iter().any(|dir| path.starts_with(comparable(dir).as_str())) {
                 None
             } else {
                 Some(format!("{program} is not under a directory of --restrict-path"))
@@ -121,6 +122,24 @@ pub fn refused(line: &str, allowed: &[String]) -> Option<String> {
     }
 }
 
+/// A path as `--restrict-path` compares it. Windows takes either slash and
+/// ignores case.
+#[cfg(windows)]
+fn comparable(path: &str) -> String {
+    path.replace('\\', "/").to_lowercase()
+}
+
+#[cfg(not(windows))]
+fn comparable(path: &str) -> String {
+    path.to_string()
+}
+
+#[cfg(not(unix))]
+fn load_average() -> Option<[f64; 3]> {
+    None
+}
+
+#[cfg(unix)]
 fn load_average() -> Option<[f64; 3]> {
     let text = std::fs::read_to_string("/proc/loadavg").ok()?;
     let mut numbers = text.split_whitespace().map(|n| n.parse::<f64>().ok());
@@ -160,8 +179,7 @@ async fn serve(args: WorkerArgs) -> Result<(), String> {
     let connector = crate::tls::connector(&args.ca)?;
     let mut pause = Duration::from_secs(1);
     let mut turn = 0usize;
-    let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-        .map_err(|err| err.to_string())?;
+    let mut terminate = Terminate::new()?;
     loop {
         let engine = args.engines[turn % args.engines.len()].clone();
         turn += 1;
@@ -190,6 +208,36 @@ async fn serve(args: WorkerArgs) -> Result<(), String> {
             tokio::time::sleep(pause).await;
             pause = (pause * 2).min(Duration::from_secs(30));
         }
+    }
+}
+
+/// SIGTERM on Unix. Windows stops a service or task some other way, and
+/// Ctrl-C covers a console.
+#[cfg(unix)]
+struct Terminate(tokio::signal::unix::Signal);
+
+#[cfg(unix)]
+impl Terminate {
+    fn new() -> Result<Self, String> {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .map(Terminate)
+            .map_err(|err| err.to_string())
+    }
+    async fn recv(&mut self) {
+        self.0.recv().await;
+    }
+}
+
+#[cfg(not(unix))]
+struct Terminate;
+
+#[cfg(not(unix))]
+impl Terminate {
+    fn new() -> Result<Self, String> {
+        Ok(Terminate)
+    }
+    async fn recv(&mut self) {
+        std::future::pending::<()>().await
     }
 }
 
@@ -339,5 +387,15 @@ mod tests {
         assert!(refused("/usr/lib/nagios/plugins/../../../bin/sh", &allowed).is_some());
         assert!(refused("/usr/lib/nagios/plugins/check_x | tee /tmp/y", &allowed).is_some());
         assert_eq!(refused("anything at all", &[]), None);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn restrict_path_on_windows() {
+        let allowed = vec!["C:\\Program Files\\checkd/".to_string()];
+        assert_eq!(refused("'c:\\program files\\checkd\\check_disk.exe' -w 10", &allowed), None);
+        assert_eq!(refused("\"C:/Program Files/checkd/check_disk.exe\" -w 10", &allowed), None);
+        assert!(refused("'C:\\Program Files\\checkd\\..\\..\\Windows\\cmd.exe'", &allowed).is_some());
+        assert!(refused("C:/Windows/System32/cmd.exe", &allowed).is_some());
     }
 }

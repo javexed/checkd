@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# checkd-agent's Windows build, end to end, under Wine.
+#
+#   runs/agent-windows/run
+#
+# An engine (Linux) and the agent (checkd-agent-windows-x86_64.exe under
+# Wine) run in containers on an internal Docker network. The agent is the
+# host win1's, from a token file in the engine's agents directory.
+#
+# Checked:
+#   1. the agent joins with the pool host_win1;
+#   2. a direct command line runs (cmd /c echo);
+#   3. a line that needs a shell runs under cmd.exe, and its exit code
+#      is kept;
+#   4. checkd:tcp runs on the agent;
+#   5. a command past its timeout is stopped;
+#   6. the host check stays on the engine.
+#
+# Needs dist/agent from scripts/build-agents.sh. Everything else stays in
+# runs/agent-windows-work.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(cd "$here/../.." && pwd)
+work=$root/runs/agent-windows-work
+exe=$root/dist/agent/checkd-agent-windows-x86_64.exe
+[ -f "$exe" ] || { echo "No $exe: run scripts/build-agents.sh first"; exit 2; }
+core=$(sed -n 's/^ARG NAEMON_CORE_VERSION=//p' "$root/oracle/Dockerfile")
+inputs=$(cat "$root/oracle/Dockerfile" "$root/oracle/entry.sh" | sha256sum | cut -c1-12)
+image="checkd-oracle:naemon-${core}-${inputs}"
+wine_image="checkd-wine:$(sha256sum "$here/Dockerfile" | cut -c1-12)"
+docker image inspect "$wine_image" >/dev/null 2>&1 || docker build -q -t "$wine_image" "$here" >/dev/null
+
+cd "$root"
+CARGO_TARGET_DIR=$root/target/workers cargo build --quiet -p checkd --features workers
+checkd=$root/target/workers/debug/checkd
+
+tag=checkd-agent-win-$$
+net=$tag-net
+rm -rf "$work"
+mkdir -p "$work/out" "$work/conf/agents" "$work/agent"
+cleanup() {
+    docker rm -f "$tag-engine" "$tag-win1" >/dev/null 2>&1 || true
+    docker network rm "$net" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+"$checkd" make-certs "$work/conf" engine >/dev/null
+head -c 24 /dev/urandom | base64 | tr -d '=+/\n' > "$work/conf/agents/win1.token"
+cp "$work/conf/agents/win1.token" "$work/agent/token"
+cp "$work/conf/ca.crt" "$work/agent/ca.crt"
+cat > "$work/conf/workers.cfg" <<CFG
+listen=0.0.0.0:4730
+cert=engine.crt
+key=engine.key
+agents=agents
+CFG
+
+docker network create --internal "$net" >/dev/null
+docker run -d --name "$tag-engine" --hostname engine --network "$net" --network-alias engine \
+    --user "$(id -u):$(id -g)" \
+    -v "$here/case:/case:ro" -v "$work/conf:/conf:ro" -v "$checkd:/checkd:ro" -v "$work/out:/out" \
+    --entrypoint /checkd "$image" run --store none --http 127.0.0.1:6559 --workers /conf/workers.cfg \
+    --log-file /out/engine.log --for 300 /case/naemon.cfg >/dev/null
+docker run -d --name "$tag-win1" --hostname win1 --network "$net" \
+    -v "$exe:/agent/checkd-agent.exe:ro" -v "$work/agent:/conf:ro" \
+    "$wine_image" wine /agent/checkd-agent.exe --engine engine:4730 --name win1 \
+    --token-file 'Z:\conf\token' --ca 'Z:\conf\ca.crt' --max-jobs 4 >/dev/null
+
+failures=0
+ok() { echo "ok    $1"; }
+bad() { echo "FAIL  $1"; failures=$((failures + 1)); }
+api() { docker exec "$tag-engine" curl -s "http://127.0.0.1:6559$1"; }
+wait_for() {
+    for _ in $(seq "$3"); do
+        grep -q -- "$2" "$1" 2>/dev/null && return 0
+        sleep 1
+    done
+    return 1
+}
+
+if wait_for "$work/out/engine.log" "Worker win1 joined, for pools host_win1" 90; then
+    ok "the agent joins with the pool host_win1"
+else
+    bad "the agent did not join"
+    docker logs "$tag-win1" 2>&1 | tail -5
+fi
+sleep 15
+
+python3 -I - "$(api '/api/v1/hosts?columns=name,state,plugin_output')" \
+    "$(api '/api/v1/services?columns=description,state,plugin_output')" <<'PY' || failures=$((failures + 1))
+import json, sys
+host = json.loads(sys.argv[1])[0]
+services = {s["description"]: s for s in json.loads(sys.argv[2])}
+want = [
+    (services["direct"], 0, "OK direct", "a direct command line runs"),
+    (services["shell"], 1, "OK through a shell", "a line that needs a shell runs under cmd.exe, exit code kept"),
+    (services["tcp"], 0, "TCP OK", "checkd:tcp runs on the agent"),
+    (services["slow"], 2, "timed out", "a command past its timeout is stopped"),
+    (host, 0, "OK on the engine", "the host check stays on the engine"),
+]
+failed = 0
+for row, state, text, what in want:
+    if row["state"] == state and text in row["plugin_output"]:
+        print(f"ok    {what}")
+    else:
+        print(f"FAIL  {what}: state {row['state']}, {row['plugin_output']!r}")
+        failed += 1
+sys.exit(1 if failed else 0)
+PY
+
+echo
+if [ "$failures" = 0 ]; then
+    echo "All checks of the Windows agent passed."
+else
+    echo "$failures checks of the Windows agent failed. The logs are in $work/out."
+    docker logs "$tag-win1" 2>&1 | tail -10
+    exit 1
+fi

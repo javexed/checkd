@@ -173,6 +173,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "checkd-agent"
+version = "0.0.0"
+dependencies = [
+ "checkd-core",
+ "libc",
+ "rcgen",
+ "rustls",
+ "tokio",
+ "tokio-rustls",
+ "webpki-roots",
+]
+
+[[package]]
 name = "checkd-config"
 version = "0.0.0"
 dependencies = [

@@ -425,8 +425,20 @@ async fn ping(options: &Options) -> Result<Found, String> {
     ))
 }
 
+/// No echo requests without Linux's unprivileged ICMP sockets.
+#[cfg(not(unix))]
+mod icmp {
+    use std::net::IpAddr;
+    use std::time::Duration;
+
+    pub fn echo(_: IpAddr, _: usize, _: Duration) -> Result<(usize, Vec<f64>), String> {
+        Err("checkd:ping is not available on this system".to_string())
+    }
+}
+
 /// Echo requests, as an ordinary user: Linux gives a process whose group
 /// is within `net.ipv4.ping_group_range` a socket for them.
+#[cfg(unix)]
 mod icmp {
     use std::net::IpAddr;
     use std::time::{Duration, Instant};

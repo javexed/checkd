@@ -127,10 +127,52 @@ pub fn read_config(path: &Path) -> Result<Config, String> {
                     pools,
                 });
             }
+            "agents" => {
+                let agents = dir.join(value);
+                config.workers.extend(read_agents(&agents)?);
+            }
             _ => return Err(bad()),
         }
     }
     Ok(config)
+}
+
+/// Whether a name can be an agent's: a host name of letters, digits,
+/// `.`, `-` and `_`, as a token file's name and as one word of `HELLO`.
+pub fn agent_name(name: &str) -> bool {
+    !name.is_empty()
+        && !name.starts_with('.')
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
+}
+
+/// The agents of a directory: each `<host>.token` in it is the worker
+/// `<host>` with the pool `host_<host>`, which runs that host's services.
+fn read_agents(dir: &Path) -> Result<Vec<Credential>, String> {
+    let entries = std::fs::read_dir(dir).map_err(|err| format!("cannot read the agents in {}: {err}", dir.display()))?;
+    let mut agents = Vec::new();
+    for entry in entries.flatten() {
+        let file = entry.path();
+        let Some(name) = file.file_name().and_then(|n| n.to_str()).and_then(|n| n.strip_suffix(".token")) else {
+            continue;
+        };
+        if !agent_name(name) {
+            continue;
+        }
+        let token = std::fs::read_to_string(&file)
+            .map_err(|err| format!("cannot read the token {}: {err}", file.display()))?
+            .trim()
+            .to_string();
+        if token.is_empty() {
+            continue;
+        }
+        agents.push(Credential {
+            name: name.to_string(),
+            token,
+            pools: vec![format!("host_{name}")],
+        });
+    }
+    agents.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(agents)
 }
 
 /// Where a job runs.
@@ -155,6 +197,11 @@ fn custom(engine: &Engine, obj: Obj, name: &str) -> Option<String> {
 /// custom variable (or its host's), then the groups that stay local, then the listed
 /// service groups, then its host's listed host groups, then the default
 /// pool.
+///
+/// Before the groups, checkd adds one rule of its own: a service whose host
+/// has an agent, a worker entry with the pool `host_<host name>`, runs
+/// there. The host's own check stays where it was, so that a host whose
+/// agent is gone still shows as up or down.
 pub fn check_route(engine: &Engine, config: &Config, obj: Obj) -> Route {
     let (host, service) = match obj {
         Obj::Host(at) => (at, None),
@@ -163,6 +210,12 @@ pub fn check_route(engine: &Engine, config: &Config, obj: Obj) -> Route {
     if let Some(var) = &config.queue_custom_variable {
         // A service without the variable takes its host's.
         if let Some(pool) = custom(engine, obj, var).or_else(|| custom(engine, Obj::Host(host), var)) {
+            return Route::Pool(pool);
+        }
+    }
+    if service.is_some() {
+        let pool = format!("host_{}", engine.hosts()[host].name);
+        if config.workers.iter().any(|w| w.pools.contains(&pool)) {
             return Route::Pool(pool);
         }
     }
@@ -624,6 +677,52 @@ mod tests {
             max_age: 10_000,
             ..Config::default()
         }
+    }
+
+    #[test]
+    fn an_agents_directory_gives_a_worker_per_token_file() {
+        let dir = std::env::temp_dir().join(format!("checkd-agents-{}", std::process::id()));
+        let agents = dir.join("agents");
+        std::fs::create_dir_all(&agents).unwrap();
+        std::fs::write(agents.join("win1.token"), "abc\n").unwrap();
+        std::fs::write(agents.join("bad name.token"), "abc\n").unwrap();
+        std::fs::write(agents.join("empty.token"), "\n").unwrap();
+        std::fs::write(agents.join("notes.txt"), "abc\n").unwrap();
+        std::fs::write(dir.join("workers.cfg"), "agents=agents\n").unwrap();
+        let config = read_config(&dir.join("workers.cfg")).unwrap();
+        assert_eq!(config.workers.len(), 1);
+        assert_eq!(config.workers[0].name, "win1");
+        assert_eq!(config.workers[0].token, "abc");
+        assert_eq!(config.workers[0].pools, vec!["host_win1".to_string()]);
+    }
+
+    #[test]
+    fn a_hosts_agent_takes_its_services_but_not_its_host_check() {
+        let dir = std::env::temp_dir().join(format!("checkd-agent-route-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("objects.cfg"),
+            "define command {\n command_name ok\n command_line /bin/true\n}\n\
+             define timeperiod {\n timeperiod_name always\n alias always\n monday 00:00-24:00\n}\n\
+             define host {\n host_name win1\n address 192.0.2.1\n check_command ok\n max_check_attempts 1\n check_period always\n}\n\
+             define host {\n host_name lin1\n address 192.0.2.2\n check_command ok\n max_check_attempts 1\n check_period always\n}\n\
+             define service {\n host_name win1,lin1\n service_description disk\n check_command ok\n max_check_attempts 1\n check_period always\n}\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("naemon.cfg"), "cfg_file=objects.cfg\n").unwrap();
+        let loaded = checkd_config::load(&dir.join("naemon.cfg"), &Default::default());
+        let (Some(main), Some(objects)) = (loaded.main, loaded.objects) else { panic!("{:?}", loaded.diags.errors) };
+        let engine = Engine::new(objects, &main, Box::new(checkd_core::timeperiod::Fixed(0)), 1_800_000_000_000).0;
+        let config = Config {
+            workers: vec![Credential { name: "win1".into(), token: "t".into(), pools: vec!["host_win1".into()] }],
+            ..config()
+        };
+        let win1 = engine.hosts().iter().position(|h| h.name == "win1").unwrap();
+        let on = |host: usize| engine.services().iter().position(|s| s.host == host).unwrap();
+        let lin1 = engine.hosts().iter().position(|h| h.name == "lin1").unwrap();
+        assert_eq!(check_route(&engine, &config, Obj::Service(on(win1))), Route::Pool("host_win1".into()));
+        assert_eq!(check_route(&engine, &config, Obj::Host(win1)), Route::Local);
+        assert_eq!(check_route(&engine, &config, Obj::Service(on(lin1))), Route::Local);
     }
 
     #[test]

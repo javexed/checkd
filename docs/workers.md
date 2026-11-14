@@ -16,7 +16,8 @@ in a build with the `workers` feature:
 
        checkd make-certs /etc/checkd/workers engine.example.test
 
-   writes `ca.crt`, `ca.key`, `engine.crt` and `engine.key`. Workers need
+   writes `ca.crt`, `ca.key`, `engine.crt` and `engine.key`, and refuses
+   to overwrite them. Workers need
    `ca.crt` only. Keep `ca.key` somewhere other than the engine's machine.
 
 2. A token per worker, one word in a file of its own:
@@ -57,16 +58,18 @@ mod_gearman's names. For a check, the first of these that applies:
 
 1. `queue_custom_variable=WORKER`: the object's custom variable `_WORKER`
    names its pool. A service without one takes its host's.
-2. `localservicegroups`, `localhostgroups`: services in these service
+2. A host's agent: when a worker has the pool `host_<host name>`, that
+   host's services go there ([agent.md](agent.md)). Not the host check.
+3. `localservicegroups`, `localhostgroups`: services in these service
    groups, and hosts in these host groups with their services, run on the
    engine.
-3. `servicegroups=a,b`: services in group `a` go to pool
+4. `servicegroups=a,b`: services in group `a` go to pool
    `servicegroup_a`.
-4. `hostgroups=a,b`: hosts in group `a`, and their services, go to pool
+5. `hostgroups=a,b`: hosts in group `a`, and their services, go to pool
    `hostgroup_a`.
-5. `hosts=yes`: other host checks go to pool `host`; `services=yes`:
+6. `hosts=yes`: other host checks go to pool `host`; `services=yes`:
    other service checks go to pool `service`.
-6. Otherwise, the engine runs it.
+7. Otherwise, the engine runs it.
 
 Event handlers run on the engine, unless `eventhandler=yes` sends them to
 pool `eventhandler`, or `route_eventhandler_like_checks=yes` sends them
@@ -75,7 +78,8 @@ commands to pool `notification`. Commands that process performance data
 files always run on the engine.
 
 A `worker=` line names a worker, the file of its token, and the pools it
-may serve. A worker serves all of those it is let.
+may serve. A worker serves all of those it is let. `agents=<dir>` adds a
+worker per `<host>.token` file in that directory ([agent.md](agent.md)).
 
 ## What happens when
 

@@ -7,6 +7,7 @@
 //! kept up to a limit and read on while it lasts.
 
 use std::collections::BTreeMap;
+#[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
 use std::process::Stdio;
 use std::sync::{Arc, Mutex};
@@ -105,10 +106,17 @@ fn spawn(line: &str, more_env: &[(String, String)]) -> Result<(Child, Option<i32
             command.args(argv.iter().skip(1)).envs(env);
             (program, command)
         }
+        #[cfg(unix)]
         Start::Shell => {
             let mut command = Command::new("/bin/sh");
             command.arg("-c").arg(line);
             ("/bin/sh".to_string(), command)
+        }
+        #[cfg(windows)]
+        Start::Shell => {
+            let mut command = Command::new("cmd.exe");
+            command.raw_arg("/d /s /c \"").raw_arg(line).raw_arg("\"");
+            ("cmd.exe".to_string(), command)
         }
     };
     // A group of its own, so that the command can be stopped together
@@ -118,8 +126,9 @@ fn spawn(line: &str, more_env: &[(String, String)]) -> Result<(Child, Option<i32
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .process_group(0)
         .kill_on_drop(true);
+    #[cfg(unix)]
+    command.process_group(0);
     match command.spawn() {
         Ok(child) => {
             let group = child.id().map(|pid| pid as i32);
@@ -128,7 +137,7 @@ fn spawn(line: &str, more_env: &[(String, String)]) -> Result<(Child, Option<i32
         Err(err) => {
             // The reference tries to start the program in a process of
             // its own, which says this and ends with the error's number.
-            let errno = err.raw_os_error().unwrap_or(libc::ENOENT);
+            let errno = err.raw_os_error().unwrap_or(2);
             Err(JobResult {
                 outcome: Outcome::Exited(errno),
                 stdout: String::new(),
@@ -167,7 +176,7 @@ async fn finish(mut child: Child, group: Option<i32>, timeout: Ms) -> JobResult 
     };
     let limit = Duration::from_millis(timeout.max(0) as u64);
     let outcome = match tokio::time::timeout(limit, work).await {
-        Ok(Ok(status)) => match (status.code(), status.signal()) {
+        Ok(Ok(status)) => match (status.code(), signal_of(&status)) {
             (Some(code), _) => Outcome::Exited(code),
             (None, Some(signal)) => Outcome::Signaled(signal),
             (None, None) => Outcome::Failed("ended in a way that is not understood".to_string()),
@@ -205,12 +214,36 @@ async fn keep<R: AsyncRead + Unpin>(pipe: &mut Option<R>, into: &mut Vec<u8>) {
     }
 }
 
+#[cfg(unix)]
+fn signal_of(status: &std::process::ExitStatus) -> Option<i32> {
+    status.signal()
+}
+
+#[cfg(not(unix))]
+fn signal_of(_: &std::process::ExitStatus) -> Option<i32> {
+    None
+}
+
 /// Ends every process of a group at once.
+#[cfg(unix)]
 pub fn stop_group(group: i32) {
     if group > 1 {
         // SAFETY: a plain system call. A group that is gone is an error
         // that does not matter here.
         unsafe { libc::kill(-group, libc::SIGKILL) };
+    }
+}
+
+/// Ends a process and everything it started. Windows has no process
+/// groups to signal; `taskkill /t` walks the tree.
+#[cfg(windows)]
+pub fn stop_group(group: i32) {
+    if group > 0 {
+        let _ = std::process::Command::new("taskkill")
+            .args(["/f", "/t", "/pid", &group.to_string()])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
     }
 }
 

@@ -16,3 +16,5 @@
 /runs/reload-work
 /runs/workers-failover-work
 /runs/store-outage-work
+/dist
+/runs/agent-windows-work

@@ -58,13 +58,22 @@ pub fn make_certs(dir: &Path, names: &[String]) -> Result<(), String> {
     use rcgen::{BasicConstraints, CertificateParams, DnType, IsCa, KeyPair, KeyUsagePurpose};
     std::fs::create_dir_all(dir).map_err(|err| format!("cannot make {}: {err}", dir.display()))?;
     let write = |name: &str, text: String, secret: bool| -> Result<(), String> {
+        use std::io::Write;
         let path = dir.join(name);
-        std::fs::write(&path, text).map_err(|err| format!("cannot write {}: {err}", path.display()))?;
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        // A key is never readable by others, not even for a moment.
+        #[cfg(unix)]
         if secret {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
         }
-        Ok(())
+        #[cfg(not(unix))]
+        let _ = secret;
+        options
+            .open(&path)
+            .and_then(|mut file| file.write_all(text.as_bytes()))
+            .map_err(|err| format!("cannot write {}: {err}", path.display()))
     };
     let ca_key = KeyPair::generate().map_err(|err| err.to_string())?;
     let mut ca = CertificateParams::new(Vec::<String>::new()).map_err(|err| err.to_string())?;

@@ -11,3 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: cargo test --workspace --all-features --locked
+  agent-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo test --locked -p checkd-agent

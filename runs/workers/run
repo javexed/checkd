@@ -12,6 +12,7 @@
 #   w1  pools hostgroup_dmz and service
 #   w2  pools service and pool_x, with --restrict-path /case/plugins
 #   w3  a wrong token: refused
+#   agent1  checkd-agent, pool host_agent1: the services of host agent1
 #
 # Checked:
 #   1. routing: host groups kept local, host groups to their pool, a custom
@@ -20,7 +21,8 @@
 #   3. a program outside --restrict-path is refused, as UNKNOWN;
 #   4. a worker with a wrong token is refused;
 #   5. /metrics shows the pools;
-#   6. the worker running the slow check is killed half way: the check is
+#   6. a host's agent runs its services, not its host check;
+#   7. the worker running the slow check is killed half way: the check is
 #      run again by the other worker of its pool.
 #
 # Everything stays in runs/workers-work.
@@ -36,6 +38,8 @@ image="checkd-oracle:naemon-${core}-${inputs}"
 cd "$root"
 CARGO_TARGET_DIR=$root/target/workers cargo build --quiet -p checkd --features workers
 checkd=$root/target/workers/debug/checkd
+CARGO_TARGET_DIR=$root/target/workers cargo build --quiet -p checkd-agent
+agent=$root/target/workers/debug/checkd-agent
 
 tag=checkd-workers-$$
 net=$tag-net
@@ -43,13 +47,13 @@ rm -rf "$work"
 mkdir -p "$work/out" "$work/conf" "$work/w3"
 
 cleanup() {
-    docker rm -f "$tag-engine" "$tag-w1" "$tag-w2" "$tag-w3" >/dev/null 2>&1 || true
+    docker rm -f "$tag-engine" "$tag-w1" "$tag-w2" "$tag-w3" "$tag-agent1" >/dev/null 2>&1 || true
     docker network rm "$net" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
 "$checkd" make-certs "$work/conf" engine >/dev/null
-for w in w1 w2 w3; do
+for w in w1 w2 w3 agent1; do
     head -c 24 /dev/urandom | base64 | tr -d '=+/\n' > "$work/conf/$w.token"
 done
 # w3 knows a token, but not its own.
@@ -67,6 +71,7 @@ max-age=30
 worker=w1 token=w1.token pools=hostgroup_dmz,service
 worker=w2 token=w2.token pools=service,pool_x
 worker=w3 token=w3.token pools=service
+worker=agent1 token=agent1.token pools=host_agent1
 EOF
 
 docker network create --internal "$net" >/dev/null
@@ -80,16 +85,19 @@ worker() {
     name=$1
     token=$2
     shift 2
+    program=${program:-$checkd}
+    verb=${verb-worker}
     docker run -d --name "$tag-$name" --hostname "$name" --network "$net" \
         --user "$(id -u):$(id -g)" \
         -v "$here/case/plugins:/case/plugins:ro" -v "$work/conf/ca.crt:/conf/ca.crt:ro" \
-        -v "$token:/conf/token:ro" -v "$checkd:/checkd:ro" -v "$work/out:/out" \
-        --entrypoint /checkd "$image" worker --engine engine:4730 --name "$name" \
+        -v "$token:/conf/token:ro" -v "$program:/checkd:ro" -v "$work/out:/out" \
+        --entrypoint /checkd "$image" $verb --engine engine:4730 --name "$name" \
         --token-file /conf/token --ca /conf/ca.crt --max-jobs 4 "$@" >/dev/null
 }
 worker w1 "$work/conf/w1.token"
 worker w2 "$work/conf/w2.token" --restrict-path /case/plugins
 worker w3 "$work/w3/w3.token"
+program=$agent verb= worker agent1 "$work/conf/agent1.token"
 
 failures=0
 ok() { echo "ok    $1"; }
@@ -108,6 +116,7 @@ wait_for() {
 
 wait_for "$work/out/engine.log" "Worker w2 joined" 30 || bad "w2 did not join"
 wait_for "$work/out/engine.log" "Worker w1 joined" 30 || bad "w1 did not join"
+wait_for "$work/out/engine.log" "Worker agent1 joined" 30 || bad "agent1 did not join"
 # Two rounds of checks.
 sleep 14
 
@@ -125,6 +134,8 @@ want = [
     (services[("plain1", "special")], "ran on w2", "a custom variable's pool: w2"),
     (hosts["lab1"], "No worker is connected for pool hostgroup_lab", "a pool nobody serves"),
     (services[("plain1", "forbidden")], "Refused by worker w2", "a program outside --restrict-path"),
+    (services[("agent1", "disk")], "ran on agent1", "a host's agent runs its services"),
+    (hosts["agent1"], "ran on engine", "but not its host check"),
 ]
 failed = 0
 for row, text, what in want:
