@@ -48,3 +48,31 @@ from other hosts and services ([aggregate](aggregate.md)).
 
 Not there: SNMP, DNS records, authentication, a client certificate,
 following redirects, a proxy. For those there are plugins.
+
+## Telling someone without a script
+
+    define command {
+        command_name  notify-service-ntfy
+        command_line  checkd:notify -f ntfy -u https://ntfy.example.com/alerts -t "$HOSTNAME$/$SERVICEDESC$ is $SERVICESTATE$" -m "$NOTIFICATIONTYPE$: $SERVICEOUTPUT$"
+    }
+
+`checkd:notify` is for a notification command (or an event handler): it
+sends a title and a message to an address, and starts no program.
+
+| `-f` | What is sent |
+|---|---|
+| `json` (without `-f`) | `POST` of `{"title": ..., "message": ...}` to the address: for a webhook of your own |
+| `ntfy` | to an ntfy server; the address ends with the topic, and `-p 1` to `5` is the priority |
+| `slack` | `{"text": "*title*\nmessage"}`, as Slack's incoming webhooks and those made like them take |
+
+- The title and the message are words of the line, in quotes; whatever a
+  macro puts in them is sent as it is and is never a shell's to read.
+- Over HTTPS the certificate must be one the built-in authorities vouch
+  for. An answer that is not 2xx, or none, is a failure, and in the log
+  as one for a notification command.
+- The address is in the configuration, and is all a sender needs: who
+  can read the configuration can send there.
+- No authentication header, no retry: a message that is not taken is
+  not sent again.
+
+`checkd:trend` says where a number is going ([trend](trend.md)).

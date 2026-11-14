@@ -23,6 +23,7 @@ mod shadow;
 mod store;
 #[cfg(feature = "workers")]
 mod tls;
+mod trend;
 #[cfg(feature = "workers")]
 mod worker;
 #[cfg(feature = "workers")]

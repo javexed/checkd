@@ -99,6 +99,10 @@ downtime, and a timeperiod can bring a downtime round again
 A service can stand for others: OK while enough of its members are
 ([docs/aggregate.md](docs/aggregate.md)).
 
+A service can say when a disk will be full ([docs/trend.md](docs/trend.md)),
+and a notification can go to ntfy, Slack or a webhook without a script
+([docs/builtin.md](docs/builtin.md)).
+
 A number of
 settings that belong to checks are not acted on yet, and `checkd run`
 warns when a config sets one of them:

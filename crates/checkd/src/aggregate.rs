@@ -15,7 +15,7 @@ pub fn is_aggregate(line: &str) -> bool {
 }
 
 /// The words of a line; quotes keep a word with spaces together.
-fn words(line: &str) -> Vec<String> {
+pub(crate) fn words(line: &str) -> Vec<String> {
     let mut words = Vec::new();
     let mut word = String::new();
     let mut quote = None;

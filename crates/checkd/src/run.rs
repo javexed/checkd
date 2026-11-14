@@ -516,6 +516,7 @@ async fn serve(
         log.line(&note);
     }
     let mut recurring_tick = tokio::time::interval(Duration::from_secs(15));
+    let mut trends = crate::trend::Trends::default();
     let (mut digests, digest_notes) = crate::digest::Digests::new(engine);
     for note in digest_notes {
         log.line(&note);
@@ -659,6 +660,10 @@ async fn serve(
             // An aggregate is worked out here, from what the engine knows.
             if crate::aggregate::is_aggregate(&job.line) {
                 let _ = done.send((job.id, crate::aggregate::evaluate(engine, &job.line)));
+                continue;
+            }
+            if crate::trend::is_trend(&job.line) {
+                let _ = done.send((job.id, trends.evaluate(engine, &job.line, now())));
                 continue;
             }
             let Some(job) = digests.hold(job, now()) else { continue };

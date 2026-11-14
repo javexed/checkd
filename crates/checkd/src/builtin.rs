@@ -6,6 +6,11 @@
 //!     checkd:http -H <host> [-p <port>] [-u <path>] [-S] [-e <codes>] [-s <text>] [-w <s>] [-c <s>]
 //!     checkd:cert -H <host> [-p <port>] [-w <days>] [-c <days>]
 //!
+//! and one that is not a check but a way to tell someone, for a
+//! notification command:
+//!
+//!     checkd:notify -u <url> -t <title> -m <message> [-f json|ntfy|slack] [-p <priority>]
+//!
 //! They answer as a plugin does: a line of text with performance data
 //! and one of the four states. The reference knows nothing of them: a
 //! config that uses them is a config for checkd only. See
@@ -15,7 +20,6 @@ use std::collections::BTreeMap;
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 
-use checkd_core::cmdline::{self, Start};
 use checkd_core::engine::{JobResult, Ms, Outcome};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -114,12 +118,9 @@ fn limit(value: Option<f64>) -> String {
 /// plugin: a check still at work then gives the result of one that timed
 /// out.
 pub async fn run(line: &str, timeout: Ms) -> JobResult {
-    let words = match cmdline::plan(line.trim_start()) {
-        Start::Direct { argv, .. } => argv,
-        Start::Shell => {
-            return answer("CHECKD", (UNKNOWN, "a check of checkd's own takes plain words, nothing for a shell".into(), String::new()));
-        }
-    };
+    // Words, and quotes around those with spaces; nothing is a shell's.
+    // What a macro brought, plugin output say, is only ever a word.
+    let words = crate::aggregate::words(line.trim_start());
     let kind = words.first().map(String::as_str).unwrap_or("").trim_start_matches("checkd:").to_string();
     let name = kind.to_uppercase();
     let options = match Options::read(&words[1..]) {
@@ -132,8 +133,9 @@ pub async fn run(line: &str, timeout: Ms) -> JobResult {
             "tcp" => tcp(&options).await,
             "http" => http(&options).await,
             "cert" => cert(&options).await,
-            "aggregate" => Err("an aggregate is worked out by the engine that has the hosts and services, not here".to_string()),
-            other => Err(format!("checkd has no check '{other}': ping, tcp, http, cert, aggregate")),
+            "notify" => notify(&options).await,
+            "aggregate" | "trend" => Err("this one is worked out by the engine that has the hosts and services, not here".to_string()),
+            other => Err(format!("checkd has no check '{other}': ping, tcp, http, cert, aggregate, notify")),
         }
     };
     match tokio::time::timeout(Duration::from_millis(timeout.max(0) as u64), work).await {
@@ -255,6 +257,106 @@ async fn http(options: &Options) -> Result<Found, String> {
         said,
         format!("time={took:.6}s;{};{};0 size={}B;;;0", limit(warn), limit(crit), page.len()),
     ))
+}
+
+/// A text as a JSON string.
+fn json(text: &str) -> String {
+    let mut out = String::from("\"");
+    for c in text.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+/// A URL in its parts: whether it is HTTPS, the host, the port, the path.
+fn url_parts(url: &str) -> Result<(bool, String, u16, String), String> {
+    let (secure, rest) = match (url.strip_prefix("https://"), url.strip_prefix("http://")) {
+        (Some(rest), _) => (true, rest),
+        (_, Some(rest)) => (false, rest),
+        _ => return Err(format!("'{url}' is not an http or https address")),
+    };
+    let (authority, path) = match rest.find('/') {
+        Some(at) => (&rest[..at], &rest[at..]),
+        None => (rest, "/"),
+    };
+    if authority.is_empty() || authority.contains('@') || path.chars().any(|c| c.is_whitespace() || c.is_control()) {
+        return Err(format!("'{url}' is not an address to send to"));
+    }
+    let (host, port) = match authority.rsplit_once(':') {
+        Some((host, port)) if !host.is_empty() && !port.is_empty() && port.bytes().all(|b| b.is_ascii_digit()) => {
+            (host, port.parse().map_err(|_| format!("'{port}' is not a port"))?)
+        }
+        _ => (authority, if secure { 443 } else { 80 }),
+    };
+    Ok((secure, host.to_string(), port, path.to_string()))
+}
+
+/// Tells someone: a notification command that starts no program. The
+/// title and the message are sent to an address, as the service there
+/// takes them.
+async fn notify(options: &Options) -> Result<Found, String> {
+    let url = options.text("-u").ok_or("-u <url> is needed")?;
+    let title = options.text("-t").unwrap_or("checkd");
+    let message = options.text("-m").unwrap_or("");
+    let priority = options.text("-p");
+    let (secure, host, port, mut path) = url_parts(url)?;
+    let body = match options.text("-f").unwrap_or("json") {
+        "json" => format!("{{\"title\":{},\"message\":{}}}", json(title), json(message)),
+        "slack" => format!("{{\"text\":{}}}", json(&format!("*{title}*\n{message}"))),
+        // ntfy: the topic is the last part of the address, and the rest
+        // of it is where everything is published.
+        "ntfy" => {
+            let topic = path.trim_matches('/').to_string();
+            if topic.is_empty() || topic.contains('/') {
+                return Err("for ntfy, the address ends with the topic: https://ntfy.example.com/<topic>".to_string());
+            }
+            path = "/".to_string();
+            let priority = match priority {
+                None => String::new(),
+                Some(p) if matches!(p, "1" | "2" | "3" | "4" | "5") => format!(",\"priority\":{p}"),
+                Some(p) => return Err(format!("for ntfy, -p is 1 to 5, not '{p}'")),
+            };
+            format!("{{\"topic\":{},\"title\":{},\"message\":{}{priority}}}", json(&topic), json(title), json(message))
+        }
+        other => return Err(format!("-f is json, ntfy or slack, not '{other}'")),
+    };
+    let plain = match connect(&host, port).await {
+        Ok(stream) => stream,
+        Err(why) => return Ok((CRITICAL, format!("not sent: {host} port {port}: {why}"), String::new())),
+    };
+    let mut stream: Box<dyn Stream> = if secure {
+        match tls::connect(plain, &host).await? {
+            (stream, _, None) => Box::new(stream),
+            (_, _, Some(why)) => return Ok((CRITICAL, format!("not sent: the certificate of {host} is not trusted: {why}"), String::new())),
+        }
+    } else {
+        Box::new(plain)
+    };
+    let request = format!(
+        "POST {path} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: checkd\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    stream.write_all(request.as_bytes()).await.map_err(|err| err.to_string())?;
+    let mut head = vec![0u8; 512];
+    let n = stream.read(&mut head).await.unwrap_or(0);
+    let status = String::from_utf8_lossy(&head[..n]).lines().next().unwrap_or("").trim().to_string();
+    let code = status.split_whitespace().nth(1).unwrap_or("");
+    if code.starts_with('2') {
+        Ok((OK, format!("sent to {host} ({status})"), String::new()))
+    } else if status.is_empty() {
+        Ok((CRITICAL, format!("not sent: {host} gave no answer"), String::new()))
+    } else {
+        Ok((CRITICAL, format!("not sent: {host} answered {status}"), String::new()))
+    }
 }
 
 async fn cert(options: &Options) -> Result<Found, String> {
@@ -699,6 +801,54 @@ mod tests {
             assert_eq!(code, 2);
             assert!(text.contains("'goodbye' is not on the page"), "{text}");
             assert!(state("200 OK", "").await.1.starts_with("HTTP OK - HTTP/1.1 200 OK - "));
+        });
+    }
+
+    /// A server for one request, which gives back what it was sent.
+    async fn listen() -> (u16, tokio::sync::oneshot::Receiver<String>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let (sent, got) = tokio::sync::oneshot::channel();
+        tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut request = vec![0u8; 4096];
+            let n = stream.read(&mut request).await.unwrap_or(0);
+            let _ = stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n").await;
+            let _ = sent.send(String::from_utf8_lossy(&request[..n]).into_owned());
+        });
+        (port, got)
+    }
+
+    #[test]
+    fn telling_someone() {
+        runtime().block_on(async {
+            // Plugin output with what a shell would act on is a word like any other.
+            let (port, got) = listen().await;
+            let line = format!("checkd:notify -u http://127.0.0.1:{port}/hook -t \"web1 is DOWN\" -m 'no route; `rm -rf` | $(x) \"q\"'");
+            let result = run(&line, 5000).await;
+            assert!(matches!(result.outcome, Outcome::Exited(0)), "{result:?}");
+            let request = got.await.unwrap();
+            assert!(request.starts_with("POST /hook HTTP/1.1\r\n"), "{request}");
+            assert!(request.ends_with(r#"{"title":"web1 is DOWN","message":"no route; `rm -rf` | $(x) \"q\""}"#), "{request}");
+
+            let (port, got) = listen().await;
+            let result = run(&format!("checkd:notify -u http://127.0.0.1:{port}/alerts -f ntfy -p 5 -t T -m M"), 5000).await;
+            assert!(matches!(result.outcome, Outcome::Exited(0)), "{result:?}");
+            let request = got.await.unwrap();
+            assert!(request.starts_with("POST / HTTP/1.1\r\n"), "{request}");
+            assert!(request.ends_with(r#"{"topic":"alerts","title":"T","message":"M","priority":5}"#), "{request}");
+
+            let (port, got) = listen().await;
+            run(&format!("checkd:notify -u http://127.0.0.1:{port}/services/x -f slack -t T -m M"), 5000).await;
+            assert!(got.await.unwrap().ends_with(r#"{"text":"*T*\nM"}"#));
+
+            for line in ["checkd:notify -t T", "checkd:notify -u ftp://x/y", "checkd:notify -u http://127.0.0.1:1/ -f carrier-pigeon", "checkd:notify -u http://127.0.0.1:1/ -f ntfy"] {
+                let result = run(line, 5000).await;
+                assert!(matches!(result.outcome, Outcome::Exited(3)), "{line}: {result:?}");
+            }
+            // Nobody there: said, as a failure.
+            let result = run("checkd:notify -u http://127.0.0.1:1/x -t T", 5000).await;
+            assert!(matches!(result.outcome, Outcome::Exited(2)), "{result:?}");
         });
     }
 
