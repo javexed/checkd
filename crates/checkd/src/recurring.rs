@@ -1,5 +1,5 @@
 //! Downtimes that come round: a host or service with the custom variable
-//! `_DOWNTIME_PERIOD <timeperiod>` is in a downtime whenever that
+//! `_CHECKD_DOWNTIME_PERIOD <timeperiod>` is in a downtime whenever that
 //! timeperiod holds. See `docs/downtimes.md`.
 //!
 //! The downtimes are ordinary ones, made by the external commands for
@@ -29,14 +29,14 @@ impl Recurring {
         let mut wanted = Vec::new();
         let mut notes = Vec::new();
         for obj in engine.all_objects() {
-            let Some(period) = engine.item(obj).cfg.custom.iter().find(|(n, _)| n == "DOWNTIME_PERIOD").map(|(_, v)| v.trim().to_string()) else {
+            let Some(period) = engine.item(obj).cfg.custom.iter().find(|(n, _)| n == "CHECKD_DOWNTIME_PERIOD").map(|(_, v)| v.trim().to_string()) else {
                 continue;
             };
             if engine.objects().timeperiods.contains_key(&period) {
                 wanted.push((obj, period));
             } else {
                 notes.push(format!(
-                    "Warning: {}: _DOWNTIME_PERIOD names no timeperiod '{period}'; no downtime is made",
+                    "Warning: {}: _CHECKD_DOWNTIME_PERIOD names no timeperiod '{period}'; no downtime is made",
                     engine.log_name(obj)
                 ));
             }

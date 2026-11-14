@@ -44,6 +44,9 @@ Each module's header comment gives the rules it follows.
   compares log lines and plugin calls with the reference's recordings.
   [`../../runs/README.md`](../../runs/README.md) says what is compared,
   how closely, and where checkd does something else on purpose.
+- Freshness checks (`check_freshness`, `freshness_threshold`, the two
+  `*_freshness_check_interval` and `additional_freshness_latency`) follow
+  the scenario `freshness`.
 - `tests/timeperiods.rs` asks the timeperiod evaluator 27,496 questions
   the reference was asked. See
   [`../../runs/timeperiods/README.md`](../../runs/timeperiods/README.md).
@@ -55,9 +58,7 @@ Each module's header comment gives the rules it follows.
 Custom notifications, triggered downtimes and global notification
 handlers are written but not compared with the reference. Of what
 belongs to checks and state, these are not done: a limit on checks
-running at once, freshness checks (`check_freshness` and
-`freshness_threshold` are read and nothing is done with them: a passive
-service that stops reporting stays as it was), obsessing, the commands
+running at once, obsessing, the commands
 `host_perfdata_command` and `service_perfdata_command`, environment
 macros, aggressive host checking, predictive dependency checks, service
 parents and `use_timezone`.

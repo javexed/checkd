@@ -1,8 +1,8 @@
 //! Several notifications to one contact, told as one.
 //!
-//! A contact with the custom variable `_DIGEST_COMMAND <command>` gets
+//! A contact with the custom variable `_CHECKD_DIGEST_COMMAND <command>` gets
 //! its notifications a little late: the first is held for
-//! `_DIGEST_WAIT` seconds (30 without it), and what else comes for the
+//! `_CHECKD_DIGEST_WAIT` seconds (30 without it), and what else comes for the
 //! contact in that time is held with it. One alone then goes out as it
 //! is. Two or more go out as one run of the digest command, which is
 //! told of them all in its environment. See `docs/digest.md`.
@@ -42,16 +42,16 @@ impl Digests {
         let objects = engine.objects();
         for contact in objects.contacts.values() {
             let custom = |name: &str| contact.custom.iter().find(|(n, _)| n == name).map(|(_, v)| v.trim());
-            let Some(command) = custom("DIGEST_COMMAND") else { continue };
+            let Some(command) = custom("CHECKD_DIGEST_COMMAND") else { continue };
             let Some(command) = objects.commands.get(command) else {
-                notes.push(format!("Warning: contact {}: _DIGEST_COMMAND names no command '{command}'; its notifications go out one by one", contact.name));
+                notes.push(format!("Warning: contact {}: _CHECKD_DIGEST_COMMAND names no command '{command}'; its notifications go out one by one", contact.name));
                 continue;
             };
-            let wait = match custom("DIGEST_WAIT").map(str::parse::<f64>) {
+            let wait = match custom("CHECKD_DIGEST_WAIT").map(str::parse::<f64>) {
                 None => 30_000,
                 Some(Ok(seconds)) if (1.0..=3600.0).contains(&seconds) => (seconds * 1000.0) as Ms,
                 Some(_) => {
-                    notes.push(format!("Warning: contact {}: _DIGEST_WAIT is 1 to 3600 seconds; 30 are taken", contact.name));
+                    notes.push(format!("Warning: contact {}: _CHECKD_DIGEST_WAIT is 1 to 3600 seconds; 30 are taken", contact.name));
                     30_000
                 }
             };

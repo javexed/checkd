@@ -1,0 +1,11 @@
+3 PROCESS_SERVICE_CHECK_RESULT;a;told-then-quiet;0;told once
+3 PROCESS_SERVICE_CHECK_RESULT;a;told-often;0;told
+3 PROCESS_SERVICE_CHECK_RESULT;a;stale-retries;0;told
+6 PROCESS_SERVICE_CHECK_RESULT;a;told-often;0;told
+9 PROCESS_SERVICE_CHECK_RESULT;a;told-often;0;told
+12 PROCESS_SERVICE_CHECK_RESULT;a;told-often;0;told
+15 PROCESS_SERVICE_CHECK_RESULT;a;told-often;0;told
+18 PROCESS_SERVICE_CHECK_RESULT;a;told-often;0;told
+21 PROCESS_SERVICE_CHECK_RESULT;a;told-often;0;told
+24 PROCESS_SERVICE_CHECK_RESULT;a;told-often;0;told
+30 PROCESS_SERVICE_CHECK_RESULT;a;told-then-quiet;0;told again

@@ -1,0 +1,40 @@
+17 a 0
+6015 active-and-fresh 0
+10017 stale-retries 2
+10020 a 0
+12015 ph 1
+12017 active-and-fresh 0
+12017 auto-threshold 2
+12017 never-told 2
+12017 told-then-quiet 2
+12020 n-ann-a-never-told t=PROBLEM|s=CRITICAL|st=HARD|a=1|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=cefda293-406d-4cff-bcc8-bd994c781471|dt=0|hdt=0|ack=/|o=never-told is 2 at second 12
+12020 n-ann-a-told-then-quiet t=PROBLEM|s=CRITICAL|st=HARD|a=1|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=406bb198-a383-4d3a-8469-ead2381d4d0c|dt=0|hdt=0|ack=/|o=told-then-quiet is 2 at second 12
+12020 n-ann-a-auto-threshold t=PROBLEM|s=CRITICAL|st=HARD|a=1|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=6c287d67-5b07-4537-864b-308542ecbedf|dt=0|hdt=0|ack=/|o=auto-threshold is 2 at second 12
+12020 a 0
+18018 active-and-fresh 0
+18019 stale-retries 2
+18021 a 0
+22018 told-then-quiet 2
+24015 ph 1
+24017 auto-threshold 2
+24017 active-and-fresh 0
+24017 never-told 2
+26018 stale-retries 2
+26021 n-ann-a-stale-retries t=PROBLEM|s=CRITICAL|st=HARD|a=3|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=2825bdf9-e52f-46c2-a051-c281b9177e33|dt=0|hdt=0|ack=/|o=stale-retries is 2 at second 26
+26022 a 0
+30004 n-ann-a-told-then-quiet t=RECOVERY|s=OK|st=HARD|a=1|n=2|sn=2|hn=0|esc=0|rcp=ann|au=|co=|id=28428bb6-957a-4a0e-adb2-90268b57541e|dt=0|hdt=0|ack=/|o=told again
+30018 active-and-fresh 0
+34020 told-often 2
+34020 stale-retries 2
+34022 n-ann-a-told-often t=PROBLEM|s=CRITICAL|st=HARD|a=1|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=95696913-83bb-49e0-9cc8-a76c5fef1f0f|dt=0|hdt=0|ack=/|o=told-often is 2 at second 34
+34023 a 0
+36017 ph 1
+36020 active-and-fresh 0
+36020 never-told 2
+36021 auto-threshold 2
+40020 told-then-quiet 2
+40023 n-ann-a-told-then-quiet t=PROBLEM|s=CRITICAL|st=HARD|a=1|n=1|sn=1|hn=0|esc=0|rcp=ann|au=|co=|id=d28c2766-9b42-4db9-81b2-f80b935efba6|dt=0|hdt=0|ack=/|o=told-then-quiet is 2 at second 40
+40023 a 0
+42020 stale-retries 2
+42020 active-and-fresh 0
+44021 told-often 2

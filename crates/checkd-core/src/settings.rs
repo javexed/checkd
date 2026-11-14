@@ -64,6 +64,11 @@ pub struct Settings {
     pub process_performance_data: bool,
     pub check_service_freshness: bool,
     pub check_host_freshness: bool,
+    /// Seconds between two looks at the freshness of services, of hosts.
+    pub service_freshness_check_interval: u32,
+    pub host_freshness_check_interval: u32,
+    /// Seconds added to a freshness threshold the engine works out itself.
+    pub additional_freshness_latency: u32,
     pub obsess_over_services: bool,
     pub obsess_over_hosts: bool,
     pub accept_passive_service_checks: bool,
@@ -127,6 +132,9 @@ impl Default for Settings {
             process_performance_data: false,
             check_service_freshness: true,
             check_host_freshness: false,
+            service_freshness_check_interval: 60,
+            host_freshness_check_interval: 60,
+            additional_freshness_latency: 15,
             obsess_over_services: false,
             obsess_over_hosts: false,
             accept_passive_service_checks: true,
@@ -151,8 +159,6 @@ const NOT_YET: &[(&str, &str)] = &[
     ("obsess_over_services", "0"),
     ("obsess_over_hosts", "0"),
     ("enable_environment_macros", "0"),
-    ("check_service_freshness", "0"),
-    ("check_host_freshness", "0"),
     ("translate_passive_host_checks", "0"),
 ];
 
@@ -215,6 +221,9 @@ impl Settings {
         s.process_performance_data = flag("process_performance_data", s.process_performance_data);
         s.check_service_freshness = flag("check_service_freshness", s.check_service_freshness);
         s.check_host_freshness = flag("check_host_freshness", s.check_host_freshness);
+        s.service_freshness_check_interval = num("service_freshness_check_interval", 60.0).max(1.0) as u32;
+        s.host_freshness_check_interval = num("host_freshness_check_interval", 60.0).max(1.0) as u32;
+        s.additional_freshness_latency = num("additional_freshness_latency", 15.0).max(0.0) as u32;
         s.obsess_over_services = flag("obsess_over_services", s.obsess_over_services);
         s.obsess_over_hosts = flag("obsess_over_hosts", s.obsess_over_hosts);
         s.accept_passive_service_checks = flag("accept_passive_service_checks", s.accept_passive_service_checks);

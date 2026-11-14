@@ -30,12 +30,12 @@ dependency.
         ...
         service_notification_commands notify-by-mail
         host_notification_commands    notify-by-mail
-        _DIGEST_COMMAND               digest-by-mail
-        _DIGEST_WAIT                  30
+        _CHECKD_DIGEST_COMMAND        digest-by-mail
+        _CHECKD_DIGEST_WAIT           30
     }
 
-A contact with `_DIGEST_COMMAND` gets its notifications a little late.
-The first is held for `_DIGEST_WAIT` seconds (30 without it; 1 to 3600),
+A contact with `_CHECKD_DIGEST_COMMAND` gets its notifications a little late.
+The first is held for `_CHECKD_DIGEST_WAIT` seconds (30 without it; 1 to 3600),
 and whatever else comes for the contact in that time is held with it.
 
 - One alone then goes out as it is, by its own command.

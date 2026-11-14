@@ -4,14 +4,19 @@ For what runs elsewhere and on its own time: a backup, a cron job, a
 script on a machine checkd cannot reach. The job tells checkd when it is
 done; checkd raises the alarm when it has not heard in time.
 
+    define command {
+        command_name   nothing-pushed
+        command_line   checkd:dummy 2 "nothing was pushed in time"
+    }
     define service {
         host_name              nas
         service_description    backup
-        check_command          ok            ; never run: see below
+        check_command          nothing-pushed
         active_checks_enabled  0
         max_check_attempts     1
-        _PUSH_TOKEN            8f3c1e0b7a9d4c52b6e1
-        _PUSH_EVERY            90000         ; seconds: a day and an hour
+        check_freshness        1
+        freshness_threshold    90000         ; seconds: a day and an hour
+        _CHECKD_PUSH_TOKEN     8f3c1e0b7a9d4c52b6e1
     }
 
 and, at the end of the job:
@@ -19,20 +24,24 @@ and, at the end of the job:
     curl -fsS https://checkd.example.com/api/v1/push/8f3c1e0b7a9d4c52b6e1
 
 - `GET` or `POST /api/v1/push/<token>` is a result for the service whose
-  `_PUSH_TOKEN` it is: OK, with the text "pushed". `?state=warning` (or
-  `critical`, `unknown`, `0` to `3`) and `?output=...` say otherwise; the
-  body of a `POST` is the text when there is no `output`. The first line
-  is kept, up to 1,000 characters.
-- With `_PUSH_EVERY <seconds>`, the service goes CRITICAL, "nothing was
-  pushed for ... seconds", when that long has gone by since the last
-  push, and again each time it goes by. The time counts from the start
-  of checkd, not from before it: after a restart a job has its whole
-  span. It is looked at every five seconds.
-- Either way the service gets a passive result, by the external command
+  `_CHECKD_PUSH_TOKEN` it is: OK, with the text "pushed". `?state=warning`
+  (or `critical`, `unknown`, `0` to `3`) and `?output=...` say
+  otherwise; the body of a `POST` is the text when there is no `output`.
+  The first line is kept, up to 1,000 characters.
+- The service gets a passive result, by the external command
   `PROCESS_SERVICE_CHECK_RESULT`: it is in the log as one, and attempts,
   notifications, acknowledgements and downtimes are as for any service.
   The service must take passive results (`passive_checks_enabled`, on
-  unless turned off), and the engine too (`accept_passive_service_checks`).
+  unless turned off; checkd warns at its start when it is off), and the
+  engine too (`accept_passive_service_checks`).
+- That nothing came in time is Naemon's own freshness checking, which
+  checkd does as Naemon does it: when the last result is older than
+  `freshness_threshold` seconds, the service's check command is run, also
+  with active checks off; here it answers CRITICAL. The engine looks every
+  `service_freshness_check_interval` seconds (60 unless set), and the
+  time counts from the last result, or from the start of checkd for a
+  service that has had none. A config written this way means the same to
+  Naemon, but for the `checkd:dummy` command and the token.
 
 Needs `--http <address>` ([api](api.md)); checkd says at its start when
 services have tokens and it does not listen. The token is the whole of

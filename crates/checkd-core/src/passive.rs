@@ -157,3 +157,76 @@ impl Engine {
         self.add_timer(at + settings.processing_interval as Ms * 1000, Timer::PerfdataProcessing(place));
     }
 }
+
+impl Engine {
+    /// Plans the first looks at freshness, an interval after the start.
+    pub(crate) fn plan_freshness(&mut self) {
+        let host = self.settings.host_freshness_check_interval as Ms * 1000;
+        let service = self.settings.service_freshness_check_interval as Ms * 1000;
+        self.add_timer(self.start + host, Timer::Freshness(0));
+        self.add_timer(self.start + service, Timer::Freshness(1));
+    }
+
+    /// Looks at the freshness of every host or every service that asks for
+    /// it (`check_freshness`): where the last result is older than the
+    /// threshold, the object's check is forced at once, also with active
+    /// checks off. The threshold is the object's `freshness_threshold`, or,
+    /// where that is 0, its check interval (its retry interval in a soft
+    /// problem) and `additional_freshness_latency`. An object not checked
+    /// since the start counts from the start.
+    pub(crate) fn check_freshness(&mut self, hosts: bool, at: Ms, now: Ms, out: &mut Vec<Effect>) {
+        let (on, interval) = if hosts {
+            (self.settings.check_host_freshness, self.settings.host_freshness_check_interval)
+        } else {
+            (self.settings.check_service_freshness, self.settings.service_freshness_check_interval)
+        };
+        self.add_timer(at + interval as Ms * 1000, Timer::Freshness(if hosts { 0 } else { 1 }));
+        if !on {
+            return;
+        }
+        let second = now.div_euclid(1000);
+        let objects: Vec<Obj> =
+            if hosts { (0..self.hosts.len()).map(Obj::Host).collect() } else { (0..self.services.len()).map(Obj::Service).collect() };
+        for obj in objects {
+            let item = self.item(obj);
+            if !item.cfg.check_freshness || item.cfg.check_command.is_none() || item.running || item.freshening {
+                continue;
+            }
+            if let Some(period) = &item.cfg.check_period {
+                if !self.periods().is_valid(period, second) {
+                    continue;
+                }
+            }
+            let threshold = if item.cfg.freshness_threshold > 0 {
+                item.cfg.freshness_threshold as i64
+            } else {
+                let units = if item.hard || item.state == 0 { item.cfg.check_interval } else { item.cfg.retry_interval };
+                (units * self.settings.interval_length) as i64 + item.latency as i64 + self.settings.additional_freshness_latency as i64
+            };
+            let since = if item.checked { item.last_check } else { self.start };
+            let age = second - since.div_euclid(1000);
+            if age <= threshold {
+                continue;
+            }
+            let what = match obj {
+                Obj::Host(at) => format!("host '{}'", self.hosts[at].name),
+                Obj::Service(at) => format!("service '{}' on host '{}'", self.services[at].description, self.services[at].host_name),
+            };
+            let kind = if hosts { "host" } else { "service" };
+            out.push(Effect::Log(format!(
+                "Warning: The results of {what} are stale by {} (threshold={}).  I'm forcing an immediate check of the {kind}.",
+                span(age - threshold),
+                span(threshold)
+            )));
+            self.item_mut(obj).freshening = true;
+            self.check_at(obj, now, true);
+        }
+    }
+}
+
+/// Seconds as the reference writes a span: `0d 0h 1m 5s`.
+fn span(seconds: i64) -> String {
+    let s = seconds.max(0);
+    format!("{}d {}h {}m {}s", s / 86_400, s % 86_400 / 3600, s % 3600 / 60, s % 60)
+}
+

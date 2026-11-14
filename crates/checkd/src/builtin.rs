@@ -124,6 +124,15 @@ pub async fn run(line: &str, timeout: Ms) -> JobResult {
     let words = checkd_core::cmdline::own_words(line);
     let kind = words.first().map(String::as_str).unwrap_or("").trim_start_matches("checkd:").to_string();
     let name = kind.to_uppercase();
+    // A fixed answer, for a service whose results come from elsewhere:
+    // `checkd:dummy 2 "nothing came in time"`, as freshness forces it.
+    if kind == "dummy" {
+        let code = words.get(1).and_then(|c| c.parse::<i32>().ok()).filter(|c| (0..=3).contains(c));
+        return match code {
+            Some(code) => JobResult { outcome: Outcome::Exited(code), stdout: format!("{}\n", words[2..].join(" ")), stderr: String::new() },
+            None => answer("DUMMY", (UNKNOWN, "checkd:dummy takes a state, 0 to 3, and a text".into(), String::new())),
+        };
+    }
     let options = match Options::read(&words[1..]) {
         Ok(options) => options,
         Err(why) => return answer(&name, (UNKNOWN, why, String::new())),
@@ -136,7 +145,7 @@ pub async fn run(line: &str, timeout: Ms) -> JobResult {
             "cert" => cert(&options).await,
             "notify" => notify(&options).await,
             "aggregate" | "trend" => Err("this one is worked out by the engine that has the hosts and services, not here".to_string()),
-            other => Err(format!("checkd has no check '{other}': ping, tcp, http, cert, aggregate, notify")),
+            other => Err(format!("checkd has no check '{other}': ping, tcp, http, cert, dummy, aggregate, trend, notify")),
         }
     };
     match tokio::time::timeout(Duration::from_millis(timeout.max(0) as u64), work).await {
@@ -850,6 +859,16 @@ mod tests {
             // Nobody there: said, as a failure.
             let result = run("checkd:notify -u http://127.0.0.1:1/x -t T", 5000).await;
             assert!(matches!(result.outcome, Outcome::Exited(2)), "{result:?}");
+        });
+    }
+
+    #[test]
+    fn a_fixed_answer() {
+        runtime().block_on(async {
+            let result = run("checkd:dummy 2 'nothing came in time'", 5000).await;
+            assert!(matches!(result.outcome, Outcome::Exited(2)), "{result:?}");
+            assert_eq!(result.stdout, "nothing came in time\n");
+            assert!(matches!(run("checkd:dummy 7 x", 5000).await.outcome, Outcome::Exited(3)));
         });
     }
 

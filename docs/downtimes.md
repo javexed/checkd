@@ -27,7 +27,7 @@ added later is not in the downtime.
     define host {
         host_name          nas
         ...
-        _DOWNTIME_PERIOD   backup-window
+        _CHECKD_DOWNTIME_PERIOD   backup-window
     }
     define timeperiod {
         timeperiod_name    backup-window
@@ -35,7 +35,7 @@ added later is not in the downtime.
         sunday             02:00-04:00
     }
 
-A host or service with `_DOWNTIME_PERIOD <timeperiod>` is in a downtime
+A host or service with `_CHECKD_DOWNTIME_PERIOD <timeperiod>` is in a downtime
 whenever the timeperiod holds: checkd schedules one, by the usual
 command, within a quarter of a minute of its beginning, to the minute
 it ends; author `checkd`, comment `recurring: <timeperiod>`. A service

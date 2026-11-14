@@ -44,8 +44,8 @@ problem here.
 | Command file | `check_external_commands=1` and `command_file` in the config | whoever may write the pipe |
 | Livestatus socket | a Livestatus `broker_module` line, or `--livestatus` | whoever may open the socket. A query's `AuthUser` limits what is shown, but the caller chooses it: the socket itself is the gate |
 | Livestatus over TCP | `--livestatus-tcp`, or failover | **anyone who reaches the port**; no password, no TLS. For a trusted network or the loopback only |
-| HTTP API | `--http` | with `CHECKD_HTTP_TOKEN` set, whoever has the token; without it, anyone may read and nobody may send commands. Plain HTTP: put a proxy that does TLS in front, off the loopback |
-| Pushed results | `--http`, and a service with `_PUSH_TOKEN` | whoever has that service's token, for that one service's state |
+| HTTP API | `--http` | with `CHECKD_HTTP_TOKEN` set, whoever has the token; without it, it listens on the loopback only, nobody may send commands, and reads are refused custom variables, command lines and contacts' addresses. Plain HTTP: put a proxy that does TLS in front, off the loopback |
+| Pushed results | `--http`, and a service with `_CHECKD_PUSH_TOKEN` | whoever has that service's token, for that one service's state |
 | Remote workers | `--workers` | TLS, a certificate authority of the site's, and a token for each worker |
 | Failover peer | `--failover` | the other node, over a trusted network: see [docs/failover.md](docs/failover.md) |
 

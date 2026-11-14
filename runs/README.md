@@ -5,7 +5,7 @@ scripted runs", and the phase 3 gate "the same notifications as Naemon on
 the scripted runs, and state survives a kill on both stores". This
 directory holds those runs and what compares them.
 
-- `scenarios/`: 64 small configs written for this project, each with a
+- `scenarios/`: 65 small configs written for this project, each with a
   recording of what the reference did on it. Seven of them are about
   notifications, acknowledgements and downtimes, and send the reference
   external commands; `livestatus-thruk` puts Thruk's Livestatus queries
@@ -104,7 +104,7 @@ result 2 ms after the check was started. The second form shows both
 sides in full.
 
 Five scenarios need real programs or a real shell and are not played
-here (`skip` in their `compare` file). The other 59 are.
+here (`skip` in their `compare` file). The other 60 are.
 
 ### In real time
 

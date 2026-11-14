@@ -191,6 +191,10 @@ pub struct Item {
     /// The waiting check was forced by a command: it runs whatever the
     /// check period, the cache horizon and the dependencies say.
     pub forced: bool,
+    /// A check forced because the last result is stale: it runs also with
+    /// active checks off, and freshness is not looked at again until its
+    /// result is in.
+    pub freshening: bool,
     /// When the check that ran last was due.
     pub due_at: Ms,
     /// Whether the last result was a passive one.
@@ -257,6 +261,7 @@ impl Item {
             },
             last_update: 0,
             forced: false,
+            freshening: false,
             due_at: 0,
             passive_result: false,
             modified: 0,
@@ -739,6 +744,7 @@ impl Engine {
     /// The first checks are spread over each object's check interval.
     pub fn start(&mut self, out: &mut Vec<Effect>) {
         self.plan_perfdata_processing();
+        self.plan_freshness();
         if self.settings.log_initial_states {
             for at in 0..self.hosts.len() {
                 let obj = Obj::Host(at);
@@ -891,7 +897,7 @@ impl Engine {
             }
             return;
         }
-        let can = self.item(obj).cfg.active_checks_enabled && self.item(obj).cfg.check_command.is_some();
+        let can = (self.item(obj).cfg.active_checks_enabled || self.item(obj).freshening) && self.item(obj).cfg.check_command.is_some();
         if !(self.is_checked(obj) || (forced && can)) || self.item(obj).running {
             return;
         }
@@ -1150,6 +1156,7 @@ impl Engine {
         let new_text = first || item.output.short != output.short || item.output.long != output.long;
         item.running = false;
         item.checked = true;
+        item.freshening = false;
         item.last_check = started;
         item.last_update = now;
         item.execution_time = (now - started) as f64 / 1000.0;
@@ -1304,6 +1311,7 @@ impl Engine {
         let new_text = first || item.output.short != output.short || item.output.long != output.long;
         item.running = false;
         item.checked = true;
+        item.freshening = false;
         item.last_check = started;
         item.last_update = now;
         item.execution_time = (now - started) as f64 / 1000.0;

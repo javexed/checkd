@@ -195,6 +195,8 @@ pub enum Timer {
     /// The processing command of the host (0) or service (1) performance
     /// data file.
     PerfdataProcessing(u8),
+    /// A look at the freshness of the hosts (0) or the services (1).
+    Freshness(u8),
 }
 
 const REASON_OFF: &str = "Notifications are disabled for this object by its configuration.";
@@ -920,6 +922,7 @@ impl Engine {
                     }
                 }
                 Timer::PerfdataProcessing(place) => self.process_perfdata(place, at, now, out),
+                Timer::Freshness(kind) => self.check_freshness(kind == 0, at, now, out),
             }
         }
     }

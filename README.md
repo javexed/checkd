@@ -8,7 +8,9 @@ config, external commands, Livestatus, and the web interfaces that talk
 Livestatus, Thruk among them.
 
 You point it at the `naemon.cfg` you have. It runs the checks, keeps the
-states, sends the notifications and answers Livestatus as Naemon does.
+states, sends the notifications and answers Livestatus as Naemon does on
+every case compared below, and where no case was written, nobody knows
+yet.
 Then it does some things Naemon does not: its state survives a kill, two
 nodes fail over, checks can run without a plugin, and a job elsewhere can
 push its result in.
@@ -43,9 +45,9 @@ the same files.
 |---|---|---|
 | Config | 293 written cases, against Naemon's accept or refuse and the objects it builds | 279 the same; 14 refused on purpose where Naemon accepts (a service defined twice, a fault in an included file): [crates/checkd-config/README.md](crates/checkd-config/README.md) |
 | Config | 12 config trees other people published, the config the Naemon package installs, an OMD demo site | the same on all but one tree, which defines a service twice: [real/README.md](real/README.md) |
-| Engine | 64 scripted runs: states, retries, flapping, dependencies, notifications, escalations, downtimes, macros, performance data. Log line by log line and plugin call by plugin call | on a simulated clock in the unit tests; and for real, with real processes, in CI, where the 63 that can be held to the clock agree: [runs/README.md](runs/README.md) |
+| Engine | 65 scripted runs, freshness checks among them: states, retries, flapping, dependencies, notifications, escalations, downtimes, macros, performance data. Log line by log line and plugin call by plugin call | the same on a simulated clock, in the unit tests. For real, with real processes, in CI: the 64 that can be held to the clock agree, but a run that differs is tried again, alone, up to eight times, because some depend on which of two results a millisecond apart comes first: [runs/README.md](runs/README.md) |
 | Livestatus | the 108 queries Thruk was seen sending for 54 of its pages | answered value by value as Naemon answers; Thruk renders all 54 pages, 45 of them the same as against Naemon: [livestatus/README.md](livestatus/README.md) |
-| Load | a generated config, a no-op plugin | keeps up to about 15,000 checks a second where Naemon keeps up to about 7,500, in about the memory Naemon takes until it nears that limit: [docs/load.md](docs/load.md) |
+| Load | one machine, a generated config whose services are all alike, a plugin that does nothing, 60 s a run | in that test, checkd kept up to about 15,000 checks a second and Naemon to about 7,500; checkd took about Naemon's memory at 4,000 a second and twice it near its own limit. A real site's plugins and config will give other numbers: [docs/load.md](docs/load.md) |
 
 Known gaps: a number of settings are read and not acted on, and `checkd
 run` warns when a config sets one
@@ -63,8 +65,9 @@ config Naemon takes too.
   happen; it reads an existing `retention.dat` once
   ([docs/store.md](docs/store.md)). The configuration is read again on
   SIGHUP without losing state ([docs/reload.md](docs/reload.md)).
-- **Failover.** Two nodes on one PostgreSQL database; the standby took
-  over 14 seconds after the leader was killed
+- **Failover.** Two nodes on one PostgreSQL database; in two test runs
+  in containers the standby took over 14 seconds after the leader was
+  killed
   ([docs/failover.md](docs/failover.md)).
 - **Remote workers**, in place of mod_gearman, over TLS
   ([docs/workers.md](docs/workers.md)). Not yet tried under load.

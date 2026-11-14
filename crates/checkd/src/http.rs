@@ -7,9 +7,14 @@
 //! - `POST /api/v1/command` takes the body as one external command, as the
 //!   command file would (`NAME;argument;...`, without the time).
 //! - `GET` or `POST /api/v1/push/<token>` is a result for the service
-//!   whose `_PUSH_TOKEN` the token is (`crate::push`).
+//!   whose `_CHECKD_PUSH_TOKEN` the token is (`crate::push`).
 //! - `GET /metrics` gives the engine's own health in Prometheus' text
 //!   format.
+//!
+//! Without `CHECKD_HTTP_TOKEN` the API listens on the loopback only, and
+//! a read names its columns and is refused what holds a secret or says
+//! what is run: custom variables (push tokens among them), command
+//! lines, a contact's addresses.
 //!
 //! With `CHECKD_HTTP_TOKEN` set, every request needs it as
 //! `Authorization: Bearer <token>`, but for a push, which has a token of
@@ -100,6 +105,11 @@ pub async fn listen(addr: &str) -> Result<mpsc::UnboundedReceiver<Ask>, String> 
         .await
         .map_err(|err| format!("cannot listen for HTTP at {addr}: {err}"))?;
     let token = std::env::var("CHECKD_HTTP_TOKEN").ok().filter(|t| !t.is_empty());
+    if token.is_none() && !loopback(addr) {
+        return Err(format!(
+            "--http {addr}: without CHECKD_HTTP_TOKEN the HTTP API listens on this machine only (127.0.0.1 or [::1]); set a token to listen elsewhere"
+        ));
+    }
     let (asks, inbox) = mpsc::unbounded_channel();
     tokio::spawn(async move {
         loop {
@@ -201,6 +211,47 @@ pub async fn listen(addr: &str) -> Result<mpsc::UnboundedReceiver<Ask>, String> 
     Ok(inbox)
 }
 
+/// Whether an address to listen at is on this machine only.
+pub fn loopback(addr: &str) -> bool {
+    match addr.parse::<std::net::SocketAddr>() {
+        Ok(at) => at.ip().is_loopback(),
+        Err(_) => addr.starts_with("localhost:"),
+    }
+}
+
+/// A column that holds a secret or says what is run.
+fn telling(column: &str) -> bool {
+    ["custom_variable", "check_command", "event_handler", "command_line", "notification_commands"].iter().any(|part| column.contains(part))
+        || column == "email"
+        || column == "pager"
+        || column.strip_prefix("address").is_some_and(|n| n.len() == 1 && n.as_bytes()[0].is_ascii_digit())
+        || column.ends_with("_email")
+        || column.ends_with("_pager")
+}
+
+/// Why a read without a token is refused, if it is: it must name its
+/// columns, and neither they nor its filters may be ones that tell.
+pub fn refused_without_token(table: &str, query: &[(String, String)]) -> Option<String> {
+    if table == "commands" {
+        return Some("the commands table needs a token: set CHECKD_HTTP_TOKEN".into());
+    }
+    let columns: Vec<&str> = query.iter().filter(|(k, _)| k == "columns").flat_map(|(_, v)| v.split(',')).map(str::trim).collect();
+    if columns.is_empty() {
+        return Some("without a token, name the columns: ?columns=name,state".into());
+    }
+    let filtered = query
+        .iter()
+        .filter(|(k, _)| k == "filter")
+        .flat_map(|(_, v)| v.split(";;"))
+        .filter_map(|f| f.split_whitespace().next());
+    for column in columns.into_iter().chain(filtered) {
+        if telling(column) {
+            return Some(format!("the column {column} needs a token: set CHECKD_HTTP_TOKEN"));
+        }
+    }
+    None
+}
+
 /// A value of the query string without what would end its line.
 fn one_line(value: &str) -> String {
     value.chars().map(|c| if c == '\n' || c == '\r' { ' ' } else { c }).collect()
@@ -296,6 +347,20 @@ fn write_json(value: &checkd_livestatus::json::Json, out: &mut String) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn what_a_read_without_a_token_may_ask() {
+        let q = |pairs: &[(&str, &str)]| pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<Vec<_>>();
+        assert_eq!(refused_without_token("hosts", &q(&[("columns", "name,state,address")])), None);
+        for asked in [vec![], vec![("columns", "name,custom_variables")], vec![("columns", "name"), ("filter", "custom_variable_values ~ x")], vec![("columns", "host_name,check_command")]] {
+            assert!(refused_without_token("services", &q(&asked)).is_some(), "{asked:?}");
+        }
+        assert!(refused_without_token("contacts", &q(&[("columns", "name,email")])).is_some());
+        assert!(refused_without_token("contacts", &q(&[("columns", "name,address3")])).is_some());
+        assert!(refused_without_token("commands", &q(&[("columns", "name")])).is_some());
+        assert!(loopback("127.0.0.1:6559") && loopback("[::1]:6559") && loopback("localhost:6559"));
+        assert!(!loopback("0.0.0.0:6559") && !loopback("192.0.2.4:6559"));
+    }
 
     #[test]
     fn requests_and_objects() {

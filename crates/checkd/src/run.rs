@@ -507,14 +507,13 @@ async fn serve(
     let mut effects = Vec::new();
     // Livestatus requests that wait for something to happen, and what has
     // happened since they were last looked at.
-    let (mut pushes, push_notes) = crate::push::Pushes::new(engine, now());
+    let (mut pushes, push_notes) = crate::push::Pushes::new(engine);
     for note in push_notes {
         log.line(&note);
     }
     if pushes.any() && http.is_none() {
-        log.line("Warning: services have a _PUSH_TOKEN, and no pushes can come: checkd was started without --http");
+        log.line("Warning: services have a _CHECKD_PUSH_TOKEN, and no pushes can come: checkd was started without --http");
     }
-    let mut push_tick = tokio::time::interval(Duration::from_secs(5));
     let (recurring, recurring_notes) = crate::recurring::Recurring::new(engine);
     for note in recurring_notes {
         log.line(&note);
@@ -734,13 +733,6 @@ async fn serve(
             }
             _ = recurring_tick.tick(), if recurring.any() => {
                 for line in recurring.due(engine, now()) {
-                    happened |= COMMANDED;
-                    counts.commands += 1;
-                    engine.command(&line, now(), &mut effects);
-                }
-            }
-            _ = push_tick.tick(), if pushes.any_expected() => {
-                for line in pushes.overdue(now()) {
                     happened |= COMMANDED;
                     counts.commands += 1;
                     engine.command(&line, now(), &mut effects);
@@ -1020,6 +1012,11 @@ fn answer_http(
             let table = &path["/api/v1/".len()..];
             if !checkd_livestatus::tables::TABLES.contains(&table) {
                 return Reply::text(404, format!("no table '{table}'\n"));
+            }
+            if !ask.authorized {
+                if let Some(why) = crate::http::refused_without_token(table, &ask.query) {
+                    return Reply::text(403, format!("{why}\n"));
+                }
             }
             let request = crate::http::livestatus_request(table, &ask.query);
             let response = checkd_livestatus::handle(&source, &request);

@@ -1,7 +1,7 @@
 # Checks without a plugin
 
 A command line that begins with `checkd:` starts no process: checkd
-makes the check itself. For the four checks most sites begin with, that
+makes the check itself. For four checks many sites begin with, that
 does away with installing plugins, and with a process for every check.
 
     define command {
