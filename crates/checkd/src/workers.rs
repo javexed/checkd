@@ -202,6 +202,24 @@ fn agent(dir: &Path, name: &str) -> Option<Credential> {
     })
 }
 
+/// The agent a token belongs to: by its host's `<host>.token`, with the
+/// pool `host_<host>`; or by a new `<host>.new` that is not in use yet,
+/// with the pool `waiting_<host>`, which no check goes to. nuthatch makes
+/// a `.new` token the host's `.token` once its agent has connected, so a
+/// command made and never run moves no checks.
+fn agent_for(dir: &Path, name: &str, token: &str) -> Option<Credential> {
+    if let Some(known) = agent(dir, name).filter(|w| same(&w.token, token)) {
+        return Some(known);
+    }
+    let new = std::fs::read_to_string(dir.join(format!("{name}.new"))).ok()?.trim().to_string();
+    (agent_name(name) && !new.is_empty() && same(&new, token)).then(|| Credential {
+        name: name.to_string(),
+        token: new,
+        pools: vec![format!("waiting_{name}")],
+        agent: true,
+    })
+}
+
 /// Where a job runs.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Route {
@@ -379,7 +397,7 @@ impl Shared {
             .find(|w| w.name == *name && !w.agent && same(&w.token, token))
             .cloned()
             // An agent's token is read now, not at the last reload.
-            .or_else(|| agents.as_deref().and_then(|dir| agent(dir, name)).filter(|w| same(&w.token, token)))
+            .or_else(|| agents.as_deref().and_then(|dir| agent_for(dir, name, token)))
             .map(|w| (w, slots.parse::<usize>().unwrap_or(1))),
         _ => None,
     };
@@ -423,7 +441,7 @@ impl Shared {
             _ = tokio::time::sleep_until(quiet_until) => break,
             _ = check.tick() => {
                 if let Some(dir) = &own_file {
-                    if !agent(dir, &worker.name).is_some_and(|now| same(&now.token, &worker.token)) {
+                    if !agent_for(dir, &worker.name, &worker.token).is_some_and(|now| now.pools == worker.pools) {
                         break;
                     }
                 }
@@ -787,6 +805,12 @@ mod tests {
         assert_eq!(config.workers[0].name, "win1");
         assert_eq!(config.workers[0].token, "abc");
         assert_eq!(config.workers[0].pools, vec!["host_win1".to_string()]);
+        // A new token is let in, but to no pool a check goes to.
+        std::fs::write(agents.join("lin1.new"), "def\n").unwrap();
+        assert_eq!(read_config(&dir.join("workers.cfg")).unwrap().workers.len(), 1);
+        assert_eq!(agent_for(&agents, "lin1", "def").unwrap().pools, vec!["waiting_lin1".to_string()]);
+        assert!(agent_for(&agents, "lin1", "abc").is_none());
+        assert_eq!(agent_for(&agents, "win1", "abc").unwrap().pools, vec!["host_win1".to_string()]);
         // A missing directory is no agents, not an error.
         std::fs::write(dir.join("other.cfg"), "agents=nowhere\n").unwrap();
         assert!(read_config(&dir.join("other.cfg")).unwrap().workers.is_empty());

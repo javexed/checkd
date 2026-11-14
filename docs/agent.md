@@ -46,8 +46,11 @@ them, or give it their group.
     head -c 24 /dev/urandom | base64 | tr -d '=+/\n' > agents/web1.token
     kill -HUP $(pidof checkd)
 
-nuthatch's Agents page does both, and prints the command that installs the
-agent on the host.
+A `<host>.new` file is a token not in use yet: checkd lets its agent in,
+in the pool `waiting_<host>`, which no check goes to, so the host's checks
+stay where they were. nuthatch's Agents page writes one, prints the command
+that installs the agent, and once the agent has connected renames it to
+`<host>.token` and reloads checkd.
 
 ## Building
 
