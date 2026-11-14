@@ -53,6 +53,9 @@ const COMMANDS: &[(&str, &[Arg])] = &[
     ("REMOVE_SVC_ACKNOWLEDGEMENT", &[Service]),
     ("SCHEDULE_HOST_DOWNTIME", &[Host, Int, Int, Bool, Int, Int, Text, Text]),
     ("SCHEDULE_SVC_DOWNTIME", &[Service, Int, Int, Bool, Int, Int, Text, Text]),
+    // checkd's own: a downtime for every host, or every service, whose
+    // name fits a pattern.
+    ("SCHEDULE_MATCHING_DOWNTIME", &[Text, Text, Int, Int, Text, Text]),
     ("DEL_HOST_DOWNTIME", &[Int]),
     ("DEL_SVC_DOWNTIME", &[Int]),
     ("ADD_HOST_COMMENT", &[Host, Bool, Text, Text]),
@@ -543,6 +546,15 @@ impl Engine {
                 item.modified |= MOD_CUSTOM_VARIABLE;
                 true
             }
+            "SCHEDULE_MATCHING_DOWNTIME" => {
+                let (hosts, services) = (v[0].text().trim().to_string(), v[1].text().trim().to_string());
+                let which = self.matching(&hosts, &services);
+                let mut any = false;
+                for obj in which {
+                    any |= self.schedule_downtime(obj, v[2].int(), v[3].int(), true, 0, 0, v[4].text(), v[5].text(), now, out).is_ok();
+                }
+                any
+            }
             "DEL_ALL_HOST_COMMENTS" | "DEL_ALL_SVC_COMMENTS" => {
                 let obj = v[0].obj();
                 self.comments.retain(|_, c| c.obj != obj);
@@ -601,5 +613,68 @@ impl Engine {
             }
             _ => false,
         }
+    }
+}
+
+/// Whether a name fits a pattern in which `*` stands for any run of
+/// characters and `?` for any one.
+pub fn fits(pattern: &str, name: &str) -> bool {
+    let (pattern, name): (Vec<char>, Vec<char>) = (pattern.chars().collect(), name.chars().collect());
+    // Where in the pattern the last `*` was, and how much of the name it
+    // had taken when it was tried.
+    let (mut p, mut n, mut star, mut taken) = (0, 0, None, 0);
+    while n < name.len() {
+        if p < pattern.len() && (pattern[p] == '?' || pattern[p] == name[n]) {
+            p += 1;
+            n += 1;
+        } else if p < pattern.len() && pattern[p] == '*' {
+            star = Some(p);
+            taken = n;
+            p += 1;
+        } else if let Some(at) = star {
+            p = at + 1;
+            taken += 1;
+            n = taken;
+        } else {
+            return false;
+        }
+    }
+    pattern[p..].iter().all(|c| *c == '*')
+}
+
+impl Engine {
+    /// The hosts whose names fit `hosts` (or, for `@group`, the members
+    /// of that host group), when `services` is empty; otherwise the
+    /// services on those hosts whose descriptions fit `services`.
+    pub fn matching(&self, hosts: &str, services: &str) -> Vec<Obj> {
+        let group = hosts.strip_prefix('@');
+        let host_fits = |at: usize| {
+            let entry = &self.hosts()[at];
+            match group {
+                Some(group) => entry.groups.iter().any(|g| g == group),
+                None => fits(hosts, &entry.name),
+            }
+        };
+        if services.is_empty() {
+            return (0..self.hosts().len()).filter(|&at| host_fits(at)).map(Obj::Host).collect();
+        }
+        self.services()
+            .iter()
+            .enumerate()
+            .filter(|(_, service)| host_fits(service.host) && fits(services, &service.description))
+            .map(|(at, _)| Obj::Service(at))
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod pattern_tests {
+    use super::fits;
+
+    #[test]
+    fn patterns() {
+        assert!(fits("web*", "web1") && fits("*", "") && fits("*", "anything") && fits("web?", "web1"));
+        assert!(fits("*-db-*", "eu-db-3") && fits("a*b*c", "a-b-b-c") && fits("exact", "exact"));
+        assert!(!fits("web?", "web") && !fits("web*", "db1") && !fits("a*b", "a-b-c") && !fits("", "x"));
     }
 }

@@ -14,6 +14,7 @@ mod http;
 mod livestatus;
 mod perfexport;
 mod push;
+mod recurring;
 mod postgres;
 mod run;
 mod runner;

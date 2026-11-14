@@ -511,6 +511,11 @@ async fn serve(
         log.line("Warning: services have a _PUSH_TOKEN, and no pushes can come: checkd was started without --http");
     }
     let mut push_tick = tokio::time::interval(Duration::from_secs(5));
+    let (recurring, recurring_notes) = crate::recurring::Recurring::new(engine);
+    for note in recurring_notes {
+        log.line(&note);
+    }
+    let mut recurring_tick = tokio::time::interval(Duration::from_secs(15));
     let (mut digests, digest_notes) = crate::digest::Digests::new(engine);
     for note in digest_notes {
         log.line(&note);
@@ -710,6 +715,13 @@ async fn serve(
                 if restart_asked(&line) {
                     reload_asked = Some("RESTART_PROGRAM");
                 } else {
+                    engine.command(&line, now(), &mut effects);
+                }
+            }
+            _ = recurring_tick.tick(), if recurring.any() => {
+                for line in recurring.due(engine, now()) {
+                    happened |= COMMANDED;
+                    counts.commands += 1;
                     engine.command(&line, now(), &mut effects);
                 }
             }

@@ -92,6 +92,10 @@ service raises the alarm when none comes in time ([docs/push.md](docs/push.md)).
 Several notifications to one contact within a short time can go out as
 one ([docs/digest.md](docs/digest.md)).
 
+One command puts every host or service that fits a pattern in a
+downtime, and a timeperiod can bring a downtime round again
+([docs/downtimes.md](docs/downtimes.md)).
+
 A number of
 settings that belong to checks are not acted on yet, and `checkd run`
 warns when a config sets one of them:
