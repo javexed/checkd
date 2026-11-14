@@ -12,6 +12,7 @@ checkd-core = { version = "0.0.0", path = "../checkd-core" }
 checkd-livestatus = { version = "0.0.0", path = "../checkd-livestatus" }
 libc = "0.2.191"
 rcgen = { version = "0.14.10", default-features = false, features = ["ring", "pem"], optional = true }
+ring = { version = "0.17.14", optional = true }
 rusqlite = { version = "0.42.0", features = ["bundled"] }
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"], optional = true }
 tokio = { version = "1.54.1", default-features = false, features = ["rt", "process", "time", "io-util", "sync", "signal", "macros", "net"] }
@@ -33,4 +34,4 @@ otel = ["tokio/net"]
 postgres = ["dep:tokio-postgres", "dep:tokio-postgres-rustls", "dep:rustls", "dep:webpki-roots", "tokio/net", "tokio/rt-multi-thread"]
 # Remote workers: the engine hands checks to workers on other machines,
 # over TLS. Also gives `checkd worker` and `checkd make-certs`.
-workers = ["dep:tokio-rustls", "dep:rustls", "dep:rcgen", "tokio/net"]
+workers = ["dep:tokio-rustls", "dep:rustls", "dep:rcgen", "dep:ring", "dep:webpki-roots", "tokio/net"]

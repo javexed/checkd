@@ -13,14 +13,15 @@ publish.workspace = true
 [dependencies]
 checkd-core = { path = "../checkd-core" }
 rcgen = { version = "0.14.10", default-features = false, features = ["ring", "pem"] }
+ring = "0.17.14"
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 tokio = { version = "1.54.1", default-features = false, features = ["rt", "process", "time", "io-util", "sync", "signal", "macros", "net"] }
 tokio-rustls = { version = "0.26.6", default-features = false, features = ["ring", "tls12"] }
-webpki-roots = { version = "1.0.12", optional = true }
+webpki-roots = "1.0.12"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.191"
 
 [features]
 default = ["tls-checks"]
-tls-checks = ["dep:webpki-roots"]
+tls-checks = []

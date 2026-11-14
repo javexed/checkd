@@ -28,6 +28,8 @@ mod trend;
 mod worker;
 #[cfg(feature = "workers")]
 mod workers;
+#[cfg(feature = "workers")]
+mod ws;
 
 use std::path::PathBuf;
 use std::process::ExitCode;

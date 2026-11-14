@@ -12,7 +12,8 @@
 #   w1  pools hostgroup_dmz and service
 #   w2  pools service and pool_x, with --restrict-path /case/plugins
 #   w3  a wrong token: refused
-#   agent1  checkd-agent, pool host_agent1: the services of host agent1
+#   agent1  checkd-agent, pool host_agent1: the services of host agent1,
+#           through an HTTP proxy (Caddy) as a WebSocket
 #
 # Checked:
 #   1. routing: host groups kept local, host groups to their pool, a custom
@@ -47,7 +48,7 @@ rm -rf "$work"
 mkdir -p "$work/out" "$work/conf" "$work/w3"
 
 cleanup() {
-    docker rm -f "$tag-engine" "$tag-w1" "$tag-w2" "$tag-w3" "$tag-agent1" >/dev/null 2>&1 || true
+    docker rm -f "$tag-engine" "$tag-w1" "$tag-w2" "$tag-w3" "$tag-agent1" "$tag-proxy" >/dev/null 2>&1 || true
     docker network rm "$net" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -60,6 +61,7 @@ done
 head -c 24 /dev/urandom | base64 | tr -d '=+/\n' > "$work/w3/w3.token"
 cat > "$work/conf/workers.cfg" <<EOF
 listen=0.0.0.0:4730
+websocket=0.0.0.0:4732
 cert=engine.crt
 key=engine.key
 hostgroups=dmz,lab
@@ -91,13 +93,17 @@ worker() {
         --user "$(id -u):$(id -g)" \
         -v "$here/case/plugins:/case/plugins:ro" -v "$work/conf/ca.crt:/conf/ca.crt:ro" \
         -v "$token:/conf/token:ro" -v "$program:/checkd:ro" -v "$work/out:/out" \
-        --entrypoint /checkd "$image" $verb --engine engine:4730 --name "$name" \
+        --entrypoint /checkd "$image" $verb --engine "${engine:-engine:4730}" --name "$name" \
         --token-file /conf/token --ca /conf/ca.crt --max-jobs 4 "$@" >/dev/null
 }
 worker w1 "$work/conf/w1.token"
 worker w2 "$work/conf/w2.token" --restrict-path /case/plugins
 worker w3 "$work/w3/w3.token"
-program=$agent verb= worker agent1 "$work/conf/agent1.token"
+# agent1 through an HTTP proxy, as behind a tunnel: a WebSocket to the
+# engine's websocket= listener, with the engine's TLS inside.
+docker run -d --name "$tag-proxy" --hostname proxy --network "$net" --network-alias proxy \
+    caddy:2.10.0 caddy reverse-proxy --from :8080 --to engine:4732 >/dev/null
+program=$agent verb= engine=ws://proxy:8080/workers worker agent1 "$work/conf/agent1.token" --server-name engine
 
 failures=0
 ok() { echo "ok    $1"; }
@@ -153,6 +159,11 @@ for row, state, what in [(services[("plain1", "forbidden")], 3, "refused is UNKN
 sys.exit(1 if failed else 0)
 PY
 
+if docker logs "$tag-agent1" 2>&1 | grep -q "Connected to ws://proxy:8080/workers"; then
+    ok "agent1 came through the proxy, as a WebSocket"
+else
+    bad "agent1: $(docker logs "$tag-agent1" 2>&1 | tail -2)"
+fi
 if docker logs "$tag-w3" 2>&1 | grep -q "the engine said: REFUSED"; then
     ok "a worker with a wrong token is refused"
 else

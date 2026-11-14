@@ -15,6 +15,8 @@ mod runner;
 mod tls;
 #[path = "../../checkd/src/worker.rs"]
 mod worker;
+#[path = "../../checkd/src/ws.rs"]
+mod ws;
 
 use std::process::ExitCode;
 

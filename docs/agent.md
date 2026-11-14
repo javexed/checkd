@@ -6,6 +6,10 @@ it connects out to the engine over TLS, says who it is with a token, and
 runs the jobs it gets. Nothing listens on the monitored host, and the
 engine needs no SSH access to it.
 
+Through an HTTPS proxy or tunnel, the agent reaches the engine as a
+WebSocket (`--engine wss://checkd.example.com/workers`, with the engine's
+`websocket=` listener behind it); see [workers.md](workers.md).
+
 NRPE keeps working beside it: a service with `check_nrpe` runs on the
 engine as before. An agent is an alternative for hosts where an outgoing
 TLS connection is easier than an incoming NRPE port.

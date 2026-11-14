@@ -7,6 +7,9 @@
 //! the engine runs one on its own host (`runner.rs`): in a process group of
 //! its own, stopped at its timeout.
 //!
+//! - `--engine wss://host/path` reaches the engine through an HTTPS proxy
+//!   or tunnel: a WebSocket (`ws.rs`) with the same TLS inside, so the
+//!   proxy sees neither the token nor the jobs.
 //! - With several `--engine` addresses (the two nodes of a failover pair),
 //!   it tries them in turn; only the node that leads listens for workers.
 //! - When the connection breaks, the jobs still running are stopped, since
@@ -33,7 +36,9 @@ usage: checkd worker --engine <host:port> --name <name> --token-file <file>
 
 options:
   --engine <host:port>  the engine to take jobs from; more than once for
-                        the nodes of a failover pair
+                        the nodes of a failover pair. wss://host/path
+                        (or ws://) reaches it through an HTTPS proxy or
+                        tunnel, as a WebSocket
   --server-name <name>  the name in the engine's certificate, when it is
                         not the host of --engine
   --name <name>         this worker's name in the engine's workers file
@@ -74,7 +79,11 @@ pub fn parse(mut args: impl Iterator<Item = String>) -> Result<WorkerArgs, Strin
         let mut value = |what: &str| args.next().ok_or(format!("{arg} needs {what}"));
         let number = |text: String| text.parse::<f64>().map_err(|_| format!("'{text}' is not a number"));
         match arg.as_str() {
-            "--engine" => out.engines.push(value("host:port")?),
+            "--engine" => {
+                let engine = value("host:port")?;
+                Way::of(&engine)?;
+                out.engines.push(engine)
+            }
             "--server-name" => out.server_name = Some(value("a host name")?),
             "--name" => out.name = value("a name")?,
             "--token-file" => out.token_file = PathBuf::from(value("a file name")?),
@@ -242,6 +251,58 @@ impl Terminate {
     }
 }
 
+trait Io: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send {}
+impl<T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send> Io for T {}
+
+/// How to reach an engine: `host:port`, or `ws(s)://host[:port][/path]`.
+#[derive(Debug, PartialEq)]
+struct Way {
+    /// For the TCP connection.
+    address: String,
+    /// The host's name, for TLS.
+    host: String,
+    /// `host[:port]` as written, for the WebSocket's `Host` header.
+    authority: String,
+    /// Through a WebSocket: over TLS or not, and the path.
+    websocket: Option<(bool, String)>,
+}
+
+impl Way {
+    fn of(engine: &str) -> Result<Way, String> {
+        let (scheme, rest) = match engine.split_once("://") {
+            Some((scheme, rest)) => (Some(scheme), rest),
+            None => (None, engine),
+        };
+        let secure = match scheme {
+            None => {
+                let host = engine.rsplit_once(':').map_or(engine, |(host, _)| host).trim_matches(['[', ']']).to_string();
+                return Ok(Way { address: engine.to_string(), host, authority: engine.to_string(), websocket: None });
+            }
+            Some("wss") => true,
+            Some("ws") => false,
+            Some(other) => return Err(format!("--engine: {other}:// is not ws:// or wss://")),
+        };
+        let (authority, path) = match rest.find('/') {
+            Some(at) => (&rest[..at], &rest[at..]),
+            None => (rest, "/"),
+        };
+        if authority.is_empty() || path.contains(char::is_whitespace) {
+            return Err(format!("--engine: '{engine}' is not ws(s)://host[:port][/path]"));
+        }
+        let ported = authority.rsplit_once(':').filter(|(_, port)| port.parse::<u16>().is_ok() && !port.contains(']'));
+        let (host, address) = match ported {
+            Some((host, _)) => (host, authority.to_string()),
+            None => (authority, format!("{authority}:{}", if secure { 443 } else { 80 })),
+        };
+        Ok(Way {
+            address,
+            host: host.trim_matches(['[', ']']).to_string(),
+            authority: authority.to_string(),
+            websocket: Some((secure, path.to_string())),
+        })
+    }
+}
+
 /// One connection. The answer says whether the engine took the worker.
 async fn session(
     args: &WorkerArgs,
@@ -249,15 +310,36 @@ async fn session(
     token: &str,
     connector: &tokio_rustls::TlsConnector,
 ) -> Result<bool, String> {
+    let way = Way::of(engine)?;
     let host = match &args.server_name {
         Some(name) => name.clone(),
-        None => engine.rsplit_once(':').map_or(engine, |(host, _)| host).trim_matches(['[', ']']).to_string(),
+        None => way.host.clone(),
     };
-    let tcp = tokio::time::timeout(Duration::from_secs(10), TcpStream::connect(engine))
+    let tcp = tokio::time::timeout(Duration::from_secs(10), TcpStream::connect(&way.address))
         .await
         .map_err(|_| "no connection within 10 seconds".to_string())?
         .map_err(|err| err.to_string())?;
-    let stream = tokio::time::timeout(Duration::from_secs(10), connector.connect(crate::tls::server_name(&host)?, tcp))
+    let carrier: Box<dyn Io> = match &way.websocket {
+        None => Box::new(tcp),
+        Some((secure, path)) => {
+            let outer: Box<dyn Io> = if *secure {
+                Box::new(
+                    tokio::time::timeout(Duration::from_secs(10), crate::tls::public_connector()?.connect(crate::tls::server_name(&way.host)?, tcp))
+                        .await
+                        .map_err(|_| "no TLS handshake with the proxy within 10 seconds".to_string())?
+                        .map_err(|err| format!("TLS with the proxy: {err}"))?,
+                )
+            } else {
+                Box::new(tcp)
+            };
+            Box::new(
+                tokio::time::timeout(Duration::from_secs(10), crate::ws::client(outer, &way.authority, path))
+                    .await
+                    .map_err(|_| "no WebSocket within 10 seconds".to_string())??,
+            )
+        }
+    };
+    let stream = tokio::time::timeout(Duration::from_secs(10), connector.connect(crate::tls::server_name(&host)?, carrier))
         .await
         .map_err(|_| "no TLS handshake within 10 seconds".to_string())?
         .map_err(|err| format!("TLS: {err}"))?;
@@ -378,6 +460,24 @@ async fn session(
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn an_engine_is_host_port_or_a_websocket_url() {
+        let plain = Way::of("engine.example.test:4730").unwrap();
+        assert_eq!((plain.address.as_str(), plain.host.as_str(), plain.websocket), ("engine.example.test:4730", "engine.example.test", None));
+        let wss = Way::of("wss://checkd.example.com/workers").unwrap();
+        assert_eq!(wss.address, "checkd.example.com:443");
+        assert_eq!(wss.authority, "checkd.example.com");
+        assert_eq!(wss.websocket, Some((true, "/workers".to_string())));
+        let ws = Way::of("ws://127.0.0.1:4732").unwrap();
+        assert_eq!((ws.address.as_str(), ws.host.as_str()), ("127.0.0.1:4732", "127.0.0.1"));
+        assert_eq!(ws.websocket, Some((false, "/".to_string())));
+        let v6 = Way::of("wss://[2001:db8::1]:8443/w").unwrap();
+        assert_eq!((v6.address.as_str(), v6.host.as_str()), ("[2001:db8::1]:8443", "2001:db8::1"));
+        assert!(Way::of("https://x/").is_err());
+        assert!(Way::of("wss:///w").is_err());
+    }
+
     use super::*;
 
     #[test]

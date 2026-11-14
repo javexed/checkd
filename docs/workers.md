@@ -41,6 +41,12 @@ in a build with the `workers` feature:
 
    File names are read from the file's directory.
 
+   Behind an HTTPS proxy or tunnel (Caddy, nginx, Cloudflare Tunnel),
+   `websocket=127.0.0.1:4732` also takes workers as WebSockets, with the
+   same TLS inside: the proxy carries it to the engine but sees neither
+   tokens nor jobs. Point the proxy at that address, and the workers at
+   `--engine wss://<the proxy's name>/<any path>`.
+
 4. The engine:
 
        checkd run --workers /etc/checkd/workers/workers.cfg naemon.cfg
@@ -112,7 +118,10 @@ check is out with two workers.
 
 ## The worker
 
-    --engine <host:port>   the engine; more than once for failover nodes
+    --engine <host:port>   the engine; more than once for failover nodes.
+                           wss://host/path (or ws://): through a proxy or
+                           tunnel, checked by the usual CAs, with the
+                           engine's TLS inside
     --server-name <name>   the name in the engine's certificate, when it is
                            not the host of --engine
     --name <name>          its name in the workers' file
@@ -135,7 +144,9 @@ plugins and their paths must be on the worker's machine.
 ## Security
 
 - The connection is TLS 1.2 or 1.3, and the worker checks the engine's
-  certificate against its CA. The engine does not ask workers for
+  certificate against its CA. Through `wss://` this TLS runs inside the
+  WebSocket, so it is the same check end to end; the proxy's own
+  certificate is checked by the usual CAs. The engine does not ask workers for
   certificates; a worker shows who it is with its token.
 - The engine sends workers the command lines, with macros filled in:
   host names, addresses, and whatever else the commands carry, such as
@@ -185,8 +196,9 @@ host group, kept-local group, custom variable and default pool; UNKNOWN
 for a pool nobody serves; a program outside `--restrict-path` refused; a
 worker with a wrong token refused; the pools in `/metrics`; and a worker
 killed half way through a 15-second check, after which the other worker
-of its pool runs it again. Unit tests in `crates/checkd/src/workers.rs`
-cover the queueing.
+of its pool runs it again. An agent joins through an HTTP proxy (Caddy)
+as a WebSocket. Unit tests in `crates/checkd/src/workers.rs` cover the
+queueing, and in `ws.rs` the WebSocket framing.
 
 `runs/workers/failover` runs two nodes in failover and a worker that is
 given both: the worker joins the leader and not the standby, and when the

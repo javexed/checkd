@@ -46,6 +46,20 @@ pub fn connector(ca: &Path) -> Result<TlsConnector, String> {
     Ok(TlsConnector::from(Arc::new(config)))
 }
 
+/// A worker's side towards an HTTPS proxy or tunnel in front of the engine
+/// (`--engine wss://`): the usual certificate authorities.
+pub fn public_connector() -> Result<TlsConnector, String> {
+    let mut roots = rustls::RootCertStore::empty();
+    roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+    let mut config = rustls::ClientConfig::builder_with_provider(provider())
+        .with_safe_default_protocol_versions()
+        .map_err(|err| err.to_string())?
+        .with_root_certificates(roots)
+        .with_no_client_auth();
+    config.alpn_protocols = vec![b"http/1.1".to_vec()];
+    Ok(TlsConnector::from(Arc::new(config)))
+}
+
 pub fn server_name(host: &str) -> Result<ServerName<'static>, String> {
     ServerName::try_from(host.to_string()).map_err(|err| format!("'{host}' is not a host name: {err}"))
 }
