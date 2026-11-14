@@ -80,8 +80,22 @@ pub fn a_day(seen: &VecDeque<(Ms, f64)>) -> Option<f64> {
     Some(seen.iter().map(|(t, v)| (days(*t) - mean_t) * (v - mean_v)).sum::<f64>() / spread)
 }
 
+/// A number as a person reads it: three figures, and from ten thousand
+/// on in thousands (k), millions (M), and so on.
 fn rounded(value: f64) -> String {
-    if value.abs() >= 100.0 { format!("{value:.0}") } else if value.abs() >= 10.0 { format!("{value:.1}") } else { format!("{value:.2}") }
+    let mut scaled = value;
+    let mut unit = "";
+    if value.abs() >= 10_000.0 {
+        for next in ["k", "M", "G", "T", "P"] {
+            scaled /= 1000.0;
+            unit = next;
+            if scaled.abs() < 1000.0 {
+                break;
+            }
+        }
+    }
+    let digits = if scaled.abs() >= 100.0 { 0 } else if scaled.abs() >= 10.0 { 1 } else { 2 };
+    format!("{scaled:.digits$}{unit}")
 }
 
 impl Trends {
@@ -149,10 +163,10 @@ impl Trends {
         let watched = seen.back().map_or(0, |(at, _)| *at) - seen.front().map_or(0, |(at, _)| *at);
         let now_at = format!("{label} is {} of {}", rounded(value), rounded(full));
         if watched < SHORTEST {
-            return answer(0, format!("{now_at}; watched for {} minutes, too short to say where it goes", watched / 60_000), "");
+            return answer(0, format!("{now_at}, watched for {} minutes: too short to say where it goes", watched / 60_000), "");
         }
         let Some(grows) = a_day(seen) else {
-            return answer(0, format!("{now_at}; not enough is known yet"), "");
+            return answer(0, format!("{now_at}, not enough is known yet"), "");
         };
         if grows <= 0.0 || value >= full {
             let text = if value >= full { format!("{now_at}: full") } else { format!("{now_at}, and not growing") };
@@ -245,6 +259,16 @@ mod tests {
         for bad in ["checkd:trend nas/disk", "checkd:trend nas/disk inodes", "checkd:trend nowhere/disk /", "checkd:trend nas/disk / --warn soon"] {
             assert!(matches!(trends.evaluate(&engine, bad, start).outcome, Outcome::Exited(3)), "{bad}");
         }
+    }
+
+    #[test]
+    fn numbers_as_a_person_reads_them() {
+        assert_eq!(rounded(560.0), "560");
+        assert_eq!(rounded(55.5), "55.5");
+        assert_eq!(rounded(0.25), "0.25");
+        assert_eq!(rounded(295_039_696_896.0), "295G");
+        assert_eq!(rounded(12_500.0), "12.5k");
+        assert_eq!(rounded(-3_400_000.0), "-3.40M");
     }
 
     #[test]
