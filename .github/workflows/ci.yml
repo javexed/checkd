@@ -1,0 +1,13 @@
+# Build and unit tests, with every feature on. The scenarios are run by
+# engine.yml; the other runs under runs/ need Docker and are run by hand.
+name: test
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: rust:1
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo test --workspace --all-features --locked

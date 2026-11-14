@@ -1,0 +1,22 @@
+# The engine on the scripted scenarios, on the real clock and with real
+# processes, compared with the reference's recordings (runs/README.md).
+# About a quarter of an hour, so only when the engine or the runs change.
+#
+# The job's container is Debian 13, as the oracle image is; each scenario
+# runs in a root directory of its own (runs/real-chroot). Nothing of the
+# reference is run or fetched: its recordings are in the repository.
+name: scenarios
+on:
+  push:
+    paths: ['crates/**', 'runs/**', 'Cargo.*', '.github/workflows/engine.yml']
+  pull_request:
+    paths: ['crates/**', 'runs/**', 'Cargo.*', '.github/workflows/engine.yml']
+permissions:
+  contents: read
+jobs:
+  scenarios:
+    runs-on: ubuntu-latest
+    container: rust:1
+    steps:
+      - uses: actions/checkout@v4
+      - run: runs/real-chroot
