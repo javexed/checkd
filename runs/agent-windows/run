@@ -14,7 +14,8 @@
 #      is kept;
 #   4. checkd:tcp runs on the agent;
 #   5. a command past its timeout is stopped;
-#   6. the host check stays on the engine.
+#   6. the host check stays on the engine;
+#   7. deleting its token file lets it go, without a reload.
 #
 # Needs dist/agent from scripts/build-agents.sh. Everything else stays in
 # runs/agent-windows-work.
@@ -108,6 +109,13 @@ for row, state, text, what in want:
         failed += 1
 sys.exit(1 if failed else 0)
 PY
+
+rm "$work/conf/agents/win1.token"
+if wait_for "$work/out/engine.log" "Worker win1 left" 20; then
+    ok "deleting its token file lets it go, without a reload"
+else
+    bad "the agent stayed after its token file was deleted"
+fi
 
 echo
 if [ "$failures" = 0 ]; then

@@ -30,9 +30,14 @@ In the workers' file:
 
 Each `<host>.token` file in that directory (relative to the workers' file)
 is an agent: the worker `<host>` with the pool `host_<host>`. Host names
-are letters, digits, `.`, `-` and `_`. A new token file is read at the
-next reload (`SIGHUP` or `RESTART_PROGRAM`); deleting one shuts that agent
-out at the same time, and leaves the others alone.
+are letters, digits, `.`, `-` and `_`. checkd reads an agent's token when
+the agent connects, and every few seconds while it stays: deleting or
+replacing the file lets that agent go at once, and leaves the others
+alone. Which hosts have an agent, for routing their checks, is read at
+start and at each reload (`SIGHUP` or `RESTART_PROGRAM`). A token file
+checkd cannot read is left out with a warning; it does not stop the
+engine. checkd needs to read the files: run it as the user that writes
+them, or give it their group.
 
     head -c 24 /dev/urandom | base64 | tr -d '=+/\n' > agents/web1.token
     kill -HUP $(pidof checkd)
@@ -59,11 +64,16 @@ The options are those of `checkd worker`:
         --token-file /etc/checkd-agent/token --ca /etc/checkd-agent/ca.crt \
         --restrict-path /usr/lib/nagios/plugins
 
+What the engine sends an agent is its host's service command lines,
+with their arguments and `$USERn$` values filled in: a password or SNMP
+community in a check goes to that host. Keep such checks on hosts
+without an agent, or with NRPE.
+
 `--restrict-path` is worth giving: without it the agent runs any command
 line the engine sends, as its own user.
 
 On Linux it runs as a systemd service under a user of its own. On Windows
-it runs as a scheduled task at startup, as `SYSTEM` unless told otherwise.
+it runs as a scheduled task at startup, as `LOCAL SERVICE`.
 
 ## On Windows
 

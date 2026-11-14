@@ -30,6 +30,8 @@ pub struct Credential {
     pub name: String,
     pub token: String,
     pub pools: Vec<String>,
+    /// From the agents directory, whose file is read again at each hello.
+    pub agent: bool,
 }
 
 /// The routing and the workers, from the file given with `--workers`.
@@ -58,6 +60,9 @@ pub struct Config {
     /// Milliseconds a job may wait.
     pub max_age: Ms,
     pub workers: Vec<Credential>,
+    /// `agents=`: a worker per `<host>.token` file, also looked up when
+    /// one says hello, so that a token added or removed counts at once.
+    pub agents: Option<PathBuf>,
 }
 
 fn list(value: &str) -> Vec<String> {
@@ -125,11 +130,13 @@ pub fn read_config(path: &Path) -> Result<Config, String> {
                     name,
                     token: token.ok_or_else(bad)?,
                     pools,
+                    agent: false,
                 });
             }
             "agents" => {
                 let agents = dir.join(value);
-                config.workers.extend(read_agents(&agents)?);
+                config.workers.extend(read_agents(&agents));
+                config.agents = Some(agents);
             }
             _ => return Err(bad()),
         }
@@ -147,32 +154,45 @@ pub fn agent_name(name: &str) -> bool {
 
 /// The agents of a directory: each `<host>.token` in it is the worker
 /// `<host>` with the pool `host_<host>`, which runs that host's services.
-fn read_agents(dir: &Path) -> Result<Vec<Credential>, String> {
-    let entries = std::fs::read_dir(dir).map_err(|err| format!("cannot read the agents in {}: {err}", dir.display()))?;
-    let mut agents = Vec::new();
-    for entry in entries.flatten() {
-        let file = entry.path();
-        let Some(name) = file.file_name().and_then(|n| n.to_str()).and_then(|n| n.strip_suffix(".token")) else {
-            continue;
-        };
-        if !agent_name(name) {
-            continue;
-        }
-        let token = std::fs::read_to_string(&file)
-            .map_err(|err| format!("cannot read the token {}: {err}", file.display()))?
-            .trim()
-            .to_string();
-        if token.is_empty() {
-            continue;
-        }
-        agents.push(Credential {
-            name: name.to_string(),
-            token,
-            pools: vec![format!("host_{name}")],
-        });
-    }
+/// A file that cannot be read is left out, and so is a missing directory:
+/// one bad token must not stop the engine at a reload.
+fn read_agents(dir: &Path) -> Vec<Credential> {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        eprintln!("Warning: cannot read the agents in {}", dir.display());
+        return Vec::new();
+    };
+    let mut agents: Vec<Credential> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let name = entry.file_name().to_str()?.strip_suffix(".token")?.to_string();
+            agent(dir, &name)
+        })
+        .collect();
     agents.sort_by(|a, b| a.name.cmp(&b.name));
-    Ok(agents)
+    agents
+}
+
+/// The agent of one host, from its token file, if it has one that can be read.
+fn agent(dir: &Path, name: &str) -> Option<Credential> {
+    if !agent_name(name) {
+        return None;
+    }
+    let file = dir.join(format!("{name}.token"));
+    let token = match std::fs::read_to_string(&file) {
+        Ok(text) => text.trim().to_string(),
+        Err(err) => {
+            if err.kind() != std::io::ErrorKind::NotFound {
+                eprintln!("Warning: cannot read the token {}: {err}", file.display());
+            }
+            return None;
+        }
+    };
+    (!token.is_empty()).then(|| Credential {
+        name: name.to_string(),
+        token,
+        pools: vec![format!("host_{name}")],
+        agent: true,
+    })
 }
 
 /// Where a job runs.
@@ -283,13 +303,14 @@ pub async fn listen(config: &Config) -> Result<mpsc::UnboundedReceiver<Event>, S
         .map_err(|err| format!("cannot listen for workers at {}: {err}", config.listen))?;
     let (events, inbox) = mpsc::unbounded_channel();
     let workers = config.workers.clone();
+    let agents = config.agents.clone();
     tokio::spawn(async move {
         let mut next_id = 0u64;
         loop {
             let Ok((stream, _)) = listener.accept().await else { continue };
             next_id += 1;
             let id = next_id;
-            let (acceptor, events, workers) = (acceptor.clone(), events.clone(), workers.clone());
+            let (acceptor, events, workers, agents) = (acceptor.clone(), events.clone(), workers.clone(), agents.clone());
             tokio::spawn(async move {
                 let Ok(Ok(stream)) =
                     tokio::time::timeout(std::time::Duration::from_secs(10), acceptor.accept(stream)).await
@@ -306,8 +327,11 @@ pub async fn listen(config: &Config) -> Result<mpsc::UnboundedReceiver<Event>, S
                 let known = match words.as_slice() {
                     ["HELLO", name, token, slots] => workers
                         .iter()
-                        .find(|w| w.name == *name && same(&w.token, token))
-                        .map(|w| (w.clone(), slots.parse::<usize>().unwrap_or(1))),
+                        .find(|w| w.name == *name && !w.agent && same(&w.token, token))
+                        .cloned()
+                        // An agent's token is read now, not at the last reload.
+                        .or_else(|| agents.as_deref().and_then(|dir| agent(dir, name)).filter(|w| same(&w.token, token)))
+                        .map(|w| (w, slots.parse::<usize>().unwrap_or(1))),
                     _ => None,
                 };
                 let Some((worker, slots)) = known else {
@@ -333,13 +357,35 @@ pub async fn listen(config: &Config) -> Result<mpsc::UnboundedReceiver<Event>, S
                         }
                     }
                 });
+                // An agent whose token file goes or changes is let go
+                // within seconds, reload or not.
+                let own_file = agents.clone().filter(|_| worker.agent);
+                let mut check = tokio::time::interval(std::time::Duration::from_secs(5));
+                let mut line = String::new();
+                let mut quiet_until = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
                 loop {
-                    let mut line = String::new();
-                    let read = tokio::time::timeout(std::time::Duration::from_secs(30), reader.read_line(&mut line)).await;
-                    let Ok(Ok(n)) = read else { break };
+                    // read_line keeps what it read when another branch wins,
+                    // in `line`, which lives across turns.
+                    let n = tokio::select! {
+                        read = reader.read_line(&mut line) => match read {
+                            Ok(n) => n,
+                            Err(_) => break,
+                        },
+                        _ = tokio::time::sleep_until(quiet_until) => break,
+                        _ = check.tick() => {
+                            if let Some(dir) = &own_file {
+                                if !agent(dir, &worker.name).is_some_and(|now| same(&now.token, &worker.token)) {
+                                    break;
+                                }
+                            }
+                            continue;
+                        }
+                    };
                     if n == 0 {
                         break;
                     }
+                    quiet_until = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
+                    let line = std::mem::take(&mut line);
                     let words: Vec<&str> = line.split_whitespace().collect();
                     match words.as_slice() {
                         ["PING"] => {}
@@ -689,11 +735,15 @@ mod tests {
         std::fs::write(agents.join("empty.token"), "\n").unwrap();
         std::fs::write(agents.join("notes.txt"), "abc\n").unwrap();
         std::fs::write(dir.join("workers.cfg"), "agents=agents\n").unwrap();
+        std::fs::create_dir_all(agents.join("dir.token")).unwrap();
         let config = read_config(&dir.join("workers.cfg")).unwrap();
         assert_eq!(config.workers.len(), 1);
         assert_eq!(config.workers[0].name, "win1");
         assert_eq!(config.workers[0].token, "abc");
         assert_eq!(config.workers[0].pools, vec!["host_win1".to_string()]);
+        // A missing directory is no agents, not an error.
+        std::fs::write(dir.join("other.cfg"), "agents=nowhere\n").unwrap();
+        assert!(read_config(&dir.join("other.cfg")).unwrap().workers.is_empty());
     }
 
     #[test]
@@ -714,7 +764,7 @@ mod tests {
         let (Some(main), Some(objects)) = (loaded.main, loaded.objects) else { panic!("{:?}", loaded.diags.errors) };
         let engine = Engine::new(objects, &main, Box::new(checkd_core::timeperiod::Fixed(0)), 1_800_000_000_000).0;
         let config = Config {
-            workers: vec![Credential { name: "win1".into(), token: "t".into(), pools: vec!["host_win1".into()] }],
+            workers: vec![Credential { name: "win1".into(), token: "t".into(), pools: vec!["host_win1".into()], agent: false }],
             ..config()
         };
         let win1 = engine.hosts().iter().position(|h| h.name == "win1").unwrap();
