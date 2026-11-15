@@ -183,13 +183,15 @@ impl Trends {
 
         let key = line.trim().to_string();
         let seen = self.seen.entry(key.clone()).or_default();
-        // One reading for each result of the service.
-        if seen.back().is_none_or(|(at, _)| *at < item.last_update.max(1)) {
-            let at = item.last_update.max(1).min(now);
+        let oldest = now - (over * 3_600_000.0) as Ms;
+        // One reading for each result of the service. A result older than
+        // what is kept is not one: just after a restart the service has
+        // no time of its own result until it is checked again.
+        let at = item.last_update.min(now);
+        if at >= oldest && seen.back().is_none_or(|(last, _)| *last < at) {
             seen.push_back((at, value));
             self.added.push((key.clone(), at, value));
         }
-        let oldest = now - (over * 3_600_000.0) as Ms;
         let mut dropped = false;
         while seen.len() > MOST || seen.front().is_some_and(|(at, _)| *at < oldest) {
             seen.pop_front();
