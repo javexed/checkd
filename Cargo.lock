@@ -156,7 +156,7 @@ dependencies = [
 
 [[package]]
 name = "checkd"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "checkd-config",
  "checkd-core",
@@ -175,7 +175,7 @@ dependencies = [
 
 [[package]]
 name = "checkd-agent"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "checkd-core",
  "libc",
@@ -190,21 +190,21 @@ dependencies = [
 
 [[package]]
 name = "checkd-config"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "regex",
 ]
 
 [[package]]
 name = "checkd-core"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "checkd-config",
 ]
 
 [[package]]
 name = "checkd-livestatus"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "checkd-config",
  "checkd-core",

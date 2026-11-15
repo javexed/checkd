@@ -8,8 +8,8 @@ publish.workspace = true
 
 [dependencies]
 checkd-config = { path = "../checkd-config" }
-checkd-core = { version = "0.0.0", path = "../checkd-core" }
-checkd-livestatus = { version = "0.0.0", path = "../checkd-livestatus" }
+checkd-core = { version = "0.1.0", path = "../checkd-core" }
+checkd-livestatus = { version = "0.1.0", path = "../checkd-livestatus" }
 libc = "0.2.191"
 rcgen = { version = "0.14.10", default-features = false, features = ["ring", "pem"], optional = true }
 ring = { version = "0.17.14", optional = true }

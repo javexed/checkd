@@ -26,8 +26,9 @@ push its result in.
 - **Much of the code was written by an AI model** (Claude), directed and
   reviewed by one person: see [CONTRIBUTING.md](CONTRIBUTING.md), also for
   what that means for the clean-room rule.
-- **Version 0.0.0.** Options, file layouts and the extensions below may
-  change. Nothing is packaged; you build it.
+- **Version 0.1.0.** Options, file layouts and the extensions below may
+  change before 1.0; a store is migrated from one version to the next.
+  Nothing is packaged; you build it.
 
 If you run Naemon in production, start with `checkd verify` on your
 config: it only reads. `checkd run --shadow <Naemon's Livestatus
