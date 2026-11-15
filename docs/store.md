@@ -112,6 +112,11 @@ The views whose names start with `v1_` are the contract: their columns
 keep their names and meanings within version 1. The tables behind them
 can change between releases. Times are seconds since 1970.
 
+The store keeps its version (`schema_version` in `meta`). A newer checkd
+migrates an older store when it starts, in one transaction; an older
+checkd refuses a newer store. Back the store up before an upgrade: there
+is no way back down.
+
 | View | One row per |
 |---|---|
 | `v1_host_status` | host: state, state type, attempt, output, last check, last state change, flapping, acknowledged, notification number, switches |

@@ -17,8 +17,56 @@ use std::collections::BTreeMap;
 
 use checkd_core::snapshot::{AckState, CommentState, DowntimeState, ObjState, Snapshot, Setting};
 
-/// The version of the tables. A store of another version is refused.
-pub const SCHEMA_VERSION: i64 = 1;
+/// The version of the tables is 1 + the number of migrations. An older
+/// store is migrated at start; a newer one is refused.
+///
+/// What takes a store from version n + 1 to n + 2, at index n. Each step
+/// is SQL that SQLite and PostgreSQL both take, written out in full (no
+/// `{REAL}` or `{ID}`; `BIGINT`, not `INTEGER`); a step that changes what
+/// a view reads drops the view, and the schema makes it again. A step,
+/// once released, is never changed: a change is a new step, with a test
+/// from a store of the version before it.
+pub const MIGRATIONS: &[&[&str]] = &[];
+
+/// Makes the tables of a new store, or brings an older one up to date, in
+/// one transaction per store: the tables are made after the migrations,
+/// so that the views see the new columns.
+fn prepare(backend: &mut dyn Backend, steps: &[&[&'static str]]) -> Result<(), String> {
+    let current = 1 + steps.len() as i64;
+    backend.apply(&[Statement { sql: "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)", values: vec![] }])?;
+    let rows = backend.query("SELECT value FROM meta WHERE key = 'schema_version'")?;
+    let found = match rows.first().and_then(|row| row.first()) {
+        None => None,
+        Some(Value::Text(text)) => match text.parse::<i64>() {
+            Ok(n) if n >= 1 => Some(n),
+            _ => return Err(format!("{}: the store's version {text:?} is not a version", backend.describe())),
+        },
+        Some(other) => return Err(format!("{}: the store's version {other:?} is not a version", backend.describe())),
+    };
+    match found {
+        // A new store.
+        None => {
+            backend.create()?;
+            backend.apply(&[Statement {
+                sql: "INSERT INTO meta (key, value) VALUES ('schema_version', ?1)",
+                values: vec![current.to_string().into()],
+            }])
+        }
+        Some(n) if n > current => Err(format!(
+            "{}: the store is of version {n}, from a newer checkd; this checkd knows version {current}",
+            backend.describe()
+        )),
+        Some(n) => {
+            if n < current {
+                let mut statements: Vec<Statement> =
+                    steps[(n - 1) as usize..].iter().flat_map(|step| step.iter()).map(|sql| Statement { sql, values: vec![] }).collect();
+                statements.push(Statement { sql: "UPDATE meta SET value = ?1 WHERE key = 'schema_version'", values: vec![current.to_string().into()] });
+                backend.apply(&statements).map_err(|err| format!("migrating the store from version {n} to {current}: {err}"))?;
+            }
+            backend.create()
+        }
+    }
+}
 
 /// A value bound to a statement.
 #[derive(Clone, Debug)]
@@ -138,22 +186,7 @@ impl Store {
         if self.ready {
             return Ok(());
         }
-        let backend = &mut self.backend;
-        backend.create()?;
-        let rows = backend.query("SELECT value FROM meta WHERE key = 'schema_version'")?;
-        match rows.first().and_then(|row| row.first()) {
-            None => backend.apply(&[Statement {
-                sql: "INSERT INTO meta (key, value) VALUES ('schema_version', ?1)",
-                values: vec![SCHEMA_VERSION.to_string().into()],
-            }])?,
-            Some(Value::Text(version)) if version == &SCHEMA_VERSION.to_string() => {}
-            Some(other) => {
-                return Err(format!(
-                    "{}: the store is of version {other:?}; this checkd knows version {SCHEMA_VERSION}",
-                    backend.describe()
-                ));
-            }
-        }
+        prepare(self.backend.as_mut(), MIGRATIONS)?;
         self.ready = true;
         Ok(())
     }
@@ -894,6 +927,42 @@ mod tests {
             config_active_checks_enabled: true,
             ..ObjState::default()
         }
+    }
+
+    #[test]
+    fn an_older_store_is_migrated_and_a_newer_one_refused() {
+        let dir = std::env::temp_dir().join(format!("checkd-store-migrate-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("old.sqlite");
+        let _ = std::fs::remove_file(&path);
+        let path = path.to_string_lossy().into_owned();
+        let version = |backend: &mut Sqlite| backend.query("SELECT value FROM meta WHERE key = 'schema_version'").unwrap()[0][0].clone();
+
+        // A store of version 1, with a row in it.
+        let mut backend = Sqlite::open(&path).unwrap();
+        prepare(&mut backend, &[]).unwrap();
+        assert!(matches!(version(&mut backend), Value::Text(v) if v == "1"));
+        backend
+            .apply(&[Statement { sql: "INSERT INTO settings (host, service, name, value, configured) VALUES ('h', '', 'n', 'v', 'c')", values: vec![] }])
+            .unwrap();
+
+        // Two releases later: two steps, run once, the row kept.
+        const STEPS: &[&[&str]] = &[&["ALTER TABLE settings ADD COLUMN note TEXT NOT NULL DEFAULT ''"], &["UPDATE settings SET note = 'moved'"]];
+        prepare(&mut backend, STEPS).unwrap();
+        assert!(matches!(version(&mut backend), Value::Text(v) if v == "3"));
+        let rows = backend.query("SELECT value, note FROM settings").unwrap();
+        assert!(matches!(&rows[..], [row] if matches!((&row[0], &row[1]), (Value::Text(v), Value::Text(n)) if v == "v" && n == "moved")));
+        prepare(&mut backend, STEPS).unwrap();
+
+        // A step that fails leaves the store as it was.
+        let broken: &[&[&str]] = &[STEPS[0], STEPS[1], &["ALTER TABLE nowhere ADD COLUMN x TEXT"]];
+        let err = prepare(&mut backend, broken).unwrap_err();
+        assert!(err.contains("from version 3 to 4"), "{err}");
+        assert!(matches!(version(&mut backend), Value::Text(v) if v == "3"));
+
+        // This checkd, one release back, does not touch it.
+        let err = prepare(&mut backend, &[]).unwrap_err();
+        assert!(err.contains("version 3, from a newer checkd"), "{err}");
     }
 
     #[test]
