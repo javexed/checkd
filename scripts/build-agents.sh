@@ -14,6 +14,7 @@ docker run --rm \
   -v "$cache/target":/target \
   -v "$here/dist/agent":/dist \
   -e CARGO_TARGET_DIR=/target \
+  -e CHECKD_COMMIT="$(git -C "$here" rev-parse --short=7 HEAD 2>/dev/null || true)" \
   -e DEBIAN_FRONTEND=noninteractive \
   rust:1 sh -eu -c '
 apt-get update -qq >/dev/null

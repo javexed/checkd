@@ -317,7 +317,7 @@ fn parse_args(mut args: impl Iterator<Item = String>) -> Result<Asked, String> {
         Some("worker" | "make-certs") => {
             return Err("this checkd was built without remote workers (the workers feature)".to_string());
         }
-        Some("--version") => return Err(format!("checkd {}", env!("CARGO_PKG_VERSION"))),
+        Some("--version") => return Err(format!("checkd {}", env!("CHECKD_VERSION"))),
         Some(other) => return Err(format!("'{other}' is not a checkd command\n\n{USAGE}")),
         None => return Err(USAGE.to_string()),
     }

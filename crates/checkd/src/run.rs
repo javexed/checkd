@@ -444,7 +444,7 @@ async fn serve(
         // own in them. Thruk chooses what it asks for by these: a
         // Livestatus version that ends in `-naemon` has Naemon's columns
         // and its wrapped_json output, as checkd's has.
-        version: format!("1.5.2 (checkd {})", env!("CARGO_PKG_VERSION")),
+        version: format!("1.5.2 (checkd {})", env!("CHECKD_VERSION")),
         livestatus_version: format!("1.5.1-checkd-{}-naemon", env!("CARGO_PKG_VERSION")),
         ..Default::default()
     };
@@ -536,7 +536,7 @@ async fn serve(
     }
 
     let pid = std::process::id();
-    let starting = format!("checkd {} starting... (PID={pid})", env!("CARGO_PKG_VERSION"));
+    let starting = format!("checkd {} starting... (PID={pid})", env!("CHECKD_VERSION"));
     log.line(&starting);
     if livestatus.is_some() {
         history.push((now().div_euclid(1000), starting));

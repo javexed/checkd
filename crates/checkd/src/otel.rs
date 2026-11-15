@@ -203,7 +203,7 @@ impl Telemetry {
 
         let mut attributes = vec![
             ("service.name".to_string(), env("OTEL_SERVICE_NAME").unwrap_or("checkd".into())),
-            ("service.version".to_string(), env!("CARGO_PKG_VERSION").to_string()),
+            ("service.version".to_string(), env!("CHECKD_VERSION").to_string()),
         ];
         for pair in env("OTEL_RESOURCE_ATTRIBUTES").unwrap_or_default().split(',') {
             if let Some((name, value)) = pair.split_once('=') {
@@ -223,7 +223,7 @@ impl Telemetry {
         );
         let scope = format!(
             "{{\"name\":\"checkd\",\"version\":{}}}",
-            quoted(env!("CARGO_PKG_VERSION"))
+            quoted(env!("CHECKD_VERSION"))
         );
 
         let (to_sender, bodies) = mpsc::channel(BODIES_KEPT);
@@ -649,7 +649,7 @@ async fn post(target: &Target, body: &Body) -> Result<(), String> {
         body.path,
         target.host,
         body.json.len(),
-        env!("CARGO_PKG_VERSION"),
+        env!("CHECKD_VERSION"),
     );
     for (name, value) in &target.headers {
         request.push_str(&format!("{name}: {value}\r\n"));

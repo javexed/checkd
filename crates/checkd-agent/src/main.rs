@@ -25,7 +25,7 @@ use std::process::ExitCode;
 fn main() -> ExitCode {
     let mut args = std::env::args().skip(1).peekable();
     if args.peek().map(String::as_str) == Some("--version") {
-        println!("checkd-agent {}", env!("CARGO_PKG_VERSION"));
+        println!("checkd-agent {}", env!("CHECKD_VERSION"));
         return ExitCode::SUCCESS;
     }
     match worker::parse(args) {
