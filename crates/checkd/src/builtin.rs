@@ -189,7 +189,7 @@ fn disk(options: &Options) -> Result<Found, String> {
     Ok((
         over(used, warn, crit),
         format!("{path} {used:.0}% used, {} free of {}", size(space.free), size(space.total)),
-        format!("used={used:.1}%;{};{};0;100 free={}B;;;0;{}", limit(warn), limit(crit), space.free, space.total),
+        format!("used={used:.1}%;{};{};0;100 free={}B;;;0;{} free_pct={:.1}%;;;0;100", limit(warn), limit(crit), space.free, space.total, 100.0 - used),
     ))
 }
 

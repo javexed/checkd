@@ -57,7 +57,7 @@ only, and need no plugin on the host.
 | `checkd:cpu` | `-w %`, `-c %` | the processors are busy no more than the share, over one second |
 | `checkd:service` | `-s name` | the service runs: a systemd unit that is active, or a Windows service that is running; one that is not there is CRITICAL |
 
-Their performance data: `used=` (%) and `free=` (bytes) for disk, `used=`
+Their performance data: `used=` (%), `free=` (bytes) and `free_pct=` (%) for disk, `used=`
 and `available=` for memory, `load1=`, `load5=`, `load15=`, and `busy=`.
 
 `checkd:aggregate` is one more, of another kind: a service worked out

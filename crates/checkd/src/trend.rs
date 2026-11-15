@@ -35,7 +35,7 @@ fn answer(code: i32, text: String, perfdata: &str) -> JobResult {
 
 /// A number of the performance data, and the maximum it names, if any:
 /// `label=value[unit];warn;crit;min;max`.
-pub fn number(perfdata: &str, label: &str) -> Option<(f64, Option<f64>)> {
+pub fn number(perfdata: &str, label: &str) -> Option<(f64, Option<f64>, String)> {
     // A label with spaces is in single quotes.
     let mut rest = perfdata.trim();
     while !rest.is_empty() {
@@ -57,9 +57,12 @@ pub fn number(perfdata: &str, label: &str) -> Option<(f64, Option<f64>)> {
                 let end = text.find(|c: char| !(c.is_ascii_digit() || c == '.' || c == '-' || c == '+' || c == 'e' || c == 'E')).unwrap_or(text.len());
                 text[..end].parse().ok()
             };
-            let value = leading(parts.next()?)?;
+            let first = parts.next()?;
+            let value = leading(first)?;
+            // The unit is what follows the number: `B`, `MB`, `%`, `s`.
+            let unit: String = first.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.' || c == '-' || c == '+' || c == 'e' || c == 'E').chars().filter(|c| c.is_ascii_alphabetic() || *c == '%').collect();
             let most = parts.nth(3).and_then(leading);
-            return Some((value, most));
+            return Some((value, most, unit));
         }
         rest = next;
     }
@@ -144,7 +147,7 @@ impl Trends {
         if !item.checked {
             return answer(0, format!("{of} is not checked yet"), "");
         }
-        let Some((value, most)) = number(&item.output.perfdata, &label) else {
+        let Some((value, most, unit)) = number(&item.output.perfdata, &label) else {
             return answer(3, format!("{of} has no number '{label}' in its performance data"), "");
         };
         let Some(full) = full.or(most) else {
@@ -170,7 +173,7 @@ impl Trends {
         };
         if grows <= 0.0 || value >= full {
             let text = if value >= full { format!("{now_at}: full") } else { format!("{now_at}, and not growing") };
-            return answer(if value >= full { 2 } else { 0 }, text, &format!("a_day={grows:.4}"));
+            return answer(if value >= full { 2 } else { 0 }, text, &format!("a_day={grows:.4}{unit}"));
         }
         let days = (full - value) / grows;
         let code = if days < crit {
@@ -190,7 +193,7 @@ impl Trends {
         answer(
             code,
             format!("{now_at}, growing {} a day: full in {when}", rounded(grows)),
-            &format!("days_left={:.2};{warn};{crit} a_day={grows:.4}", days.min(100_000.0)),
+            &format!("days_left={:.2};{warn};{crit} a_day={grows:.4}{unit}", days.min(100_000.0)),
         )
     }
 }
@@ -202,9 +205,9 @@ mod tests {
     #[test]
     fn a_number_of_the_performance_data() {
         let perfdata = "/=4096MB;8000;9000;0;10240 'used space'=55.5%;80;90;0;100 time=0.2s";
-        assert_eq!(number(perfdata, "/"), Some((4096.0, Some(10240.0))));
-        assert_eq!(number(perfdata, "used space"), Some((55.5, Some(100.0))));
-        assert_eq!(number(perfdata, "time"), Some((0.2, None)));
+        assert_eq!(number(perfdata, "/"), Some((4096.0, Some(10240.0), "MB".into())));
+        assert_eq!(number(perfdata, "used space"), Some((55.5, Some(100.0), "%".into())));
+        assert_eq!(number(perfdata, "time"), Some((0.2, None, "s".into())));
         assert_eq!(number(perfdata, "inodes"), None);
         assert_eq!(number("", "x"), None);
     }
