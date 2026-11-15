@@ -21,10 +21,22 @@ const MOST: usize = 3000;
 /// Before this much has been watched, nothing is said of where it goes.
 const SHORTEST: Ms = 30 * 60 * 1000;
 
+/// The longest a trend watches (`--over`), and so the oldest reading the
+/// store keeps.
+pub const LONGEST: Ms = 60 * 24 * 3_600_000;
+
+/// Readings to write (line, when, value), and for each trend that dropped
+/// some, the time of the oldest it keeps.
+pub type Changes = (Vec<(String, Ms, f64)>, Vec<(String, Ms)>);
+
 #[derive(Default)]
 pub struct Trends {
     /// By the check's own line: when, and what the number was.
     seen: HashMap<String, VecDeque<(Ms, f64)>>,
+    /// What changed since `changes` was last asked: readings added, and
+    /// the trends that dropped old readings, with the oldest they keep.
+    added: Vec<(String, Ms, f64)>,
+    trimmed: HashMap<String, Ms>,
 }
 
 fn answer(code: i32, text: String, perfdata: &str) -> JobResult {
@@ -102,6 +114,21 @@ fn rounded(value: f64) -> String {
 }
 
 impl Trends {
+    /// Trends as the store kept them: readings by line, oldest first.
+    pub fn restored(readings: Vec<(String, Ms, f64)>) -> Trends {
+        let mut trends = Trends::default();
+        for (line, at, value) in readings {
+            trends.seen.entry(line).or_default().push_back((at, value));
+        }
+        trends
+    }
+
+    /// What is to be written: the readings added, and for each trend that
+    /// dropped some, the time of the oldest it keeps.
+    pub fn changes(&mut self) -> Changes {
+        (std::mem::take(&mut self.added), self.trimmed.drain().collect())
+    }
+
     pub fn evaluate(&mut self, engine: &Engine, line: &str, now: Ms) -> JobResult {
         let words = checkd_core::cmdline::own_words(line);
         let (mut of, mut label) = (None, None);
@@ -154,14 +181,22 @@ impl Trends {
             return answer(3, format!("'{label}' names no maximum; say what full is with --full"), "");
         };
 
-        let seen = self.seen.entry(line.trim().to_string()).or_default();
+        let key = line.trim().to_string();
+        let seen = self.seen.entry(key.clone()).or_default();
         // One reading for each result of the service.
         if seen.back().is_none_or(|(at, _)| *at < item.last_update.max(1)) {
-            seen.push_back((item.last_update.max(1).min(now), value));
+            let at = item.last_update.max(1).min(now);
+            seen.push_back((at, value));
+            self.added.push((key.clone(), at, value));
         }
         let oldest = now - (over * 3_600_000.0) as Ms;
+        let mut dropped = false;
         while seen.len() > MOST || seen.front().is_some_and(|(at, _)| *at < oldest) {
             seen.pop_front();
+            dropped = true;
+        }
+        if dropped {
+            self.trimmed.insert(key, seen.front().map_or(now, |(at, _)| *at));
         }
         let watched = seen.back().map_or(0, |(at, _)| *at) - seen.front().map_or(0, |(at, _)| *at);
         let now_at = format!("{label} is {} of {}", rounded(value), rounded(full));
@@ -252,12 +287,25 @@ mod tests {
         }
         assert_eq!(last.0, 2, "{}", last.1);
         assert!(last.1.starts_with("TREND CRITICAL - / is 560 of 1000, growing 240 a day: full in 44 hours|days_left=1.83;7;2"), "{}", last.1);
+        // What was read is to be written, and a trend restored from it
+        // goes on where it was: no half hour of "too short to say".
+        let (added, trimmed) = trends.changes();
+        assert_eq!(added.len(), 7);
+        assert!(trimmed.is_empty());
+        assert_eq!(trends.changes().0.len(), 0);
+        let mut restored = Trends::restored(added);
+        let now = start + 6 * 3_600_000;
+        assert!(restored.evaluate(&engine, line, now).stdout.starts_with("TREND CRITICAL - / is 560 of 1000, growing 240 a day"));
+        assert!(restored.changes().0.is_empty(), "the same result is not read twice");
         // It stops growing: the fitted line flattens as the old readings age.
         for hour in 7..=40 {
             last = at(&mut engine, &mut trends, hour, 560.0);
         }
         assert_eq!(last.0, 0, "{}", last.1);
         assert!(last.1.contains("not growing"), "{}", last.1);
+        // Readings older than a day were dropped, and the store is told.
+        let (_, trimmed) = trends.changes();
+        assert_eq!(trimmed, vec![(line.to_string(), start + 16 * 3_600_000)]);
         // What cannot be worked out.
         for bad in ["checkd:trend nas/disk", "checkd:trend nas/disk inodes", "checkd:trend nowhere/disk /", "checkd:trend nas/disk / --warn soon"] {
             assert!(matches!(trends.evaluate(&engine, bad, start).outcome, Outcome::Exited(3)), "{bad}");

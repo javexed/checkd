@@ -4,7 +4,7 @@ checkd keeps its state in a store so that a restart, or a crash, loses
 nothing that matters: the state of every host and service, notification
 counts, acknowledgements, downtimes, comments, and the switches that
 commands turned on or off. The store also holds the log, with a time
-index, for reports.
+index, for reports, and what `checkd:trend` checks have read.
 
 ## Choosing one
 

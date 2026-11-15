@@ -155,6 +155,10 @@ pub struct Store {
     downtimes: BTreeMap<u64, DowntimeState>,
     meta: Option<(u64, u64, bool)>,
     program: Option<Vec<Setting>>,
+    /// Trend readings not yet written: the new ones, and for each trend
+    /// the time before which its readings are no longer kept.
+    trend_added: Vec<(String, i64, f64)>,
+    trend_kept_from: BTreeMap<String, i64>,
     /// Whether the tables were made and the version checked: at once for
     /// `new`, at the first use that reaches the database for `deferred`.
     ready: bool,
@@ -178,6 +182,8 @@ impl Store {
             downtimes: BTreeMap::new(),
             meta: None,
             program: None,
+            trend_added: Vec::new(),
+            trend_kept_from: BTreeMap::new(),
             ready: false,
         }
     }
@@ -274,6 +280,29 @@ impl Store {
         Ok(lines)
     }
 
+    /// The readings of every trend, by its line, oldest first, from
+    /// `since` (milliseconds) on. Older ones are removed: a trend keeps
+    /// at most 60 days, and one no longer configured is gone after that.
+    pub fn trend_readings(&mut self, since: i64) -> Result<Vec<(String, i64, f64)>, String> {
+        self.ensure()?;
+        self.backend.apply(&[Statement { sql: "DELETE FROM trend_samples WHERE at < ?1", values: vec![since.into()] }])?;
+        let rows = self.backend.query(&format!("SELECT line, at, value FROM trend_samples WHERE at >= {since} ORDER BY line, at"))?;
+        Ok(rows.iter().map(|row| (text(&row[0]), int(&row[1]), real(&row[2]))).collect())
+    }
+
+    /// Trend readings to write with the next write: new ones, and for a
+    /// trend the time before which its readings are dropped. Kept until
+    /// a write works, up to `MOST_TRENDS` new readings.
+    pub fn note_trends(&mut self, added: Vec<(String, i64, f64)>, kept_from: Vec<(String, i64)>) {
+        const MOST_TRENDS: usize = 100_000;
+        let room = MOST_TRENDS.saturating_sub(self.trend_added.len());
+        self.trend_added.extend(added.into_iter().take(room));
+        for (line, at) in kept_from {
+            let entry = self.trend_kept_from.entry(line).or_insert(at);
+            *entry = (*entry).max(at);
+        }
+    }
+
     /// Writes what changed since the last write, and the log lines.
     /// `now` is in seconds.
     pub fn write(&mut self, snapshot: &Snapshot, log: &[(i64, String)], now: i64) -> Result<(), String> {
@@ -362,7 +391,18 @@ impl Store {
                 values: vec![(*second).into(), kind.into(), host.into(), service.into(), contact.into(), line.as_str().into()],
             });
         }
+        for (line, at, value) in &self.trend_added {
+            statements.push(Statement {
+                sql: "INSERT INTO trend_samples (line, at, value) VALUES (?1, ?2, ?3)",
+                values: vec![line.as_str().into(), (*at).into(), (*value).into()],
+            });
+        }
+        for (line, at) in &self.trend_kept_from {
+            statements.push(Statement { sql: "DELETE FROM trend_samples WHERE line = ?1 AND at < ?2", values: vec![line.as_str().into(), (*at).into()] });
+        }
         self.backend.apply(&statements)?;
+        self.trend_added.clear();
+        self.trend_kept_from.clear();
         for (key, object) in objects {
             self.objects.insert(key, object);
         }
@@ -775,6 +815,12 @@ CREATE TABLE IF NOT EXISTS log (
 );
 CREATE INDEX IF NOT EXISTS log_time ON log (time);
 CREATE INDEX IF NOT EXISTS log_object ON log (host, service, time);
+CREATE TABLE IF NOT EXISTS trend_samples (
+    line TEXT NOT NULL,
+    at BIGINT NOT NULL,
+    value {REAL} NOT NULL
+);
+CREATE INDEX IF NOT EXISTS trend_samples_line ON trend_samples (line, at);
 CREATE TABLE IF NOT EXISTS settings (
     host TEXT NOT NULL,
     service TEXT NOT NULL,
@@ -963,6 +1009,32 @@ mod tests {
         // This checkd, one release back, does not touch it.
         let err = prepare(&mut backend, &[]).unwrap_err();
         assert!(err.contains("version 3, from a newer checkd"), "{err}");
+    }
+
+    #[test]
+    fn trend_readings_are_kept() {
+        let dir = std::env::temp_dir().join(format!("checkd-store-trends-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("trends.sqlite");
+        let _ = std::fs::remove_file(&path);
+        let path = path.to_string_lossy().into_owned();
+        let empty = Snapshot::default();
+        let line = "checkd:trend nas/disk /";
+
+        let mut store = Store::new(Box::new(Sqlite::open(&path).unwrap())).unwrap();
+        store.note_trends((1..=5).map(|n| (line.to_string(), n * 1000, n as f64)).collect(), vec![]);
+        store.note_trends(vec![("checkd:trend old/disk /".to_string(), 10, 1.0)], vec![]);
+        store.write(&empty, &[], 1).unwrap();
+        // The oldest two dropped by the trend itself.
+        store.note_trends(vec![(line.to_string(), 6000, 6.0)], vec![(line.to_string(), 3000)]);
+        store.write(&empty, &[], 2).unwrap();
+
+        // After a restart: what is kept, oldest first; what is too old is gone.
+        let mut store = Store::new(Box::new(Sqlite::open(&path).unwrap())).unwrap();
+        let readings = store.trend_readings(100).unwrap();
+        assert_eq!(readings.iter().map(|(_, at, v)| (*at, *v)).collect::<Vec<_>>(), vec![(3000, 3.0), (4000, 4.0), (5000, 5.0), (6000, 6.0)]);
+        assert!(readings.iter().all(|(l, _, _)| l == line));
+        assert!(store.backend.query("SELECT line FROM trend_samples WHERE at < 100").unwrap().is_empty());
     }
 
     #[test]

@@ -34,8 +34,9 @@ service's last result, once for each new result. So:
 
 - For the first half hour it says only what the number is. A number that
   does not grow is OK.
-- What was read is kept in memory: after a restart, or when the
-  configuration is read again, it starts over.
+- What was read is kept in the store, so a restart or a reload goes on
+  where it was. With `--store none` it starts over each time. A trend
+  whose line changes (another label, another `--over`) is a new trend.
 - It sees what the other service's checks see: a `check_interval` much
   shorter than that service's gains nothing.
 - A number that falls and rises by the hour, like load, is not what this

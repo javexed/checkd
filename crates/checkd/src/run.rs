@@ -519,7 +519,15 @@ async fn serve(
         log.line(&note);
     }
     let mut recurring_tick = tokio::time::interval(Duration::from_secs(15));
-    let mut trends = crate::trend::Trends::default();
+    // What trends have read, as the store kept it over a restart or reload.
+    let mut trends = match store.as_deref_mut().map(|store| store.trend_readings(now() - crate::trend::LONGEST)) {
+        Some(Ok(readings)) => crate::trend::Trends::restored(readings),
+        Some(Err(err)) => {
+            log.line(&format!("Warning: what trends read could not be read from the store: {err}"));
+            crate::trend::Trends::default()
+        }
+        None => crate::trend::Trends::default(),
+    };
     let (mut digests, digest_notes) = crate::digest::Digests::new(engine);
     for note in digest_notes {
         log.line(&note);
@@ -667,6 +675,10 @@ async fn serve(
             }
             if crate::trend::is_trend(&job.line) {
                 let _ = done.send((job.id, trends.evaluate(engine, &job.line, now())));
+                let (added, kept_from) = trends.changes();
+                if let Some(store) = store.as_deref_mut() {
+                    store.note_trends(added, kept_from);
+                }
                 continue;
             }
             let Some(job) = digests.hold(job, now()) else { continue };
