@@ -349,9 +349,22 @@ async fn running_services() -> Vec<(String, String)> {
         .collect()
 }
 
-/// What this machine is and runs, as one JSON object.
-#[cfg(unix)]
+/// What this machine is and runs, as one JSON object, with the version
+/// of the program that says it (`agent`), for knowing which agents are
+/// older than their engine.
 pub async fn inventory() -> String {
+    with_agent(&machine().await)
+}
+
+fn with_agent(machine: &str) -> String {
+    match machine.strip_prefix('{') {
+        Some(rest) => format!(r#"{{"agent":{},{rest}"#, json(env!("CHECKD_VERSION"))),
+        None => machine.to_string(),
+    }
+}
+
+#[cfg(unix)]
+async fn machine() -> String {
     let (name, id, version) = os_release();
     let read = |path: &str| std::fs::read_to_string(path).map(|t| t.trim().to_string()).unwrap_or_default();
     let (memory, _) = memory().unwrap_or((0, 0));
@@ -411,7 +424,7 @@ $ports = @(Get-NetTCPConnection -State Listen | Sort-Object LocalPort, LocalAddr
 "#;
 
 #[cfg(windows)]
-pub async fn inventory() -> String {
+async fn machine() -> String {
     let fallback = || {
         let (memory, _) = memory().unwrap_or((0, 0));
         format!(
@@ -460,7 +473,7 @@ mod tests {
     #[test]
     fn an_inventory_is_json() {
         let text = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(inventory());
-        assert!(text.starts_with(r#"{"version":1,"os":{"family":"linux""#), "{text}");
+        assert!(text.starts_with(&format!(r#"{{"agent":"{}","version":1,"os":{{"family":"linux""#, env!("CHECKD_VERSION"))), "{text}");
         assert!(text.contains(r#""disks":[{"path":"#), "{text}");
     }
 }

@@ -31,6 +31,8 @@ cp /target/x86_64-unknown-linux-musl/release/checkd-agent /dist/checkd-agent-lin
 cp /target/aarch64-unknown-linux-musl/release/checkd-agent /dist/checkd-agent-linux-aarch64
 cp /target/x86_64-pc-windows-gnu/release/checkd-agent.exe /dist/checkd-agent-windows-x86_64.exe
 cd /dist && sha256sum checkd-agent-* > SHA256SUMS
+# What they are, as each says it, for knowing which agents are older.
+/target/x86_64-unknown-linux-musl/release/checkd-agent --version | sed "s/^checkd-agent //" > VERSION
 chown -R '"$(id -u):$(id -g)"' /dist /target
 '
 ls -l "$here/dist/agent"

@@ -65,7 +65,8 @@ that installs the agent, and once the agent has connected renames it to
 ## Inventory
 
 Once connected, an agent of an `agents=` directory sends what its
-machine is and runs: the system and its version, processors, memory,
+machine is and runs: its own version (`agent`, as `--version` says it),
+the system and its version, processors, memory,
 disks, the services running and the TCP ports listened on. It sends it
 again once a day. checkd writes it to `<host>.inventory.json` beside the
 token, where nuthatch reads it to propose checks. Gathering it only
