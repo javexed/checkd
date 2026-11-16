@@ -9,7 +9,7 @@
 //! and some of the machine they run on (`local.rs`), for an agent or the
 //! engine's own host:
 //!
-//!     checkd:disk -p <path> [-w <% used>] [-c <% used>]
+//!     checkd:disk -p <path> [-w <% used>] [-c <% used>] [-C <margin> -P <state now>]
 //!     checkd:memory [-w <% used>] [-c <% used>]
 //!     checkd:load [-w <1,5,15>] [-c <1,5,15>]
 //!     checkd:cpu [-w <% busy>] [-c <% busy>]
@@ -52,7 +52,24 @@ pub fn verify(line: &str) -> Result<(), String> {
     match kind {
         // Their words are worked out with what the engine knows.
         "dummy" | "aggregate" | "trend" => Ok(()),
-        "ping" | "tcp" | "http" | "cert" | "notify" | "disk" | "memory" | "load" | "cpu" | "service" => Options::read(&words[1..]).map(|_| ()),
+        "disk" | "memory" | "load" | "cpu" => {
+            let options = Options::read(&words[1..])?;
+            // The state comes in as a macro, worked out only when it runs.
+            if let Some(margin) = options.text("-C") {
+                Margin::read(margin)?;
+                if !options.has("-P") {
+                    return Err("-C needs -P with the state now, as -P $SERVICESTATEID$".into());
+                }
+            }
+            Ok(())
+        }
+        "ping" | "tcp" | "http" | "cert" | "notify" | "service" => {
+            let options = Options::read(&words[1..])?;
+            if options.has("-C") || options.has("-P") {
+                return Err(format!("checkd:{kind} takes no -C or -P: only disk, memory, load and cpu keep a state"));
+            }
+            Ok(())
+        }
         other => Err(format!("checkd has no check '{other}': ping, tcp, http, cert, disk, memory, load, cpu, service, dummy, aggregate, trend, notify")),
     }
 }
@@ -132,6 +149,79 @@ fn over(value: f64, warn: Option<f64>, crit: Option<f64>) -> i32 {
     }
 }
 
+/// How far under a limit a value must fall before a state it raised ends:
+/// `-C 10%` (of the limit) or `-C 0.5` (in the value's own unit).
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Margin {
+    Share(f64),
+    Amount(f64),
+}
+
+impl Margin {
+    fn read(text: &str) -> Result<Margin, String> {
+        let bad = || format!("-C takes a margin, as 10% or 0.5, not '{text}'");
+        let (number, share) = match text.strip_suffix('%') {
+            Some(number) => (number, true),
+            None => (text, false),
+        };
+        let n: f64 = number.trim().parse().map_err(|_| bad())?;
+        if !n.is_finite() || n < 0.0 || (share && n >= 100.0) {
+            return Err(bad());
+        }
+        Ok(if share { Margin::Share(n) } else { Margin::Amount(n) })
+    }
+
+    fn under(self, limit: f64) -> f64 {
+        match self {
+            Margin::Share(pct) => limit - limit.abs() * pct / 100.0,
+            Margin::Amount(n) => limit - n,
+        }
+    }
+}
+
+/// The margin and the state the object is in now (`-P $SERVICESTATEID$`),
+/// when a check is to keep a state until the value is clearly back.
+#[derive(Clone, Copy, Debug)]
+struct Kept {
+    margin: Margin,
+    state: i32,
+}
+
+impl Options {
+    fn kept(&self) -> Result<Option<Kept>, String> {
+        let Some(margin) = self.text("-C") else { return Ok(None) };
+        let margin = Margin::read(margin)?;
+        let state = self.text("-P").ok_or("-C needs -P with the state now, as -P $SERVICESTATEID$")?;
+        let state: i32 = state.trim().parse().map_err(|_| format!("-P takes a state, 0 to 3, not '{state}'"))?;
+        // Unknown, or no state yet: nothing to keep.
+        Ok(Some(Kept { margin, state: if (0..=2).contains(&state) { state } else { OK } }))
+    }
+}
+
+/// As `over`, but a state the object is in now ends only when the value
+/// is under the limit by the margin: a value that wavers at a limit does
+/// not change the state each time it crosses it. Says the limits the
+/// value must get under when that is what kept the state.
+fn over_kept(value: f64, warn: Option<f64>, crit: Option<f64>, kept: Option<Kept>) -> (i32, Option<f64>) {
+    let state = over(value, warn, crit);
+    let Some(Kept { margin, state: before }) = kept else { return (state, None) };
+    let lowered = over(value, warn.map(|w| margin.under(w)), crit.map(|c| margin.under(c)));
+    let held = lowered.min(before);
+    if held > state {
+        let limit = if held == CRITICAL { crit } else { warn };
+        (held, limit.map(|l| margin.under(l)))
+    } else {
+        (state, None)
+    }
+}
+
+/// " (WARNING until under 3.6)", for a state kept by its margin; each
+/// limit after the name of what it limits, if there are several.
+fn held_text(state: i32, under: &[(&str, Option<f64>)]) -> String {
+    let limits: Vec<String> = under.iter().filter_map(|(name, u)| u.map(|v| format!("{name}{}", (v * 100.0).round() / 100.0))).collect();
+    if limits.is_empty() { String::new() } else { format!(" ({} until under {})", WORDS[state as usize], limits.join(", ")) }
+}
+
 fn limit(value: Option<f64>) -> String {
     value.map(|v| v.to_string()).unwrap_or_default()
 }
@@ -196,23 +286,25 @@ fn size(bytes: u64) -> String {
 
 fn disk(options: &Options) -> Result<Found, String> {
     let path = options.text("-p").filter(|p| !p.is_empty()).ok_or("-p <path> is needed")?;
-    let (warn, crit) = (options.number("-w")?, options.number("-c")?);
+    let (warn, crit, kept) = (options.number("-w")?, options.number("-c")?, options.kept()?);
     let space = crate::local::space(path)?;
     let used = space.used_pct();
+    let (state, under) = over_kept(used, warn, crit, kept);
     Ok((
-        over(used, warn, crit),
-        format!("{path} {used:.0}% used, {} free of {}", size(space.free), size(space.total)),
+        state,
+        format!("{path} {used:.0}% used, {} free of {}{}", size(space.free), size(space.total), held_text(state, &[("", under)])),
         format!("used={used:.1}%;{};{};0;100 free={}B;;;0;{} free_pct={:.1}%;;;0;100", limit(warn), limit(crit), space.free, space.total, 100.0 - used),
     ))
 }
 
 fn memory(options: &Options) -> Result<Found, String> {
-    let (warn, crit) = (options.number("-w")?, options.number("-c")?);
+    let (warn, crit, kept) = (options.number("-w")?, options.number("-c")?, options.kept()?);
     let (total, available) = crate::local::memory()?;
     let used = if total == 0 { 0.0 } else { (total - available.min(total)) as f64 * 100.0 / total as f64 };
+    let (state, under) = over_kept(used, warn, crit, kept);
     Ok((
-        over(used, warn, crit),
-        format!("{used:.0}% used, {} available of {}", size(available), size(total)),
+        state,
+        format!("{used:.0}% used, {} available of {}{}", size(available), size(total), held_text(state, &[("", under)])),
         format!("used={used:.1}%;{};{};0;100 available={available}B;;;0;{total}", limit(warn), limit(crit)),
     ))
 }
@@ -233,9 +325,9 @@ fn triple(options: &Options, flag: &str) -> Result<[Option<f64>; 3], String> {
 }
 
 fn load(options: &Options) -> Result<Found, String> {
-    let (warn, crit) = (triple(options, "-w")?, triple(options, "-c")?);
+    let (warn, crit, kept) = (triple(options, "-w")?, triple(options, "-c")?, options.kept()?);
     let now = crate::local::load().ok_or("this system has no load average")?;
-    let state = (0..3).map(|i| over(now[i], warn[i], crit[i])).max().unwrap_or(OK);
+    let (state, held) = load_state(now, warn, crit, kept);
     let perf: Vec<String> = ["load1", "load5", "load15"]
         .iter()
         .enumerate()
@@ -243,15 +335,30 @@ fn load(options: &Options) -> Result<Found, String> {
         .collect();
     Ok((
         state,
-        format!("load average {:.2}, {:.2}, {:.2} on {} processors", now[0], now[1], now[2], crate::local::cpus()),
+        format!("load average {:.2}, {:.2}, {:.2} on {} processors{held}", now[0], now[1], now[2], crate::local::cpus()),
         perf.join(" "),
     ))
 }
 
+/// The state of three load averages, each kept by the margin, and what
+/// keeps it.
+fn load_state(now: [f64; 3], warn: [Option<f64>; 3], crit: [Option<f64>; 3], kept: Option<Kept>) -> (i32, String) {
+    let each: Vec<(i32, Option<f64>)> = (0..3).map(|i| over_kept(now[i], warn[i], crit[i], kept)).collect();
+    let state = each.iter().map(|(s, _)| *s).max().unwrap_or(OK);
+    // Kept only when no average is over its limit itself: then each that
+    // is at the state still is above its lowered limit.
+    let plain = (0..3).map(|i| over(now[i], warn[i], crit[i])).max().unwrap_or(OK);
+    let names = ["1 min ", "5 min ", "15 min "];
+    let under: Vec<(&str, Option<f64>)> =
+        if state > plain { each.iter().zip(names).map(|((s, u), name)| (name, if *s == state { *u } else { None })).collect() } else { vec![] };
+    (state, held_text(state, &under))
+}
+
 async fn cpu(options: &Options) -> Result<Found, String> {
-    let (warn, crit) = (options.number("-w")?, options.number("-c")?);
+    let (warn, crit, kept) = (options.number("-w")?, options.number("-c")?, options.kept()?);
     let busy = crate::local::cpu_busy().await?;
-    Ok((over(busy, warn, crit), format!("{busy:.0}% busy"), format!("busy={busy:.1}%;{};{};0;100", limit(warn), limit(crit))))
+    let (state, under) = over_kept(busy, warn, crit, kept);
+    Ok((state, format!("{busy:.0}% busy{}", held_text(state, &[("", under)])), format!("busy={busy:.1}%;{};{};0;100", limit(warn), limit(crit))))
 }
 
 async fn service(options: &Options) -> Result<Found, String> {
@@ -886,6 +993,45 @@ mod tests {
         assert_eq!(over(2.5, Some(2.0), Some(3.0)), WARNING);
         assert_eq!(over(3.5, Some(2.0), Some(3.0)), CRITICAL);
         assert_eq!(over(99.0, None, None), OK);
+    }
+
+    #[test]
+    fn a_state_is_kept_until_the_value_is_clearly_back() {
+        let kept = |state| Some(Kept { margin: Margin::Share(10.0), state });
+        let (w, c) = (Some(4.0), Some(8.0));
+        // Rising: as without a margin.
+        assert_eq!(over_kept(4.1, w, c, kept(OK)), (WARNING, None));
+        assert_eq!(over_kept(8.1, w, c, kept(WARNING)), (CRITICAL, None));
+        // Falling a little under a limit keeps the state; clearly under ends it.
+        assert_eq!(over_kept(3.8, w, c, kept(WARNING)), (WARNING, Some(3.6)));
+        assert_eq!(over_kept(3.5, w, c, kept(WARNING)), (OK, None));
+        assert_eq!(over_kept(7.5, w, c, kept(CRITICAL)), (CRITICAL, Some(7.2)));
+        assert_eq!(over_kept(7.0, w, c, kept(CRITICAL)), (WARNING, None));
+        assert_eq!(over_kept(3.8, w, c, kept(CRITICAL)), (WARNING, Some(3.6)));
+        // A state below what the value gives is not kept down.
+        assert_eq!(over_kept(3.8, w, c, kept(OK)), (OK, None));
+        // An amount, not a share.
+        let amount = Some(Kept { margin: Margin::Amount(0.5), state: WARNING });
+        assert_eq!(over_kept(3.6, w, c, amount), (WARNING, Some(3.5)));
+        assert_eq!(over_kept(3.4, w, c, amount), (OK, None));
+        // Load: the 15-minute average holds it, and the text says so.
+        let (state, text) = load_state([1.0, 2.0, 3.9], [Some(6.0), Some(5.0), Some(4.0)], [Some(12.0), Some(10.0), Some(8.0)], kept(WARNING));
+        assert_eq!((state, text.as_str()), (WARNING, " (WARNING until under 15 min 3.6)"));
+        assert_eq!(load_state([1.0, 2.0, 3.0], [Some(6.0), Some(5.0), Some(4.0)], [None; 3], kept(WARNING)), (OK, String::new()));
+    }
+
+    #[test]
+    fn a_margin_is_read_and_needs_the_state() {
+        assert_eq!(Margin::read("10%"), Ok(Margin::Share(10.0)));
+        assert_eq!(Margin::read("0.5"), Ok(Margin::Amount(0.5)));
+        assert!(Margin::read("100%").is_err() && Margin::read("-1").is_err() && Margin::read("x").is_err());
+        assert!(verify("checkd:load -w $ARG1$ -c $ARG2$ -C 10% -P $SERVICESTATEID$").is_ok());
+        assert!(verify("checkd:load -w 4 -C 10%").unwrap_err().contains("-C needs -P"));
+        assert!(verify("checkd:tcp -H x -p 22 -C 10% -P 0").unwrap_err().contains("takes no -C"));
+        let words = |line: &str| checkd_core::cmdline::own_words(line);
+        let options = Options::read(&words("checkd:load -C 10% -P 3")[1..]).unwrap();
+        assert_eq!(options.kept().unwrap().unwrap().state, OK, "unknown keeps nothing");
+        assert!(Options::read(&words("checkd:load -C 10% -P x")[1..]).unwrap().kept().is_err());
     }
 
     fn runtime() -> tokio::runtime::Runtime {

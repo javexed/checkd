@@ -60,6 +60,27 @@ only, and need no plugin on the host.
 Their performance data: `used=` (%), `free=` (bytes) and `free_pct=` (%) for disk, `used=`
 and `available=` for memory, `load1=`, `load5=`, `load15=`, and `busy=`.
 
+### A value that wavers at a limit
+
+Disk, memory, load and CPU can keep a state until the value is clearly
+back: with `-C`, a WARNING or CRITICAL ends only when the value is under
+its limit by the margin, so a load that moves between 3.9 and 4.1 around
+a limit of 4 does not change state, and notify, each time it crosses.
+
+    command_line  checkd:load -w $ARG1$ -c $ARG2$ -C 10% -P $SERVICESTATEID$
+
+- `-C 10%` is a share of each limit; `-C 2` an amount in the value's own
+  unit (percentage points for disk, memory and CPU).
+- `-P` is the state the service is in now, which the check cannot know
+  itself: always `$SERVICESTATEID$`. UNKNOWN keeps nothing.
+- Rising is as without `-C`: the limit itself, then `max_check_attempts`.
+- While the margin keeps a state, the text says until when, as
+  `(WARNING until under 15 min 3.6)`.
+
+An agent older than this ignores `-C` and `-P`. Naemon's flap detection
+is another thing: it counts state changes over the last 20 results and
+holds back notifications while there are many.
+
 `checkd:aggregate` is one more, of another kind: a service worked out
 from other hosts and services ([aggregate](aggregate.md)).
 
