@@ -25,6 +25,8 @@ mod runner;
 mod shadow;
 mod store;
 #[cfg(feature = "workers")]
+#[cfg(test)]
+mod testing;
 mod tls;
 mod trend;
 #[cfg(feature = "workers")]

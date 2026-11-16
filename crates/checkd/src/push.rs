@@ -111,6 +111,41 @@ mod tests {
     }
 
     #[test]
+    fn the_services_that_take_pushes() {
+        use crate::testing::{NOW, commands, engine};
+        let service = |name: &str, more: &str| {
+            format!("define service {{\n host_name nas\n service_description {name}\n check_command ok\n max_check_attempts 1\n check_period always\n{more}}}\n")
+        };
+        let objects = format!(
+            "define host {{\n host_name nas\n address 192.0.2.1\n check_command ok\n max_check_attempts 1\n check_period always\n}}\n{}{}{}{}{}",
+            service("backup", " _CHECKD_PUSH_TOKEN 0123456789abcdef\n"),
+            service("short", " _CHECKD_PUSH_TOKEN abc\n"),
+            service("deaf", " _CHECKD_PUSH_TOKEN deaf-deaf-deaf-deaf\n passive_checks_enabled 0\n"),
+            service("twin", " _CHECKD_PUSH_TOKEN 0123456789abcdef\n"),
+            service("plain", ""),
+        );
+        let mut engine = engine(&objects, "");
+        let (mut pushes, notes) = Pushes::new(&engine);
+        let said = |part: &str| notes.iter().any(|note| note.contains(part));
+        assert!(said("nas;short: _CHECKD_PUSH_TOKEN is at least 16"), "{notes:?}");
+        assert!(said("nas;deaf: has a _CHECKD_PUSH_TOKEN and takes no passive results"), "{notes:?}");
+        assert!(said("another service has the same _CHECKD_PUSH_TOKEN"), "{notes:?}");
+        assert_eq!(notes.len(), 3, "{notes:?}");
+        // The short one is not taken; the others are, and a push is a result.
+        assert_eq!(pushes.take("abc", "", "", NOW).unwrap(), None);
+        let line = pushes.take("deaf-deaf-deaf-deaf", "critical", "no", NOW).unwrap().unwrap();
+        assert!(line.ends_with("PROCESS_SERVICE_CHECK_RESULT;nas;deaf;2;no"), "{line}");
+        let line = pushes.take("0123456789abcdef", "warning", "slow", NOW).unwrap().unwrap();
+        let target = if line.contains(";backup;") { "backup" } else { "twin" };
+        commands(&mut engine, NOW, &[line]);
+        let item = engine.item(engine.service("nas", target).unwrap());
+        assert_eq!((item.state, item.output.short.as_str()), (1, "slow"));
+        // Nothing to take without a token.
+        let none = crate::testing::engine(&objects.replace("_CHECKD_PUSH_TOKEN", "_OTHER"), "");
+        assert!(!Pushes::new(&none).0.any());
+    }
+
+    #[test]
     fn tokens_that_are_not_taken() {
         assert!(token_problem("short").is_some());
         assert!(token_problem("sixteen chars !!").is_some());

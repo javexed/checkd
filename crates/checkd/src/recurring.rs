@@ -78,3 +78,56 @@ impl Recurring {
         commands
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::{NOW, commands, engine};
+
+    const HOUR: Ms = 3_600_000;
+
+    /// Fridays 07:00 to 10:30 UTC for the host; every day, all day, for one
+    /// service; and one that names nothing.
+    const OBJECTS: &str = "define timeperiod {\n timeperiod_name backups\n alias backups\n friday 07:00-10:30\n}\n\
+        define host {\n host_name nas\n address 192.0.2.1\n check_command ok\n max_check_attempts 1\n check_period always\n _CHECKD_DOWNTIME_PERIOD backups\n}\n\
+        define service {\n host_name nas\n service_description scrub\n check_command ok\n max_check_attempts 1\n check_period always\n _CHECKD_DOWNTIME_PERIOD always\n}\n\
+        define service {\n host_name nas\n service_description typo\n check_command ok\n max_check_attempts 1\n check_period always\n _CHECKD_DOWNTIME_PERIOD backup\n}\n";
+
+    #[test]
+    fn a_downtime_whenever_the_timeperiod_holds() {
+        let mut engine = engine(OBJECTS, "");
+        let (recurring, notes) = Recurring::new(&engine);
+        assert!(recurring.any());
+        assert_eq!(notes, ["Warning: nas;typo: _CHECKD_DOWNTIME_PERIOD names no timeperiod 'backup'; no downtime is made"]);
+
+        // Friday 08:00: the host to 10:30; the service for seven days at most.
+        let due = recurring.due(&engine, NOW);
+        let start = NOW / 1000;
+        assert_eq!(due.len(), 2, "{due:?}");
+        assert!(due.contains(&format!("[{start}] SCHEDULE_HOST_DOWNTIME;nas;{start};{};1;0;0;checkd;recurring: backups", start + 2 * 3600 + 1800)));
+        assert!(due.contains(&format!("[{start}] SCHEDULE_SVC_DOWNTIME;nas;scrub;{start};{};1;0;0;checkd;recurring: always", start + 7 * 86_400)));
+        commands(&mut engine, NOW, &due);
+        assert_eq!(engine.downtimes().filter(|d| d.author == AUTHOR).count(), 2);
+
+        // Made once: a quarter of a minute later there is nothing to do.
+        assert!(recurring.due(&engine, NOW + 15_000).is_empty());
+
+        // Known again after a restart, by author and comment.
+        let snapshot = engine.snapshot();
+        let mut again = crate::testing::engine(OBJECTS, "");
+        again.restore(&snapshot);
+        let (recurring, _) = Recurring::new(&again);
+        assert!(recurring.due(&again, NOW + HOUR).is_empty());
+
+        // Taken away while the timeperiod holds: back at the next look.
+        let id = again.downtimes().find(|d| matches!(d.obj, Obj::Host(_))).unwrap().id;
+        commands(&mut again, NOW + HOUR, &[format!("[{}] DEL_HOST_DOWNTIME;{id}", (NOW + HOUR) / 1000)]);
+        assert_eq!(recurring.due(&again, NOW + HOUR).len(), 1);
+
+        // Outside the timeperiod: nothing for the host.
+        let saturday = NOW + 24 * HOUR;
+        let fresh = crate::testing::engine(OBJECTS, "");
+        let due = Recurring::new(&fresh).0.due(&fresh, saturday);
+        assert!(due.iter().all(|line| !line.contains("SCHEDULE_HOST_DOWNTIME")), "{due:?}");
+    }
+}

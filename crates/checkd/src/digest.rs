@@ -236,6 +236,33 @@ mod tests {
     }
 
     #[test]
+    fn the_contacts_that_want_digests() {
+        let contact = |name: &str, more: &str| {
+            format!("define contact {{\n contact_name {name}\n email {name}@example.test\n host_notification_period always\n service_notification_period always\n host_notification_commands ok\n service_notification_commands ok\n{more}}}\n")
+        };
+        let objects = format!(
+            "define command {{\n command_name mail-digest\n command_line $USER1$/send --to $CONTACTEMAIL$ --name '$CONTACTALIAS$'\n}}\n{}{}{}{}{}",
+            contact("ann", " alias Ann A\n _CHECKD_DIGEST_COMMAND mail-digest\n"),
+            contact("bob", " _CHECKD_DIGEST_COMMAND mail-digest\n _CHECKD_DIGEST_WAIT 120\n"),
+            contact("cy", " _CHECKD_DIGEST_COMMAND mail-digest\n _CHECKD_DIGEST_WAIT forever\n"),
+            contact("dee", " _CHECKD_DIGEST_COMMAND no-such-command\n"),
+            contact("eve", ""),
+        );
+        let dir = std::env::temp_dir().join(format!("checkd-digest-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("resource.cfg"), "$USER1$=/opt/tools\n").unwrap();
+        let engine = crate::testing::engine(&objects, &format!("resource_file={}\n", dir.join("resource.cfg").display()));
+        let (digests, notes) = Digests::new(&engine);
+        assert_eq!(digests.wanted.keys().collect::<Vec<_>>(), ["ann", "bob", "cy"]);
+        // The contact's and the resource file's macros are filled in.
+        assert_eq!(digests.wanted["ann"].line, "/opt/tools/send --to ann@example.test --name 'Ann A'");
+        assert_eq!((digests.wanted["ann"].wait, digests.wanted["bob"].wait, digests.wanted["cy"].wait), (30_000, 120_000, 30_000));
+        assert_eq!(notes.len(), 2, "{notes:?}");
+        assert!(notes[0].contains("contact cy: _CHECKD_DIGEST_WAIT is 1 to 3600 seconds") || notes[1].contains("contact cy: _CHECKD_DIGEST_WAIT is 1 to 3600 seconds"), "{notes:?}");
+        assert!(notes.iter().any(|n| n.contains("contact dee: _CHECKD_DIGEST_COMMAND names no command 'no-such-command'")), "{notes:?}");
+    }
+
+    #[test]
     fn others_are_not_held() {
         let mut digests = digests();
         assert!(digests.hold(notification(1, "bob", "PROBLEM", "a"), 0).is_some());
