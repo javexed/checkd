@@ -134,8 +134,9 @@ impl Trigger {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Request {
     Get(Query),
-    /// The command line after `COMMAND `, its time included.
-    Command(String),
+    /// The command lines after `COMMAND `, their times included: every
+    /// `COMMAND` line of the request, as Naemon carries them out.
+    Command(Vec<String>),
 }
 
 /// A request that cannot be answered: the status code and why.
@@ -165,8 +166,13 @@ fn bad(message: impl Into<String>) -> Refused {
 pub fn parse(text: &str) -> Result<Request, Refused> {
     let mut lines = text.lines().map(|line| line.trim_end_matches('\r'));
     let first = lines.next().unwrap_or("").trim();
-    if let Some(command) = first.strip_prefix("COMMAND ") {
-        return Ok(Request::Command(command.trim().to_string()));
+    if first.starts_with("COMMAND ") {
+        let commands = text
+            .lines()
+            .filter_map(|line| line.trim().strip_prefix("COMMAND "))
+            .map(|command| command.trim().to_string())
+            .collect();
+        return Ok(Request::Command(commands));
     }
     let Some(table) = first.strip_prefix("GET ") else {
         return Err(bad(format!("Invalid request method '{first}'")));
@@ -426,7 +432,11 @@ mod tests {
     fn a_command() {
         assert_eq!(
             parse("COMMAND [1] DISABLE_NOTIFICATIONS\n").unwrap(),
-            Request::Command("[1] DISABLE_NOTIFICATIONS".into())
+            Request::Command(vec!["[1] DISABLE_NOTIFICATIONS".into()])
+        );
+        assert_eq!(
+            parse("COMMAND [1] DISABLE_NOTIFICATIONS\nCOMMAND [1] DISABLE_FLAP_DETECTION\n").unwrap(),
+            Request::Command(vec!["[1] DISABLE_NOTIFICATIONS".into(), "[1] DISABLE_FLAP_DETECTION".into()])
         );
     }
 }

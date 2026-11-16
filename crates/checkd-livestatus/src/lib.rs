@@ -31,8 +31,8 @@ pub struct Response {
     pub bytes: Vec<u8>,
     /// Whether the connection stays open for another request.
     pub keep_alive: bool,
-    /// A command for the engine, from a `COMMAND` request.
-    pub command: Option<String>,
+    /// Commands for the engine, from a `COMMAND` request.
+    pub commands: Vec<String>,
 }
 
 /// What a request waits for before it is to be answered, if anything.
@@ -51,10 +51,12 @@ pub fn wait_of(text: &str) -> Option<request::Wait> {
 /// Answers one request.
 pub fn handle(source: &Source, text: &str) -> Response {
     match request::parse(text) {
-        Ok(Request::Command(command)) => Response {
+        // A command has no answer, and the connection stays open for the
+        // next request, as Naemon's Livestatus keeps it.
+        Ok(Request::Command(commands)) => Response {
             bytes: Vec::new(),
-            keep_alive: false,
-            command: Some(command),
+            keep_alive: true,
+            commands,
         },
         Ok(Request::Get(query)) => match answer(source, &query) {
             Ok(body) => respond(200, body, query.fixed16, query.keep_alive),
@@ -73,7 +75,7 @@ fn respond(code: u16, body: String, fixed16: bool, keep_alive: bool) -> Response
     Response {
         bytes,
         keep_alive,
-        command: None,
+        commands: Vec::new(),
     }
 }
 
