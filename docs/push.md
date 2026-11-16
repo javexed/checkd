@@ -52,6 +52,8 @@ what a caller needs: a push asks for no bearer token. So:
   (`openssl rand -hex 16`), one for each service.
 - Who knows a token can set that one service to any state, and nothing
   else. A token that is not known is answered 404, like any other path.
+- With `check_external_commands=0` every push is answered 409 and taken
+  nowhere; the log says so at the start.
 - A token is a custom variable: who can read the configuration, or the
   custom variables over Livestatus, can read it.
 - The API speaks plain HTTP. Across a network that is not trusted, put it

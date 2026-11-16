@@ -50,3 +50,6 @@ does not inherit its host's.
   timeperiod or take the variable away.
 - A variable that names no timeperiod gives a warning at the start, and
   no downtime.
+- These downtimes are scheduled as external commands: with
+  `check_external_commands=0` there are none, and a warning at the start
+  says so.

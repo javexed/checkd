@@ -9,7 +9,7 @@ All three are off unless asked for.
 | Request | Answer |
 |---|---|
 | `GET /api/v1/<table>` | the rows of a Livestatus table, as a JSON list of objects |
-| `POST /api/v1/command` | carries out the body as one external command |
+| `POST /api/v1/command` | carries out the body as one external command; 409 with `check_external_commands=0` |
 | `GET` or `POST /api/v1/push/<token>` | a result for the service with that token: [push](push.md) |
 | `GET /metrics` | the engine's health in Prometheus' text format |
 

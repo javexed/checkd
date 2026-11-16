@@ -523,6 +523,14 @@ async fn serve(
     for note in recurring_notes {
         log.line(&note);
     }
+    if !engine.settings().check_external_commands {
+        if pushes.any() {
+            log.line("Warning: services have a _CHECKD_PUSH_TOKEN, and check_external_commands=0: pushes are refused");
+        }
+        if recurring.any() {
+            log.line("Warning: recurring downtimes are configured, and check_external_commands=0: none is scheduled");
+        }
+    }
     let mut recurring_tick = tokio::time::interval(Duration::from_secs(15));
     // What trends have read, as the store kept it over a restart or reload.
     let mut trends = match store.as_deref_mut().map(|store| store.trend_readings(now() - crate::trend::LONGEST)) {
@@ -762,7 +770,12 @@ async fn serve(
                 if let Some(token) = ask.path.strip_prefix("/api/v1/push/") {
                     let param = |name: &str| ask.query.iter().find(|(n, _)| n == name).map(|(_, v)| v.as_str());
                     let output = param("output").unwrap_or(&ask.body);
-                    let reply = match pushes.take(token, param("state").unwrap_or(""), output, now()) {
+                    let taken = if engine.settings().check_external_commands {
+                        pushes.take(token, param("state").unwrap_or(""), output, now())
+                    } else {
+                        Err("external commands are off: check_external_commands=0".to_string())
+                    };
+                    let reply = match taken {
                         Ok(Some(line)) => {
                             happened |= COMMANDED;
                             counts.commands += 1;
@@ -770,6 +783,7 @@ async fn serve(
                             crate::http::Reply::text(200, "ok\n")
                         }
                         Ok(None) => crate::http::Reply::text(404, "not found\n"),
+                        Err(why) if !engine.settings().check_external_commands => crate::http::Reply::text(409, format!("{why}\n")),
                         Err(why) => crate::http::Reply::text(400, format!("{why}\n")),
                     };
                     let _ = ask.reply.send(reply);
@@ -780,7 +794,7 @@ async fn serve(
                 #[cfg(not(feature = "workers"))]
                 let pool_stats = Vec::new();
                 let reply = answer_http(engine, &ask, &history, &program, &counts, running.count(), store_failing, &pool_stats);
-                if ask.method == "POST" && ask.path == "/api/v1/command" && ask.authorized {
+                if ask.method == "POST" && ask.path == "/api/v1/command" && ask.authorized && engine.settings().check_external_commands {
                     happened |= COMMANDED;
                     counts.commands += 1;
                     let line = format!("[{}] {}", now().div_euclid(1000), ask.body.trim());
@@ -831,7 +845,7 @@ async fn serve(
                     };
                     checkd_livestatus::handle(&source, &ask.text)
                 };
-                if let Some(command) = &response.command {
+                for command in &response.commands {
                     happened |= COMMANDED;
                     counts.commands += 1;
                     if restart_asked(command) {
@@ -1059,7 +1073,9 @@ fn answer_http(
     match (ask.method.as_str(), ask.path.as_str()) {
         ("GET", "/metrics") => Reply::text(200, metrics(engine, program, counts, running, store_failing, pools)),
         ("POST", "/api/v1/command") => {
-            if ask.authorized {
+            if ask.authorized && !engine.settings().check_external_commands {
+                Reply::text(409, "external commands are off: check_external_commands=0\n")
+            } else if ask.authorized {
                 Reply::json(200, "{\"accepted\":true}\n".to_string())
             } else {
                 Reply::text(403, "commands need a token: set CHECKD_HTTP_TOKEN\n")
