@@ -318,6 +318,9 @@ struct Running {
     kind: JobKind,
     started: Ms,
     timeout: Ms,
+    /// For a notification: the contact and the command's name, for the
+    /// log when it fails.
+    notice: Option<(String, String)>,
 }
 
 pub const HOST_STATES: [&str; 3] = ["UP", "DOWN", "UNREACHABLE"];
@@ -959,6 +962,13 @@ impl Engine {
         self.run(obj, kind, line, timeout, now, out);
     }
 
+    /// The job just run is a notification of this contact, by this command.
+    pub(crate) fn last_job_notice(&mut self, contact: &str, command: &str) {
+        if let Some(running) = self.running.get_mut(&self.jobs) {
+            running.notice = Some((contact.to_string(), command.to_string()));
+        }
+    }
+
     pub(crate) fn run_job(&mut self, obj: Obj, kind: JobKind, line: String, timeout: Ms, now: Ms, out: &mut Vec<Effect>) {
         self.run(obj, kind, line, timeout, now, out);
     }
@@ -973,6 +983,7 @@ impl Engine {
                 kind,
                 started: now,
                 timeout,
+                notice: None,
             },
         );
         out.push(Effect::Run(Job {
@@ -1056,6 +1067,26 @@ impl Engine {
                 self.hosts[at].item.passive_result = false;
                 // Codes 0 and 1 mean the host is there.
                 self.host_result(at, state <= 1, output, job.started, now, out);
+            }
+            (JobKind::Notification, obj) => {
+                let Some((contact, command)) = &job.notice else { return };
+                let of = if matches!(obj, Obj::Host(_)) { "host" } else { "service" };
+                // What the command said, its first line: why it failed.
+                let said = |result: &JobResult| {
+                    let text = if result.stderr.trim().is_empty() { &result.stdout } else { &result.stderr };
+                    let line: String = text.trim().lines().next().unwrap_or("").chars().take(200).collect();
+                    if line.is_empty() { String::new() } else { format!(": {line}") }
+                };
+                let why = match &result.outcome {
+                    Outcome::Exited(0) => return,
+                    // The reference's words, with the command's name in
+                    // place of its line, which may hold secrets.
+                    Outcome::TimedOut => format!("timed out after {} seconds", job.timeout / 1000),
+                    Outcome::Exited(code) => format!("failed with return code {code}{}", said(&result)),
+                    Outcome::Signaled(signal) => format!("was ended by signal {signal}{}", said(&result)),
+                    Outcome::Failed(reason) => format!("could not be run: {reason}"),
+                };
+                out.push(Effect::Log(format!("Warning: Contact '{contact}' {of} notification command '{command}' {why}")));
             }
             _ => {}
         }

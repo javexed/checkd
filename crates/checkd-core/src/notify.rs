@@ -336,6 +336,7 @@ impl Engine {
                 }
                 let timeout = self.settings.notification_timeout as Ms * 1000;
                 self.run_job(obj, JobKind::Notification, line, timeout, now, out);
+                self.last_job_notice(&contact.name, command);
                 if let Some(Effect::Run(job)) = out.last_mut() {
                     job.about = Some(Box::new(About {
                         contact: contact.name.clone(),

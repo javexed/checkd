@@ -85,3 +85,30 @@ fn nothing_can_bring_the_mark_between_words() {
         assert_eq!(words.iter().filter(|word| *word == "-u").count(), 1, "{words:?}");
     }
 }
+
+#[test]
+fn a_notification_command_that_fails_is_in_the_log() {
+    use checkd_core::engine::{JobKind, JobResult, Outcome};
+    let mut engine = engine();
+    let mut effects = Vec::new();
+    engine.command("[1800000000] PROCESS_SERVICE_CHECK_RESULT;web;disk;2;full", 1_800_000_000_000, &mut effects);
+    let jobs: Vec<u64> = effects.iter().filter_map(|e| match e { Effect::Run(job) if job.kind == JobKind::Notification => Some(job.id), _ => None }).collect();
+    assert_eq!(jobs.len(), 2);
+    let result = |outcome, stderr: &str| JobResult { outcome, stdout: String::new(), stderr: stderr.to_string() };
+    let mut log = Vec::new();
+    engine.job_done(1_800_000_001_000, jobs[0], result(Outcome::Exited(1), "HTTP 500 from hooks.example.test\nmore"), &mut log);
+    engine.job_done(1_800_000_001_000, jobs[1], result(Outcome::TimedOut, ""), &mut log);
+    let lines: Vec<&str> = log.iter().filter_map(|e| match e { Effect::Log(line) => Some(line.as_str()), _ => None }).collect();
+    assert_eq!(lines.len(), 2, "{lines:?}");
+    assert!(lines.iter().any(|l| *l == "Warning: Contact 'ann' service notification command 'tell' failed with return code 1: HTTP 500 from hooks.example.test"), "{lines:?}");
+    assert!(lines.iter().any(|l| l.starts_with("Warning: Contact 'ann' service notification command 'bare' timed out after ")), "{lines:?}");
+    // One that worked says nothing.
+    let mut quiet = Vec::new();
+    engine.command("[1800000100] PROCESS_SERVICE_CHECK_RESULT;web;disk;0;fine", 1_800_000_100_000, &mut quiet);
+    let ok: Vec<u64> = quiet.iter().filter_map(|e| match e { Effect::Run(job) if job.kind == JobKind::Notification => Some(job.id), _ => None }).collect();
+    let mut log = Vec::new();
+    for id in ok {
+        engine.job_done(1_800_000_101_000, id, result(Outcome::Exited(0), ""), &mut log);
+    }
+    assert!(log.iter().all(|e| !matches!(e, Effect::Log(_))));
+}
