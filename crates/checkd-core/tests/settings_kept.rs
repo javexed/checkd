@@ -87,6 +87,9 @@ fn settings_and_switches_come_back() {
     let (s, h) = (service(&second), host(&second));
     assert!(!s.event_handler_enabled && !s.flap_detection_enabled && !s.passive_checks_enabled);
     assert_eq!((s.check_interval, s.retry_interval, s.max_check_attempts), (9.0, 2.0, 7));
+    // And the checks run by them, not only show them.
+    let item = second.item(second.service("web", "http").unwrap());
+    assert_eq!(item.intervals(), (9 * 60_000, 2 * 60_000));
     assert_eq!(h.custom, vec![("OWNER".to_string(), "bob".to_string())]);
     assert_eq!(modified(&second), modified(&first));
     assert_ne!(modified(&second), 0);

@@ -215,6 +215,11 @@ pub const MOD_MAX_ATTEMPTS: u32 = 4096;
 pub const MOD_CUSTOM_VARIABLE: u32 = 32768;
 
 impl Item {
+    /// How often it is checked, and how often while it retries.
+    pub fn intervals(&self) -> (Ms, Ms) {
+        (self.check_ms, self.retry_ms)
+    }
+
     /// The settings, to change one. Only called when there is something
     /// to change: from then on the object holds settings of its own.
     pub fn cfg_mut(&mut self) -> &mut Checkable {

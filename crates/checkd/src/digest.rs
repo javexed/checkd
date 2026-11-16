@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 
-use checkd_core::engine::{Engine, Job, JobKind, Ms};
+use checkd_core::engine::{About, Engine, Job, JobKind, Ms};
 
 /// A contact's digest: the command line, and how long to wait.
 struct Wanted {
@@ -103,16 +103,25 @@ impl Digests {
         let contacts: Vec<String> = self.held.iter().filter(|(_, (at, _))| *at <= now).map(|(c, _)| c.clone()).collect();
         let mut out = Vec::new();
         for contact in contacts {
-            let Some((_, mut jobs)) = self.held.remove(&contact) else { continue };
-            if jobs.len() == 1 {
-                let mut job = jobs.remove(0);
-                // Not held a second time.
-                job.about = None;
-                out.push(Release::Single(job));
+            let Some((_, jobs)) = self.held.remove(&contact) else { continue };
+            // One notification, however many commands the contact has for
+            // it, is not a digest.
+            let mut abouts: Vec<&About> = Vec::new();
+            for about in jobs.iter().filter_map(|job| job.about.as_deref()) {
+                let same = |seen: &&About| seen.kind == about.kind && seen.what == about.what && seen.state == about.state && seen.output == about.output;
+                if !abouts.iter().any(same) {
+                    abouts.push(about);
+                }
+            }
+            if abouts.len() <= 1 {
+                for mut job in jobs {
+                    // Not held a second time.
+                    job.about = None;
+                    out.push(Release::Single(job));
+                }
                 continue;
             }
             let wanted = &self.wanted[&contact];
-            let abouts: Vec<_> = jobs.iter().filter_map(|job| job.about.as_deref()).collect();
             let mut kinds: Vec<(String, usize)> = Vec::new();
             for about in &abouts {
                 match kinds.iter_mut().find(|(kind, _)| *kind == about.kind) {
@@ -137,12 +146,12 @@ impl Digests {
                 about: None,
                 env: vec![
                     ("CHECKD_DIGEST_CONTACT".to_string(), contact.clone()),
-                    ("CHECKD_DIGEST_COUNT".to_string(), jobs.len().to_string()),
+                    ("CHECKD_DIGEST_COUNT".to_string(), abouts.len().to_string()),
                     ("CHECKD_DIGEST_SUMMARY".to_string(), summary.clone()),
                     ("CHECKD_DIGEST_LINES".to_string(), lines),
                 ],
             };
-            let log = format!("NOTIFICATION DIGEST: {contact};{};{summary}", jobs.len());
+            let log = format!("NOTIFICATION DIGEST: {contact};{};{summary}", abouts.len());
             out.push(Release::Together { done: jobs.iter().map(|job| job.id).collect(), digest, log });
         }
         out
@@ -152,7 +161,7 @@ impl Digests {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use checkd_core::engine::{About, Obj};
+    use checkd_core::engine::Obj;
 
     fn notification(id: u64, contact: &str, kind: &str, what: &str) -> Job {
         Job {
@@ -204,6 +213,26 @@ mod tests {
         assert_eq!(env("CHECKD_DIGEST_SUMMARY"), "2 PROBLEM, 1 RECOVERY");
         assert_eq!(env("CHECKD_DIGEST_LINES").lines().nth(1), Some("PROBLEM: a/disk is DOWN: as said"));
         assert_eq!(log, "NOTIFICATION DIGEST: ann;3;2 PROBLEM, 1 RECOVERY");
+    }
+
+    #[test]
+    fn one_notification_by_two_commands_is_not_a_digest() {
+        let mut digests = digests();
+        let mut by_page = notification(2, "ann", "PROBLEM", "a");
+        by_page.line = "page a".into();
+        digests.hold(notification(1, "ann", "PROBLEM", "a"), 1000);
+        digests.hold(by_page, 1000);
+        let due = digests.due(31_000);
+        assert!(matches!(&due[..], [Release::Single(a), Release::Single(b)] if a.line == "notify a" && b.line == "page a"), "{}", due.len());
+        // Two notifications by two commands each: a digest of two.
+        for (id, what) in [(1, "a"), (2, "a"), (3, "b"), (4, "b")] {
+            digests.hold(notification(id, "ann", "PROBLEM", what), 40_000);
+        }
+        let due = digests.due(80_000);
+        let [Release::Together { done, digest, log }] = &due[..] else { panic!() };
+        assert_eq!(done, &[1, 2, 3, 4]);
+        assert_eq!(digest.env.iter().find(|(n, _)| n == "CHECKD_DIGEST_COUNT").unwrap().1, "2");
+        assert_eq!(log, "NOTIFICATION DIGEST: ann;2;2 PROBLEM");
     }
 
     #[test]
