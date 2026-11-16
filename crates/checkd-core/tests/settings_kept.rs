@@ -113,3 +113,15 @@ fn settings_and_switches_come_back() {
     assert!(untouched.program.is_empty());
     assert!(untouched.objects.iter().all(|o| o.settings.is_empty()));
 }
+
+#[test]
+fn a_soft_change_of_state_is_counted_though_not_logged() {
+    let mut engine = engine(OBJECTS, "log_service_retries=0\n");
+    let before = engine.state_changes();
+    let mut effects = Vec::new();
+    engine.command("[1800000000] PROCESS_SERVICE_CHECK_RESULT;web;http;2;broken", 1_800_000_000_000, &mut effects);
+    let item = engine.item(engine.service("web", "http").unwrap());
+    assert!(!item.hard && item.state == 2, "a soft CRITICAL");
+    assert!(effects.iter().all(|e| !matches!(e, checkd_core::engine::Effect::Log(line) if line.starts_with("SERVICE ALERT"))));
+    assert_eq!(engine.state_changes(), before + 1);
+}

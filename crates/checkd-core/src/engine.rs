@@ -585,6 +585,12 @@ impl Engine {
         (engine, warnings)
     }
 
+    /// How many times a host or service has changed state, soft or hard,
+    /// since the start: what a wait for a change of state watches.
+    pub fn state_changes(&self) -> u64 {
+        self.events
+    }
+
     pub fn settings(&self) -> &Settings {
         &self.settings
     }

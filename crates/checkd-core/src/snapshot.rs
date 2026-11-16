@@ -434,6 +434,8 @@ impl Engine {
             for setting in still_configured(&saved.settings, &configured) {
                 put_setting(Arc::make_mut(&mut item.cfg), &mut item.modified, &setting.name, &setting.value);
             }
+            // The intervals a command set are the ones the checks keep.
+            self.reset_intervals(obj);
         }
         self.comments.clear();
         for saved in &snapshot.comments {
