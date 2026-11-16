@@ -92,7 +92,8 @@ fn frame(opcode: u8, payload: &[u8], mask: bool) -> Vec<u8> {
 }
 
 /// A whole frame at the start of `raw`: its opcode, payload and length.
-fn parse(raw: &[u8]) -> io::Result<Option<(u8, Vec<u8>, usize)>> {
+/// `from_client`: a client's frames are masked, a server's are not.
+fn parse(raw: &[u8], from_client: bool) -> io::Result<Option<(u8, Vec<u8>, usize)>> {
     if raw.len() < 2 {
         return Ok(None);
     }
@@ -109,6 +110,13 @@ fn parse(raw: &[u8]) -> io::Result<Option<(u8, Vec<u8>, usize)>> {
     };
     if len > MAX_FRAME {
         return Err(bad("a WebSocket frame too large"));
+    }
+    // RFC 6455 5.5: control frames carry at most 125 bytes.
+    if opcode >= 8 && len > 125 {
+        return Err(bad("a WebSocket control frame too large"));
+    }
+    if masked != from_client {
+        return Err(bad(if from_client { "an unmasked WebSocket frame from a client" } else { "a masked WebSocket frame from a server" }));
     }
     let key = if masked {
         if raw.len() < at + 4 {
@@ -162,7 +170,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> AsyncRead for WsStream<S> {
             if this.closed {
                 return Poll::Ready(Ok(()));
             }
-            if let Some((opcode, payload, used)) = parse(&this.raw)? {
+            if let Some((opcode, payload, used)) = parse(&this.raw, !this.client)? {
                 this.raw.drain(..used);
                 match opcode {
                     0 | 2 => {
@@ -172,9 +180,14 @@ impl<S: AsyncRead + AsyncWrite + Unpin> AsyncRead for WsStream<S> {
                     8 => this.closed = true,
                     9 => {
                         // A ping is answered with the next write, or now if it can go.
-                        let pong = frame(10, &payload, this.client);
-                        this.out.extend_from_slice(&pong);
-                        let _ = this.send_out(cx);
+                        // Not while something is still unsent: a peer that pings
+                        // and never reads would have it all kept (RFC 6455 5.5.3
+                        // lets only the latest ping be answered).
+                        if this.out.is_empty() {
+                            this.out = frame(10, &payload, this.client);
+                            this.sent = 0;
+                            let _ = this.send_out(cx);
+                        }
                     }
                     10 => {}
                     _ => return Poll::Ready(Err(bad("a WebSocket text or unknown frame"))),
@@ -290,7 +303,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bytes_go_both_ways_in_frames_of_any_size_and_pings_are_answered() {
+    async fn bytes_go_both_ways_in_frames_of_any_size_and_pings_are_read_past() {
         let (a, b) = tokio::io::duplex(1 << 16);
         let (client, server) = tokio::join!(client(a, "engine.example.test", "/workers"), server(b));
         let (mut client, mut server) = (client.unwrap(), server.unwrap());
@@ -313,6 +326,25 @@ mod tests {
         server.write_all(b"back").await.unwrap();
         server.flush().await.unwrap();
         assert_eq!(&writer.await.unwrap(), b"back");
+    }
+
+    #[tokio::test]
+    async fn a_ping_is_answered_and_one_too_large_or_unmasked_is_refused() {
+        let (mut peer, ours) = tokio::io::duplex(4096);
+        let mut server = WsStream::new(ours, false, Vec::new());
+        peer.write_all(&frame(9, b"hi", true)).await.unwrap();
+        peer.write_all(&frame(2, b"x", true)).await.unwrap();
+        let mut one = [0u8; 1];
+        server.read_exact(&mut one).await.unwrap();
+        assert_eq!(&one, b"x");
+        let mut pong = [0u8; 4];
+        peer.read_exact(&mut pong).await.unwrap();
+        assert_eq!(pong, [0x8a, 2, b'h', b'i']);
+
+        assert!(parse(&frame(9, &[0u8; 126], true), true).is_err());
+        assert!(parse(&frame(2, b"x", false), true).is_err());
+        assert!(parse(&frame(2, b"x", true), false).is_err());
+        assert!(parse(&frame(9, &[0u8; 125], true), true).unwrap().is_some());
     }
 
     #[tokio::test]

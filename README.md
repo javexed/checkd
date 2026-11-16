@@ -76,10 +76,13 @@ config Naemon takes too.
   its own, which runs one host's checks there over an outgoing TLS
   connection ([docs/agent.md](docs/agent.md)). Tested on Linux, and
   for Windows under Wine (`runs/agent-windows/run`), not yet on a Windows
-  machine.
+  machine. Experimental, and so is its updating itself from nuthatch:
+  the binaries are not signed yet ([TODO.md](TODO.md)).
 - **Checks without a plugin**: ping, a TCP port, a web page, a
-  certificate; and a notification to ntfy, Slack or a webhook without a
-  script ([docs/builtin.md](docs/builtin.md)).
+  certificate, a service, and a host's disks, memory, load and CPU, with
+  a margin against a value that wavers at a limit; and a notification to
+  ntfy, Slack or a webhook without a script
+  ([docs/builtin.md](docs/builtin.md)).
 - **Results pushed in** over HTTP by a job elsewhere, with an alarm when
   none comes ([docs/push.md](docs/push.md)).
 - **A service made of others**, OK while enough of its members are
@@ -222,8 +225,9 @@ in) in the daemon. The OpenTelemetry export is written by hand on top of
 those and adds none. The PostgreSQL store, behind the `postgres` feature,
 adds `tokio-postgres`, and `rustls`, `tokio-postgres-rustls` and
 `webpki-roots` for TLS. Remote workers, behind the `workers` feature,
-add `tokio-rustls` and `rustls` for TLS and `rcgen` for `checkd
-make-certs`. The checks without a plugin use `tokio-rustls`, `rustls` and
+add `tokio-rustls` and `rustls` for TLS, and `rcgen` and `ring` for
+`checkd make-certs`. The agent uses the same, `ring` also for checking
+what it updates itself to, and `windows-sys` on Windows. The checks without a plugin use `tokio-rustls`, `rustls` and
 `webpki-roots` for TLS, behind `tls-checks`.
 
 ## Licence

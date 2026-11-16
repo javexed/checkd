@@ -76,6 +76,10 @@ a limit of 4 does not change state, and notify, each time it crosses.
 - Rising is as without `-C`: the limit itself, then `max_check_attempts`.
 - While the margin keeps a state, the text says until when, as
   `(WARNING until under 15 min 3.6)`.
+- The service has one state, so load's three averages share it: once
+  raised, it stays until each average is clearly under its own limit,
+  whichever raised it. A state the value did not set, such as a CRITICAL
+  from a timeout, is kept by the same rule.
 
 An agent older than this ignores `-C` and `-P`. Naemon's flap detection
 is another thing: it counts state changes over the last 20 results and

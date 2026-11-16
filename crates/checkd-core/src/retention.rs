@@ -290,8 +290,10 @@ fn unescape(text: &str) -> String {
 pub fn write(snapshot: &Snapshot, now: i64) -> String {
     use std::fmt::Write as _;
     let mut out = String::new();
-    // One line of a value: the reference keeps a newline as `\n`.
-    let one = |text: &str| text.replace('\\', "\\\\").replace('\n', "\\n");
+    // The reference reads every value as it is, but for long_plugin_output,
+    // where `\\` and `\n` stand for a backslash and a newline.
+    let one = |text: &str| text.replace('\n', " ");
+    let long = |text: &str| text.replace('\\', "\\\\").replace('\n', "\\n");
     let secs = |ms: i64| ms.div_euclid(1000);
     let _ = write!(out, "info {{\ncreated={now}\nversion=1.5.2\n}}\n");
     let program_changed = !snapshot.notifications_enabled;
@@ -339,7 +341,7 @@ pub fn write(snapshot: &Snapshot, now: i64) -> String {
             o.attempt,
             o.hard as u8,
             one(&o.output),
-            one(&o.long_output),
+            long(&o.long_output),
             one(&o.perfdata),
             secs(o.last_check),
             secs(o.last_state_change),
@@ -524,6 +526,14 @@ contact_name=ann
         let text = write(&long, 0);
         assert!(text.contains("long_plugin_output=one\\ntwo\n"), "{text}");
         assert_eq!(read(&text).0.objects[0].long_output, "one\ntwo");
+        // A backslash is written as it is, but in a long output.
+        long.objects[0].output = "C:\\ 91%".into();
+        long.objects[0].long_output = "a\\b".into();
+        let text = write(&long, 0);
+        assert!(text.contains("plugin_output=C:\\ 91%\n"), "{text}");
+        assert!(text.contains("long_plugin_output=a\\\\b\n"), "{text}");
+        let back = &read(&text).0.objects[0];
+        assert_eq!((back.output.as_str(), back.long_output.as_str()), ("C:\\ 91%", "a\\b"));
     }
 
     #[test]

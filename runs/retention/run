@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The way back to Naemon, and in again: checkd is given a state (a hard
 # CRITICAL, an acknowledgement, a comment, a downtime, notifications
-# turned off by command), writes it as a retention.dat, the reference
+# turned off by command, backslashes in an output and a comment), writes it as a retention.dat, the reference
 # (oracle/play) starts from that file and saves its own at the end, and
 # checkd reads that one into a new store. The two states must be the same.
 #
@@ -35,9 +35,9 @@ pid=$!
 for _ in $(seq 50); do [ -S "$socket" ] && break; sleep 0.1; done
 t=$(date +%s)
 {
-    printf 'COMMAND [%s] PROCESS_SERVICE_CHECK_RESULT;web;a;2;disk on fire\n' "$t"
+    printf 'COMMAND [%s] PROCESS_SERVICE_CHECK_RESULT;web;a;2;disk C:\\ on fire\n' "$t"
     printf 'COMMAND [%s] ACKNOWLEDGE_SVC_PROBLEM;web;a;2;1;1;ann;on it\n' "$t"
-    printf 'COMMAND [%s] ADD_HOST_COMMENT;web;1;bob;keep an eye on it\n' "$t"
+    printf 'COMMAND [%s] ADD_HOST_COMMENT;web;1;bob;keep an eye on \\\\fs1\\data\n' "$t"
     printf 'COMMAND [%s] SCHEDULE_SVC_DOWNTIME;web;b;%s;%s;1;0;3600;cy;patching\n' "$t" "$t" "$((t + 3600))"
     printf 'COMMAND [%s] DISABLE_SVC_NOTIFICATIONS;web;b\n\n' "$t"
 } | "$unixcat" "$socket" > /dev/null

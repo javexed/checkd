@@ -391,127 +391,129 @@ impl Shared {
         let Ok(Ok(stream)) = tokio::time::timeout(std::time::Duration::from_secs(10), self.acceptor.accept(stream)).await else {
             return;
         };
-    let (read, mut write) = tokio::io::split(stream);
-    let mut reader = BufReader::new(read);
-    let mut hello = String::new();
-    // A line of a few words: no more is read before the token is known.
-    if (&mut reader).take(1024).read_line(&mut hello).await.is_err() {
-        return;
-    }
-    let words: Vec<&str> = hello.split_whitespace().collect();
-    let known = match words.as_slice() {
-        ["HELLO", name, token, slots] => workers
-            .iter()
-            .find(|w| w.name == *name && !w.agent && same(&w.token, token))
-            .cloned()
-            // An agent's token is read now, not at the last reload.
-            .or_else(|| agents.as_deref().and_then(|dir| agent_for(dir, name, token)))
-            .map(|w| (w, slots.parse::<usize>().unwrap_or(1))),
-        _ => None,
-    };
-    let Some((worker, slots)) = known else {
-        let _ = write.write_all(b"REFUSED unknown worker or wrong token\n").await;
-        return;
-    };
-    // An agent is asked for its inventory, which nuthatch reads beside its token.
-    let inventory = agents.clone().filter(|_| worker.agent).map(|dir| dir.join(format!("{}.inventory.json", worker.name)));
-    let welcome = format!("WELCOME {}{}\n", worker.pools.join(","), if inventory.is_some() { " inventory" } else { "" });
-    if write.write_all(welcome.as_bytes()).await.is_err() {
-        return;
-    }
-    let (send, mut outbox) = mpsc::unbounded_channel::<Vec<u8>>();
-    let _ = events.send(Event::Joined {
-        id,
-        name: worker.name.clone(),
-        pools: worker.pools.clone(),
-        slots,
-        send,
-    });
-    let writer = tokio::spawn(async move {
-        while let Some(bytes) = outbox.recv().await {
-            if write.write_all(&bytes).await.is_err() {
-                return;
-            }
+        let (read, mut write) = tokio::io::split(stream);
+        let mut reader = BufReader::new(read);
+        let mut hello = String::new();
+        // A line of a few words: no more is read before the token is known.
+        // And within a while of the handshake: a peer that says nothing holds no task.
+        let said = tokio::time::timeout(std::time::Duration::from_secs(10), (&mut reader).take(1024).read_line(&mut hello)).await;
+        if !matches!(said, Ok(Ok(_))) {
+            return;
         }
-    });
-    // An agent whose token file goes or changes is let go
-    // within seconds, reload or not.
-    let own_file = agents.clone().filter(|_| worker.agent);
-    let mut check = tokio::time::interval(std::time::Duration::from_secs(5));
-    let mut line = String::new();
-    let mut quiet_until = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
-    loop {
-        // read_line keeps what it read when another branch wins,
-        // in `line`, which lives across turns.
-        let n = tokio::select! {
-            read = reader.read_line(&mut line) => match read {
-                Ok(n) => n,
-                Err(_) => break,
-            },
-            _ = tokio::time::sleep_until(quiet_until) => break,
-            _ = check.tick() => {
-                if let Some(dir) = &own_file {
-                    if !agent_for(dir, &worker.name, &worker.token).is_some_and(|now| now.pools == worker.pools) {
+        let words: Vec<&str> = hello.split_whitespace().collect();
+        let known = match words.as_slice() {
+            ["HELLO", name, token, slots] => workers
+                .iter()
+                .find(|w| w.name == *name && !w.agent && same(&w.token, token))
+                .cloned()
+                // An agent's token is read now, not at the last reload.
+                .or_else(|| agents.as_deref().and_then(|dir| agent_for(dir, name, token)))
+                .map(|w| (w, slots.parse::<usize>().unwrap_or(1))),
+            _ => None,
+        };
+        let Some((worker, slots)) = known else {
+            let _ = write.write_all(b"REFUSED unknown worker or wrong token\n").await;
+            return;
+        };
+        // An agent is asked for its inventory, which nuthatch reads beside its token.
+        let inventory = agents.clone().filter(|_| worker.agent).map(|dir| dir.join(format!("{}.inventory.json", worker.name)));
+        let welcome = format!("WELCOME {}{}\n", worker.pools.join(","), if inventory.is_some() { " inventory" } else { "" });
+        if write.write_all(welcome.as_bytes()).await.is_err() {
+            return;
+        }
+        let (send, mut outbox) = mpsc::unbounded_channel::<Vec<u8>>();
+        let _ = events.send(Event::Joined {
+            id,
+            name: worker.name.clone(),
+            pools: worker.pools.clone(),
+            slots,
+            send,
+        });
+        let writer = tokio::spawn(async move {
+            while let Some(bytes) = outbox.recv().await {
+                if write.write_all(&bytes).await.is_err() {
+                    return;
+                }
+            }
+        });
+        // An agent whose token file goes or changes is let go
+        // within seconds, reload or not.
+        let own_file = agents.clone().filter(|_| worker.agent);
+        let mut check = tokio::time::interval(std::time::Duration::from_secs(5));
+        let mut line = String::new();
+        let mut quiet_until = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
+        loop {
+            // read_line keeps what it read when another branch wins,
+            // in `line`, which lives across turns.
+            let n = tokio::select! {
+                read = reader.read_line(&mut line) => match read {
+                    Ok(n) => n,
+                    Err(_) => break,
+                },
+                _ = tokio::time::sleep_until(quiet_until) => break,
+                _ = check.tick() => {
+                    if let Some(dir) = &own_file {
+                        if !agent_for(dir, &worker.name, &worker.token).is_some_and(|now| now.pools == worker.pools) {
+                            break;
+                        }
+                    }
+                    continue;
+                }
+            };
+            if n == 0 {
+                break;
+            }
+            quiet_until = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
+            let line = std::mem::take(&mut line);
+            let words: Vec<&str> = line.split_whitespace().collect();
+            match words.as_slice() {
+                ["PING"] => {}
+                ["INVENTORY", len] => {
+                    let Some(file) = &inventory else { break };
+                    let Ok(len) = len.parse::<usize>() else { break };
+                    if len > MAX_INVENTORY {
                         break;
                     }
+                    let mut body = vec![0u8; len];
+                    if reader.read_exact(&mut body).await.is_err() {
+                        break;
+                    }
+                    if let Err(err) = keep_inventory(file, &body) {
+                        eprintln!("Warning: cannot keep the inventory of agent {}: {err}", worker.name);
+                    }
                 }
-                continue;
+                ["SLOTS", n] => {
+                    let _ = events.send(Event::Slots(id, n.parse().unwrap_or(0)));
+                }
+                ["RESULT", job, kind, code, out_len, err_len] => {
+                    let (Ok(out_len), Ok(err_len)) = (out_len.parse::<usize>(), err_len.parse::<usize>()) else {
+                        break;
+                    };
+                    let mut out = vec![0u8; out_len.min(1 << 21)];
+                    let mut err = vec![0u8; err_len.min(1 << 21)];
+                    if reader.read_exact(&mut out).await.is_err() || reader.read_exact(&mut err).await.is_err() {
+                        break;
+                    }
+                    let code: i32 = code.parse().unwrap_or(3);
+                    let stderr = String::from_utf8_lossy(&err).into_owned();
+                    let outcome = match *kind {
+                        "exit" => Outcome::Exited(code),
+                        "signal" => Outcome::Signaled(code),
+                        "timeout" => Outcome::TimedOut,
+                        _ => Outcome::Failed(stderr.clone()),
+                    };
+                    let result = JobResult {
+                        outcome,
+                        stdout: String::from_utf8_lossy(&out).into_owned(),
+                        stderr,
+                    };
+                    let _ = events.send(Event::Result(id, job.parse().unwrap_or(0), result));
+                }
+                _ => break,
             }
-        };
-        if n == 0 {
-            break;
         }
-        quiet_until = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
-        let line = std::mem::take(&mut line);
-        let words: Vec<&str> = line.split_whitespace().collect();
-        match words.as_slice() {
-            ["PING"] => {}
-            ["INVENTORY", len] => {
-                let Some(file) = &inventory else { break };
-                let Ok(len) = len.parse::<usize>() else { break };
-                if len > MAX_INVENTORY {
-                    break;
-                }
-                let mut body = vec![0u8; len];
-                if reader.read_exact(&mut body).await.is_err() {
-                    break;
-                }
-                if let Err(err) = keep_inventory(file, &body) {
-                    eprintln!("Warning: cannot keep the inventory of agent {}: {err}", worker.name);
-                }
-            }
-            ["SLOTS", n] => {
-                let _ = events.send(Event::Slots(id, n.parse().unwrap_or(0)));
-            }
-            ["RESULT", job, kind, code, out_len, err_len] => {
-                let (Ok(out_len), Ok(err_len)) = (out_len.parse::<usize>(), err_len.parse::<usize>()) else {
-                    break;
-                };
-                let mut out = vec![0u8; out_len.min(1 << 21)];
-                let mut err = vec![0u8; err_len.min(1 << 21)];
-                if reader.read_exact(&mut out).await.is_err() || reader.read_exact(&mut err).await.is_err() {
-                    break;
-                }
-                let code: i32 = code.parse().unwrap_or(3);
-                let stderr = String::from_utf8_lossy(&err).into_owned();
-                let outcome = match *kind {
-                    "exit" => Outcome::Exited(code),
-                    "signal" => Outcome::Signaled(code),
-                    "timeout" => Outcome::TimedOut,
-                    _ => Outcome::Failed(stderr.clone()),
-                };
-                let result = JobResult {
-                    outcome,
-                    stdout: String::from_utf8_lossy(&out).into_owned(),
-                    stderr,
-                };
-                let _ = events.send(Event::Result(id, job.parse().unwrap_or(0), result));
-            }
-            _ => break,
-        }
-    }
-    writer.abort();
-    let _ = events.send(Event::Left(id));
+        writer.abort();
+        let _ = events.send(Event::Left(id));
     }
 }
 

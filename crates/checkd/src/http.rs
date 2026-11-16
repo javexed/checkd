@@ -235,7 +235,7 @@ pub fn refused_without_token(table: &str, query: &[(String, String)]) -> Option<
     if table == "commands" {
         return Some("the commands table needs a token: set CHECKD_HTTP_TOKEN".into());
     }
-    let columns: Vec<&str> = query.iter().filter(|(k, _)| k == "columns").flat_map(|(_, v)| v.split(',')).map(str::trim).collect();
+    let columns: Vec<&str> = query.iter().filter(|(k, _)| k == "columns").flat_map(|(_, v)| v.split(|c: char| c == ',' || c.is_whitespace())).filter(|c| !c.is_empty()).collect();
     if columns.is_empty() {
         return Some("without a token, name the columns: ?columns=name,state".into());
     }
@@ -357,6 +357,9 @@ mod tests {
         }
         assert!(refused_without_token("contacts", &q(&[("columns", "name,email")])).is_some());
         assert!(refused_without_token("contacts", &q(&[("columns", "name,address3")])).is_some());
+        // Columns apart by spaces, as Livestatus takes them, are each looked at.
+        assert!(refused_without_token("contacts", &q(&[("columns", "name email pager")])).is_some());
+        assert!(refused_without_token("contacts", &q(&[("columns", "name,\temail")])).is_some());
         assert!(refused_without_token("commands", &q(&[("columns", "name")])).is_some());
         assert!(loopback("127.0.0.1:6559") && loopback("[::1]:6559") && loopback("localhost:6559"));
         assert!(!loopback("0.0.0.0:6559") && !loopback("192.0.2.4:6559"));
