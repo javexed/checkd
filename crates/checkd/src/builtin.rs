@@ -44,6 +44,19 @@ pub fn is_builtin(line: &str) -> bool {
     checkd_core::cmdline::own(line)
 }
 
+/// Whether a `checkd:` command line, as the configuration writes it, names
+/// one of checkd's own and gives it options it takes: for `checkd verify`.
+pub fn verify(line: &str) -> Result<(), String> {
+    let words = checkd_core::cmdline::own_words(line);
+    let kind = words.first().map(String::as_str).unwrap_or("").trim_start_matches("checkd:");
+    match kind {
+        // Their words are worked out with what the engine knows.
+        "dummy" | "aggregate" | "trend" => Ok(()),
+        "ping" | "tcp" | "http" | "cert" | "notify" | "disk" | "memory" | "load" | "cpu" | "service" => Options::read(&words[1..]).map(|_| ()),
+        other => Err(format!("checkd has no check '{other}': ping, tcp, http, cert, disk, memory, load, cpu, service, dummy, aggregate, trend, notify")),
+    }
+}
+
 /// What a check found: the state, the text after it, the performance data.
 type Found = (i32, String, String);
 
@@ -504,9 +517,7 @@ async fn ping(options: &Options) -> Result<Found, String> {
         Ok(found) => found[0].ip(),
         Err(why) => return Ok((CRITICAL, why, String::new())),
     };
-    let (sent, times) = tokio::task::spawn_blocking(move || icmp::echo(address, 3, Duration::from_secs(1)))
-        .await
-        .map_err(|err| err.to_string())??;
+    let (sent, times) = icmp::echo(address, 3, Duration::from_secs(1)).await?;
     let loss = (sent - times.len()) * 100 / sent.max(1);
     if times.is_empty() {
         return Ok((CRITICAL, format!("{host} does not answer: packet loss = 100%"), "pl=100%;;;0;100".to_string()));
@@ -526,7 +537,7 @@ mod icmp {
     use std::net::IpAddr;
     use std::time::Duration;
 
-    pub fn echo(_: IpAddr, _: usize, _: Duration) -> Result<(usize, Vec<f64>), String> {
+    pub async fn echo(_: IpAddr, _: usize, _: Duration) -> Result<(usize, Vec<f64>), String> {
         Err("checkd:ping is not available on this system".to_string())
     }
 }
@@ -536,26 +547,33 @@ mod icmp {
 #[cfg(unix)]
 mod icmp {
     use std::net::IpAddr;
+    use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
     use std::time::{Duration, Instant};
+
+    use tokio::io::Interest;
+    use tokio::io::unix::AsyncFd;
 
     /// Sends `count` requests, each waited for up to `wait`. The answer is
     /// how many went out and the time of each reply, in milliseconds.
-    pub fn echo(address: IpAddr, count: usize, wait: Duration) -> Result<(usize, Vec<f64>), String> {
+    ///
+    /// The socket does not block: the wait for a reply is the runtime's,
+    /// so that a ping holds no thread that starts plugins.
+    pub async fn echo(address: IpAddr, count: usize, wait: Duration) -> Result<(usize, Vec<f64>), String> {
         let (family, protocol, request, reply) = match address {
             IpAddr::V4(_) => (libc::AF_INET, libc::IPPROTO_ICMP, 8u8, 0u8),
             IpAddr::V6(_) => (libc::AF_INET6, libc::IPPROTO_ICMPV6, 128u8, 129u8),
         };
         // SAFETY: plain calls on a socket this function owns; every buffer
         // given is a local of the size said.
-        unsafe {
-            let fd = libc::socket(family, libc::SOCK_DGRAM | libc::SOCK_CLOEXEC, protocol);
+        let socket = unsafe {
+            let fd = libc::socket(family, libc::SOCK_DGRAM | libc::SOCK_CLOEXEC | libc::SOCK_NONBLOCK, protocol);
             if fd < 0 {
                 let err = std::io::Error::last_os_error();
                 return Err(format!(
                     "no socket for echo requests ({err}): the user checkd runs as must be within net.ipv4.ping_group_range"
                 ));
             }
-            let closed = Closed(fd);
+            let socket = OwnedFd::from_raw_fd(fd);
             let connected = match address {
                 IpAddr::V4(v4) => {
                     let mut to: libc::sockaddr_in = std::mem::zeroed();
@@ -573,57 +591,55 @@ mod icmp {
             if connected < 0 {
                 return Err(format!("{address}: {}", std::io::Error::last_os_error()));
             }
-            let mut times = Vec::new();
-            let mut sent = 0;
-            for sequence in 0..count as u16 {
-                // Type, code, checksum and identifier (both the kernel's
-                // to fill in), sequence number, and something to carry.
-                let mut packet = [0u8; 24];
-                packet[0] = request;
-                packet[6..8].copy_from_slice(&sequence.to_be_bytes());
-                packet[8..].copy_from_slice(b"checkd echo. 123");
-                let started = Instant::now();
-                if libc::send(fd, packet.as_ptr().cast(), packet.len(), 0) < 0 {
-                    // Nothing on the way there: counted as lost.
-                    sent += 1;
-                    continue;
-                }
-                sent += 1;
-                loop {
-                    let left = wait.saturating_sub(started.elapsed());
-                    if left.is_zero() {
-                        break;
-                    }
-                    let mut poll = libc::pollfd { fd, events: libc::POLLIN, revents: 0 };
-                    if libc::poll(&mut poll, 1, left.as_millis().max(1) as i32) <= 0 {
-                        break;
-                    }
-                    let mut answer = [0u8; 256];
-                    let n = libc::recv(fd, answer.as_mut_ptr().cast(), answer.len(), 0);
-                    if n < 0 {
-                        // "Unreachable", said by something on the way.
-                        break;
-                    }
-                    if n >= 8 && answer[0] == reply && answer[6..8] == sequence.to_be_bytes() {
-                        times.push(started.elapsed().as_secs_f64() * 1000.0);
-                        break;
+            socket
+        };
+        // SAFETY: the AsyncFd owns the descriptor, which is closed only when
+        // it is dropped, after it is no longer registered.
+        let socket = unsafe { AsyncFd::register_with_interest(socket, Interest::READABLE) }.map_err(|err| format!("{address}: {err}"))?;
+        let fd = socket.get_ref().as_raw_fd();
+        let mut times = Vec::new();
+        let mut sent = 0;
+        for sequence in 0..count as u16 {
+            // Type, code, checksum and identifier (both the kernel's to
+            // fill in), sequence number, and something to carry.
+            let mut packet = [0u8; 24];
+            packet[0] = request;
+            packet[6..8].copy_from_slice(&sequence.to_be_bytes());
+            packet[8..].copy_from_slice(b"checkd echo. 123");
+            let started = Instant::now();
+            sent += 1;
+            // SAFETY: as above.
+            if unsafe { libc::send(fd, packet.as_ptr().cast(), packet.len(), 0) } < 0 {
+                // Nothing on the way there: counted as lost.
+                continue;
+            }
+            let deadline = tokio::time::Instant::from_std(started + wait);
+            loop {
+                let Ok(Ok(mut ready)) = tokio::time::timeout_at(deadline, socket.readable()).await else { break };
+                let mut answer = [0u8; 256];
+                // SAFETY: as above.
+                let read = ready.try_io(|_| match unsafe { libc::recv(fd, answer.as_mut_ptr().cast(), answer.len(), 0) } {
+                    n if n < 0 => Err(std::io::Error::last_os_error()),
+                    n => Ok(n as usize),
+                });
+                match read {
+                    // Not yet: wait again.
+                    Err(_) => continue,
+                    Ok(Err(err)) if err.kind() == std::io::ErrorKind::WouldBlock => continue,
+                    // "Unreachable", said by something on the way.
+                    Ok(Err(_)) => break,
+                    Ok(Ok(n)) => {
+                        if n >= 8 && answer[0] == reply && answer[6..8] == sequence.to_be_bytes() {
+                            times.push(started.elapsed().as_secs_f64() * 1000.0);
+                            break;
+                        }
                     }
                 }
             }
-            drop(closed);
-            Ok((sent, times))
         }
+        Ok((sent, times))
     }
 
-    struct Closed(i32);
-    impl Drop for Closed {
-        fn drop(&mut self) {
-            // SAFETY: the descriptor is this value's own.
-            unsafe {
-                libc::close(self.0);
-            }
-        }
-    }
 }
 
 /// As much of reading a certificate as its last day takes.
@@ -857,6 +873,14 @@ mod tests {
     }
 
     #[test]
+    fn verify_says_what_a_line_lacks() {
+        assert!(verify("checkd:tcp -H $HOSTADDRESS$ -p $ARG1$").is_ok());
+        assert!(verify("checkd:trend $ARG1$").is_ok());
+        assert!(verify("checkd:pong -H x").unwrap_err().contains("no check 'pong'"));
+        assert!(verify("checkd:tcp -H x -p").unwrap_err().contains("-p needs a value"));
+    }
+
+    #[test]
     fn thresholds() {
         assert_eq!(over(1.0, Some(2.0), Some(3.0)), OK);
         assert_eq!(over(2.5, Some(2.0), Some(3.0)), WARNING);
@@ -879,6 +903,30 @@ mod tests {
             let _ = stream.write_all(format!("HTTP/1.1 {status}\r\nContent-Length: 5\r\n\r\nhello").as_bytes()).await;
         });
         port
+    }
+
+    #[test]
+    fn pings_hold_no_thread_that_starts_plugins() {
+        // One thread for blocking work, as for starting plugins: pings
+        // that wait for an address that never answers leave it free.
+        let runtime = tokio::runtime::Builder::new_current_thread().max_blocking_threads(1).enable_all().build().unwrap();
+        runtime.block_on(async {
+            let mine = run("checkd:ping -H 127.0.0.1", 5000).await;
+            if mine.stdout.contains("no socket for echo requests") {
+                return; // not allowed here: nothing to measure
+            }
+            assert!(matches!(mine.outcome, Outcome::Exited(0)), "{mine:?}");
+            assert!(mine.stdout.contains("packet loss = 0%"), "{}", mine.stdout);
+            let pings: Vec<_> = (0..4).map(|_| tokio::spawn(run("checkd:ping -H 192.0.2.1", 10_000))).collect();
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            let began = std::time::Instant::now();
+            tokio::task::spawn_blocking(|| ()).await.unwrap();
+            assert!(began.elapsed() < Duration::from_millis(500), "the blocking thread waited {:?}", began.elapsed());
+            for ping in pings {
+                let result = ping.await.unwrap();
+                assert!(matches!(result.outcome, Outcome::Exited(2)), "{result:?}");
+            }
+        });
     }
 
     #[test]
