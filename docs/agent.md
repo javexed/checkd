@@ -78,6 +78,22 @@ The inventory is the agent's word: whoever holds the host's token can
 say what they like in it. nuthatch treats it as such, as text it
 proposes from and never runs.
 
+## Updates
+
+With `--update-from <url>` the agent asks there every five minutes,
+with its token, whether it is to be replaced (`<url>?arch=…&have=<its
+SHA-256>`, answered `none` or `update <file> <SHA-256>`). If so it
+fetches `<file>` from `/agent/bin/` beside the URL, checks the SHA-256,
+runs it once (`--version`), puts it in place of its own binary and
+ends; its service manager starts the new one. nuthatch answers there
+(its docs/agents.md). `--update-pin` is the SHA-256 of the server's
+public key, in hex, when its certificate is not from a public
+authority; plain `http://` is taken only to this machine.
+
+The agent runs as its own user, so its binary must be in a directory
+that user may write, as nuthatch's installer puts it. `checkd worker`
+refuses `--update-from`: it is updated with checkd. Linux only.
+
 ## Building
 
     cargo build --release -p checkd-agent

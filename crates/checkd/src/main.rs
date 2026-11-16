@@ -30,7 +30,12 @@ mod testing;
 mod tls;
 mod trend;
 #[cfg(feature = "workers")]
+mod update;
+#[cfg(feature = "workers")]
 mod worker;
+/// `checkd worker` is part of checkd, and never replaces itself.
+#[cfg(feature = "workers")]
+const SELF_UPDATE: bool = false;
 #[cfg(feature = "workers")]
 mod workers;
 #[cfg(feature = "workers")]

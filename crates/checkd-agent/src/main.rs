@@ -17,8 +17,13 @@ mod runner;
 mod tls;
 #[path = "../../checkd/src/worker.rs"]
 mod worker;
+#[path = "../../checkd/src/update.rs"]
+mod update;
 #[path = "../../checkd/src/ws.rs"]
 mod ws;
+
+/// The agent may replace itself (`--update-from`).
+const SELF_UPDATE: bool = true;
 
 use std::process::ExitCode;
 

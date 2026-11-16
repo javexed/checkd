@@ -53,6 +53,12 @@ options:
   --load-limit1 <n>, --load-limit5 <n>, --load-limit15 <n>
                         take no new jobs while the load average over 1, 5
                         or 15 minutes is above <n>
+  --update-from <url>   (checkd-agent only) ask nuthatch there every five
+                        minutes whether to replace this binary, and do
+                        so; it must be in a directory this user may write
+  --update-pin <hex>    the SHA-256 of nuthatch's public key, for
+                        --update-from over https without a public
+                        certificate
 ";
 
 pub struct WorkerArgs {
@@ -64,6 +70,7 @@ pub struct WorkerArgs {
     pub max_jobs: usize,
     pub restrict_path: Vec<String>,
     pub load_limits: [Option<f64>; 3],
+    pub update: Option<crate::update::Update>,
 }
 
 pub fn parse(mut args: impl Iterator<Item = String>) -> Result<WorkerArgs, String> {
@@ -76,7 +83,10 @@ pub fn parse(mut args: impl Iterator<Item = String>) -> Result<WorkerArgs, Strin
         max_jobs: 8,
         restrict_path: Vec::new(),
         load_limits: [None; 3],
+        update: None,
     };
+    let mut update_from = None;
+    let mut update_pin = None;
     while let Some(arg) = args.next() {
         let mut value = |what: &str| args.next().ok_or(format!("{arg} needs {what}"));
         let number = |text: String| text.parse::<f64>().map_err(|_| format!("'{text}' is not a number"));
@@ -95,12 +105,21 @@ pub fn parse(mut args: impl Iterator<Item = String>) -> Result<WorkerArgs, Strin
             "--load-limit1" => out.load_limits[0] = Some(number(value("a number")?)?),
             "--load-limit5" => out.load_limits[1] = Some(number(value("a number")?)?),
             "--load-limit15" => out.load_limits[2] = Some(number(value("a number")?)?),
+            "--update-from" => update_from = Some(crate::update::Url::read(&value("an address")?)?),
+            "--update-pin" => update_pin = Some(crate::update::read_pin(&value("a SHA-256")?)?),
             "--help" | "-h" => return Err(USAGE.to_string()),
             _ => return Err(format!("'{arg}' is not an option of worker\n\n{USAGE}")),
         }
     }
     if out.engines.is_empty() || out.name.is_empty() || out.token_file.as_os_str().is_empty() || out.ca.as_os_str().is_empty() {
         return Err(format!("worker needs --engine, --name, --token-file and --ca\n\n{USAGE}"));
+    }
+    match (update_from, update_pin) {
+        // checkd worker is part of checkd: replaced with checkd, not by this.
+        (Some(_), _) if !crate::SELF_UPDATE => return Err("--update-from is for checkd-agent".into()),
+        (Some(from), pin) => out.update = Some(crate::update::Update { from, pin }),
+        (None, Some(_)) => return Err("--update-pin goes with --update-from".into()),
+        (None, None) => {}
     }
     Ok(out)
 }
@@ -192,6 +211,16 @@ async fn serve(args: WorkerArgs) -> Result<(), String> {
     let mut pause = Duration::from_secs(1);
     let mut turn = 0usize;
     let mut terminate = Terminate::new()?;
+    // Ends once the binary was replaced: the agent ends with it, and its
+    // service manager starts the new one.
+    let update = args.update.clone();
+    let token_for_update = token.clone();
+    let mut updated = Box::pin(async move {
+        match update {
+            Some(update) => crate::update::watch(update, token_for_update, say).await,
+            None => std::future::pending().await,
+        }
+    });
     loop {
         let engine = args.engines[turn % args.engines.len()].clone();
         turn += 1;
@@ -210,6 +239,7 @@ async fn serve(args: WorkerArgs) -> Result<(), String> {
                 say("Caught SIGTERM, shutting down");
                 return Ok(());
             }
+            _ = &mut updated => return Ok(()),
             _ = tokio::signal::ctrl_c() => {
                 say("Caught SIGINT, shutting down");
                 return Ok(());
