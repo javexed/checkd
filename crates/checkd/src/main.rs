@@ -24,9 +24,9 @@ mod run;
 mod runner;
 mod shadow;
 mod store;
-#[cfg(feature = "workers")]
 #[cfg(test)]
 mod testing;
+#[cfg(feature = "workers")]
 mod tls;
 mod trend;
 #[cfg(feature = "workers")]
@@ -46,6 +46,8 @@ const USAGE: &str = "\
 usage: checkd verify [options] <main-config-file>
        checkd run [options] <main-config-file>
        checkd state <store>
+       checkd export-retention <store> <retention.dat>
+       checkd import-retention [--force] <retention.dat> <store>
        checkd check checkd:<check> [options]
        checkd worker [options]
        checkd make-certs <dir> <engine host name>...
@@ -60,6 +62,11 @@ commands from the command file, and keeps its state in a store, until it
 gets SIGTERM or SIGINT.
 
 state prints what a store holds: sqlite:<file> or postgres:<connection>.
+
+export-retention writes the state a store holds as a retention.dat that
+Naemon reads at its start: the way back to Naemon. import-retention puts
+a retention.dat in place of the state a store holds, keeping its log;
+stop checkd first.
 
 check makes one of checkd's own checks once and says what it found, as
 the engine would run it for a command line that begins with checkd:
@@ -168,6 +175,8 @@ enum Asked {
     /// One of checkd's own checks, made once.
     Check(String),
     State(String),
+    ExportRetention(String, PathBuf),
+    ImportRetention(PathBuf, String, bool),
     Verify(Args),
     Run(run::RunArgs),
     #[cfg(feature = "workers")]
@@ -298,6 +307,23 @@ fn parse_args(mut args: impl Iterator<Item = String>) -> Result<Asked, String> {
                 _ => Err(format!("check takes one of checkd's own checks, such as: checkd check checkd:tcp -H localhost -p 22\n\n{USAGE}")),
             };
         }
+        Some("export-retention") => {
+            return match (args.next(), args.next(), args.next()) {
+                (Some(spec), Some(file), None) => Ok(Asked::ExportRetention(spec, PathBuf::from(file))),
+                _ => Err(format!("export-retention takes a store and a file\n\n{USAGE}")),
+            };
+        }
+        Some("import-retention") => {
+            let mut words: Vec<String> = args.collect();
+            let force = words.first().is_some_and(|w| w == "--force");
+            if force {
+                words.remove(0);
+            }
+            return match &words[..] {
+                [file, spec] => Ok(Asked::ImportRetention(PathBuf::from(file), spec.clone(), force)),
+                _ => Err(format!("import-retention takes a file and a store\n\n{USAGE}")),
+            };
+        }
         Some("state") => {
             return match (args.next(), args.next()) {
                 (Some(spec), None) => Ok(Asked::State(spec)),
@@ -363,6 +389,8 @@ fn main() -> ExitCode {
         Ok(Asked::Verify(args)) => args,
         Ok(Asked::Run(args)) => return run::run(args),
         Ok(Asked::State(spec)) => return run::show_state(&spec),
+        Ok(Asked::ExportRetention(spec, file)) => return run::export_retention(&spec, &file),
+        Ok(Asked::ImportRetention(file, spec, force)) => return run::import_retention(&file, &spec, force),
         Ok(Asked::Check(line)) => {
             let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
                 Ok(runtime) => runtime,
