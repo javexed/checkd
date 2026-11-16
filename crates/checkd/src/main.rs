@@ -421,6 +421,17 @@ fn main() -> ExitCode {
         println!("\n{errors} errors, {warnings} warnings. This configuration cannot be used.");
         return ExitCode::from(1);
     };
+    // checkd's own additions, as `run` would warn of them at the start.
+    let extensions = match &loaded.main {
+        Some(main) => run::extension_warnings(objects.copy(), main),
+        None => Vec::new(),
+    };
+    if !args.quiet {
+        for warning in &extensions {
+            println!("warning: {warning}");
+        }
+    }
+    let warnings = warnings + extensions.len();
     println!(
         "\n{} hosts, {} services, {} contacts, {} commands, {} timeperiods; \
          {} host groups, {} service groups, {} contact groups; \

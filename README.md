@@ -128,7 +128,9 @@ systemd, as a system service and as a user's.
     target/release/checkd verify /path/to/naemon.cfg
 
 `checkd verify` reads the main config and everything it names, prints
-warnings and errors, and says whether the config can be used. It exits 0
+warnings and errors, and says whether the config can be used. It also
+checks checkd's own additions: `checkd:` command lines, push tokens,
+recurring downtimes and digests. It exits 0
 when it can, 1 when it cannot, and 2 when the command itself was wrong.
 
     --dump <file>          write the resolved objects in Naemon's precache layout

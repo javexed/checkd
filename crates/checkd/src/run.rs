@@ -550,6 +550,7 @@ async fn serve(
     let (unheard, _) = mpsc::unbounded_channel();
     let mut parked: Vec<Parked> = Vec::new();
     let mut happened = 0u8;
+    let mut changes_seen = engine.state_changes();
     engine.start(&mut effects);
     // The engine has now planned every first check. The file moves them.
     if let Some(path) = &args.first_checks {
@@ -634,6 +635,11 @@ async fn serve(
         }
         // Those that waited for what just happened are answered, with the
         // state as it is after it; and those whose time is up.
+        // A change of state, soft ones too, which the log may not say.
+        if engine.state_changes() != changes_seen {
+            changes_seen = engine.state_changes();
+            happened |= CHANGED;
+        }
         if !parked.is_empty() {
             let at = now();
             let (due, stay): (Vec<Parked>, Vec<Parked>) =
@@ -983,6 +989,33 @@ async fn serve(
     })
 }
 
+/// What `checkd verify` says of checkd's own additions to a configuration:
+/// pushes, recurring downtimes, digests and `checkd:` command lines. The
+/// same warnings `run` gives at the start.
+pub fn extension_warnings(objects: checkd_config::model::Objects, main: &checkd_config::maincfg::MainConfig) -> Vec<String> {
+    let mut notes = Vec::new();
+    for command in objects.commands.values() {
+        if crate::builtin::is_builtin(&command.line)
+            && let Err(why) = crate::builtin::verify(&command.line)
+        {
+            notes.push(format!("command {}: {why}", command.name));
+        }
+    }
+    let (engine, _) = Engine::new(objects, main, Box::new(Local), now());
+    notes.extend(crate::push::Pushes::new(&engine).1);
+    notes.extend(crate::recurring::Recurring::new(&engine).1);
+    notes.extend(crate::digest::Digests::new(&engine).1);
+    if !engine.settings().check_external_commands {
+        if crate::push::Pushes::new(&engine).0.any() {
+            notes.push("services have a _CHECKD_PUSH_TOKEN, and check_external_commands=0: pushes are refused".to_string());
+        }
+        if crate::recurring::Recurring::new(&engine).0.any() {
+            notes.push("recurring downtimes are configured, and check_external_commands=0: none is scheduled".to_string());
+        }
+    }
+    notes.into_iter().map(|note| note.trim_start_matches("Warning: ").to_string()).collect()
+}
+
 /// What the loop ends with to read the configuration again.
 const RELOAD: &str = "reload";
 
@@ -1249,6 +1282,7 @@ const LONGEST_WAIT: u64 = 300_000;
 const RESULT: u8 = 1;
 const LOGGED: u8 = 2;
 const COMMANDED: u8 = 4;
+const CHANGED: u8 = 8;
 
 /// Whether what happened is what a trigger waits for.
 ///
@@ -1265,7 +1299,8 @@ fn fires(trigger: checkd_livestatus::request::Trigger, happened: u8) -> bool {
         Trigger::Check => RESULT | COMMANDED,
         Trigger::Log => LOGGED,
         Trigger::Command => COMMANDED,
-        Trigger::State | Trigger::Downtime | Trigger::Comment => LOGGED | COMMANDED,
+        Trigger::State => CHANGED | LOGGED | COMMANDED,
+        Trigger::Downtime | Trigger::Comment => LOGGED | COMMANDED,
         Trigger::Program => 0,
     };
     happened & on != 0
@@ -1280,6 +1315,8 @@ mod wait_tests {
     fn a_trigger_fires_on_what_can_change_what_it_is_about() {
         assert!(fires(Trigger::Check, RESULT) && fires(Trigger::Check, COMMANDED) && !fires(Trigger::Check, LOGGED));
         assert!(fires(Trigger::State, LOGGED) && fires(Trigger::State, COMMANDED) && !fires(Trigger::State, RESULT));
+        // A soft change that the log does not say still counts.
+        assert!(fires(Trigger::State, CHANGED) && !fires(Trigger::Check, CHANGED) && !fires(Trigger::Log, CHANGED));
         assert!(fires(Trigger::Log, LOGGED) && !fires(Trigger::Log, RESULT | COMMANDED));
         assert!(fires(Trigger::All, RESULT) && !fires(Trigger::All, 0));
         assert!(!fires(Trigger::Program, RESULT | LOGGED | COMMANDED));
