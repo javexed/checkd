@@ -90,6 +90,26 @@ left out, as Naemon does at a restart, except those of an
 acknowledgement or a downtime that is still there. After that the store
 is used and the file is not read again.
 
+To take a `retention.dat` again, into a store that holds state already,
+stop checkd and run
+
+    checkd import-retention /var/lib/naemon/retention.dat sqlite:/var/lib/checkd/checkd.sqlite
+
+It replaces the states, comments and downtimes; the log is kept. A store
+written in the last half minute is refused, as checkd may still be
+running (`--force` takes it anyway).
+
+## Going back to Naemon
+
+    checkd export-retention sqlite:/var/lib/checkd/checkd.sqlite /var/lib/naemon/retention.dat
+
+writes the state the store holds as a `retention.dat`. Stop checkd, run
+it, and start Naemon with that file as its `state_retention_file`: it
+starts with the same states, acknowledgements, comments, downtimes and
+switches. Tried with Naemon 1.5.2: the state that comes back from Naemon
+is the one that went in. checkd's own additions (trend readings, the
+log's index) stay in the store.
+
 ## When it is written
 
 After each batch of events checkd compares its state with what it last

@@ -25,6 +25,9 @@ directory holds those runs and what compares them.
 - `shadow/`: checkd in shadow mode beside the reference.
 - `failover/`: kill and partition tests of two nodes on one PostgreSQL
   database, the phase 5 gate. See `../docs/failover.md`.
+- `retention/`: the way back to Naemon and in again: checkd writes a
+  `retention.dat`, the reference starts from it, and what the reference
+  saves reads back into checkd as the same state.
 - `reload/`: reading the configuration again on SIGHUP and on
   `RESTART_PROGRAM`, with a store and without. See `../docs/reload.md`.
 - `workers/`: an engine and remote workers on an internal network: where

@@ -22,6 +22,9 @@
 //! Comments that are not persistent are left out, as the reference does at
 //! a restart, but for those of an acknowledgement or a downtime that is
 //! still there.
+//!
+//! `write` goes the other way, for a site that goes back: the file the
+//! reference reads at its start, from a snapshot.
 
 use std::collections::BTreeMap;
 
@@ -148,7 +151,7 @@ pub fn read(text: &str) -> (Snapshot, Vec<String>) {
                     attempt: block.int("current_attempt").max(1) as u32,
                     checked: block.flag("has_been_checked"),
                     output: block.text("plugin_output"),
-                    long_output: block.text("long_plugin_output"),
+                    long_output: unescape(&block.text("long_plugin_output")),
                     perfdata: block.text("performance_data"),
                     last_check: block.ms("last_check"),
                     last_state_change: block.ms("last_state_change"),
@@ -261,6 +264,155 @@ pub fn read(text: &str) -> (Snapshot, Vec<String>) {
     (snapshot, notes)
 }
 
+/// A value the reference wrote with its newlines as `\n`.
+fn unescape(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars();
+    while let Some(c) = chars.next() {
+        match (c, chars.clone().next()) {
+            ('\\', Some('n')) => {
+                out.push('\n');
+                chars.next();
+            }
+            ('\\', Some('\\')) => {
+                out.push('\\');
+                chars.next();
+            }
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
+/// A `retention.dat` for the reference, from a snapshot: states, outputs,
+/// acknowledgements, comments, downtimes, and the switches commands
+/// changed. `now` is in seconds.
+pub fn write(snapshot: &Snapshot, now: i64) -> String {
+    use std::fmt::Write as _;
+    let mut out = String::new();
+    // One line of a value: the reference keeps a newline as `\n`.
+    let one = |text: &str| text.replace('\\', "\\\\").replace('\n', "\\n");
+    let secs = |ms: i64| ms.div_euclid(1000);
+    let _ = write!(out, "info {{\ncreated={now}\nversion=1.5.2\n}}\n");
+    let program_changed = !snapshot.notifications_enabled;
+    let _ = write!(
+        out,
+        "program {{\nmodified_host_attributes={m}\nmodified_service_attributes={m}\nenable_notifications={}\nnext_comment_id={}\nnext_downtime_id={}\n",
+        snapshot.notifications_enabled as u8,
+        snapshot.next_comment + 1,
+        snapshot.next_downtime + 1,
+        m = if program_changed { crate::engine::MOD_NOTIFICATIONS } else { 0 },
+    );
+    for setting in &snapshot.program {
+        let _ = writeln!(out, "{}={}", setting.name, setting.value);
+    }
+    out.push_str("}\n");
+    for o in &snapshot.objects {
+        let host_kind = o.service.is_none();
+        let mut modified: u32 = o.settings.iter().find(|s| s.name == "modified").and_then(|s| s.value.parse().ok()).unwrap_or(0);
+        if o.notifications_enabled != o.config_notifications_enabled {
+            modified |= crate::engine::MOD_NOTIFICATIONS;
+        }
+        if o.active_checks_enabled != o.config_active_checks_enabled {
+            modified |= crate::engine::MOD_ACTIVE_CHECKS;
+        }
+        out.push_str(if host_kind { "host {\n" } else { "service {\n" });
+        let _ = writeln!(out, "host_name={}", o.host);
+        if let Some(service) = &o.service {
+            let _ = writeln!(out, "service_description={service}");
+        }
+        let names: &[&str] = if host_kind { &["up", "down", "unreachable"] } else { &["ok", "warning", "critical", "unknown"] };
+        let history = o.history.iter().map(u8::to_string).collect::<Vec<_>>().join(",");
+        let _ = write!(
+            out,
+            "modified_attributes={modified}\nhas_been_checked={}\ncheck_type=0\ncurrent_state={}\nlast_state={}\nlast_hard_state={}\n\
+             current_attempt={}\nstate_type={}\nplugin_output={}\nlong_plugin_output={}\nperformance_data={}\n\
+             last_check={}\nlast_state_change={}\nlast_hard_state_change={}\nis_flapping={}\npercent_state_change={:.2}\nstate_history={history}\n\
+             current_event_id={}\nlast_event_id={}\ncurrent_problem_id={}\nlast_problem_id={}\n\
+             current_notification_number={}\ncurrent_notification_id={}\nlast_notification={}\n\
+             notifications_enabled={}\nconfig:notifications_enabled={}\nactive_checks_enabled={}\nconfig:active_checks_enabled={}\n\
+             problem_has_been_acknowledged={}\nacknowledgement_type={}\n",
+            o.checked as u8,
+            o.state,
+            o.last_state,
+            o.last_hard_state,
+            o.attempt,
+            o.hard as u8,
+            one(&o.output),
+            one(&o.long_output),
+            one(&o.perfdata),
+            secs(o.last_check),
+            secs(o.last_state_change),
+            secs(o.last_hard_state_change),
+            o.flapping as u8,
+            o.percent_change,
+            o.event_id,
+            o.last_event_id,
+            o.problem_id,
+            o.last_problem_id,
+            o.notification_number,
+            o.notification_id,
+            secs(o.last_notification),
+            o.notifications_enabled as u8,
+            o.config_notifications_enabled as u8,
+            o.active_checks_enabled as u8,
+            o.config_active_checks_enabled as u8,
+            o.ack.is_some() as u8,
+            o.ack.as_ref().map_or(0, |a| if a.sticky { 2 } else { 1 }),
+        );
+        for (name, at) in names.iter().zip(o.last_time) {
+            let _ = writeln!(out, "last_time_{name}={}", secs(at));
+        }
+        for setting in o.settings.iter().filter(|s| s.name != "modified") {
+            let _ = writeln!(out, "{}={}", setting.name, one(&setting.value));
+        }
+        out.push_str("}\n");
+    }
+    for c in &snapshot.comments {
+        let _ = writeln!(out, "{} {{", if c.service.is_some() { "servicecomment" } else { "hostcomment" });
+        let _ = writeln!(out, "host_name={}", c.host);
+        if let Some(service) = &c.service {
+            let _ = writeln!(out, "service_description={service}");
+        }
+        let _ = write!(
+            out,
+            "entry_type={}\ncomment_id={}\nsource=0\npersistent={}\nentry_time={}\nexpires={}\nexpire_time={}\nauthor={}\ncomment_data={}\n}}\n",
+            c.entry_type,
+            c.id,
+            c.persistent as u8,
+            c.entry,
+            c.expires.is_some() as u8,
+            c.expires.unwrap_or(0),
+            one(&c.author),
+            one(&c.text),
+        );
+    }
+    for d in &snapshot.downtimes {
+        let _ = writeln!(out, "{} {{", if d.service.is_some() { "servicedowntime" } else { "hostdowntime" });
+        let _ = writeln!(out, "host_name={}", d.host);
+        if let Some(service) = &d.service {
+            let _ = writeln!(out, "service_description={service}");
+        }
+        let _ = write!(
+            out,
+            "comment_id={}\ndowntime_id={}\nentry_time={}\nstart_time={}\nflex_downtime_start={}\nend_time={}\ntriggered_by={}\nfixed={}\nduration={}\nis_in_effect={}\nstart_notification_sent=0\nauthor={}\ncomment={}\n}}\n",
+            d.comment_id,
+            d.id,
+            d.entry,
+            d.start,
+            d.triggered.unwrap_or(0),
+            d.end,
+            d.trigger,
+            d.fixed as u8,
+            d.duration,
+            d.active as u8,
+            one(&d.author),
+            one(&d.comment),
+        );
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -357,6 +509,22 @@ contact {
 contact_name=ann
 }
 ";
+
+    #[test]
+    fn what_is_written_reads_back() {
+        let (snapshot, _) = read(FILE);
+        let (again, _) = read(&write(&snapshot, 1_800_000_200));
+        assert_eq!(again.objects, snapshot.objects);
+        assert_eq!(again.comments, snapshot.comments);
+        assert_eq!(again.downtimes, snapshot.downtimes);
+        assert_eq!((again.next_comment, again.next_downtime, again.notifications_enabled), (4, 2, false));
+        // A long output keeps its lines.
+        let mut long = snapshot.clone();
+        long.objects[0].long_output = "one\ntwo".into();
+        let text = write(&long, 0);
+        assert!(text.contains("long_plugin_output=one\\ntwo\n"), "{text}");
+        assert_eq!(read(&text).0.objects[0].long_output, "one\ntwo");
+    }
 
     #[test]
     fn reads_a_file() {

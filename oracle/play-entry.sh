@@ -36,6 +36,9 @@ SETTINGS
 
 rm -f /out/naemon.log /out/trace /out/status.dat /out/stdout.txt /out/oracle.version
 
+# A case may give the state Naemon starts from: its retention.dat.
+[ -f /in/retention.dat ] && cp /in/retention.dat "$work/retention.dat"
+
 date +%s%N > /case/state/start
 
 # External commands for the run: /in/commands has one to a line,

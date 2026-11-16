@@ -1352,6 +1352,90 @@ fn open_store(spec: &str) -> Result<Option<Store>, String> {
     Err(format!("--store: '{spec}' is not sqlite:<file>, postgres:<connection> or none"))
 }
 
+/// `checkd export-retention`: the state a store holds, as a
+/// `retention.dat` that Naemon reads at its start: the way back.
+pub fn export_retention(spec: &str, file: &Path) -> ExitCode {
+    let snapshot = match open_store(spec).and_then(|store| store.ok_or("export-retention needs a store, not none".to_string())).and_then(|mut store| store.load()) {
+        Ok(Some(snapshot)) => snapshot,
+        Ok(None) => {
+            eprintln!("{spec}: no state saved yet");
+            return ExitCode::from(1);
+        }
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(2);
+        }
+    };
+    let text = checkd_core::retention::write(&snapshot, now().div_euclid(1000));
+    // Written beside, then put in place: Naemon never reads half a file.
+    let partial = file.with_extension("partial");
+    if let Err(err) = std::fs::write(&partial, text).and_then(|()| std::fs::rename(&partial, file)) {
+        eprintln!("cannot write {}: {err}", file.display());
+        return ExitCode::from(2);
+    }
+    println!(
+        "Wrote the state of {} hosts and services, {} comments and {} downtimes to {}. Give it to Naemon as its state_retention_file before it starts.",
+        snapshot.objects.len(),
+        snapshot.comments.len(),
+        snapshot.downtimes.len(),
+        file.display()
+    );
+    ExitCode::SUCCESS
+}
+
+/// `checkd import-retention`: a `retention.dat` in place of the state a
+/// store holds, also when it holds some already. checkd must be stopped:
+/// a store written in the last half minute is refused without `force`.
+pub fn import_retention(file: &Path, spec: &str, force: bool) -> ExitCode {
+    let text = match std::fs::read_to_string(file) {
+        Ok(text) => text,
+        Err(err) => {
+            eprintln!("cannot read {}: {err}", file.display());
+            return ExitCode::from(2);
+        }
+    };
+    let (snapshot, notes) = checkd_core::retention::read(&text);
+    let mut store = match open_store(spec) {
+        Ok(Some(store)) => store,
+        Ok(None) => {
+            eprintln!("import-retention needs a store, not none");
+            return ExitCode::from(2);
+        }
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(2);
+        }
+    };
+    let second = now().div_euclid(1000);
+    match store.saved_at() {
+        Ok(Some(at)) if second - at < 30 && !force => {
+            eprintln!("{}: checkd wrote it {} seconds ago and may be running; stop it first, or give --force", store.describe(), second - at);
+            return ExitCode::from(1);
+        }
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(2);
+        }
+        _ => {}
+    }
+    if let Err(message) = store.replace(&snapshot, second) {
+        eprintln!("{message}");
+        return ExitCode::from(2);
+    }
+    for note in notes {
+        println!("{}: {note}", file.display());
+    }
+    println!(
+        "{} now holds the state of {} hosts and services, {} comments and {} downtimes from {}; its log is kept.",
+        store.describe(),
+        snapshot.objects.len(),
+        snapshot.comments.len(),
+        snapshot.downtimes.len(),
+        file.display()
+    );
+    ExitCode::SUCCESS
+}
+
 /// `checkd state`: prints what a store holds, one line per thing.
 pub fn show_state(spec: &str) -> ExitCode {
     let mut store = match open_store(spec) {
@@ -1618,6 +1702,11 @@ fn command_file(path: &Path, lines: mpsc::UnboundedSender<String>) -> Result<(),
                     std::io::Error::last_os_error()
                 ));
             }
+            // The umask takes from what mkfifo is given: the group writes
+            // commands too, as Naemon's does.
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o660))
+                .map_err(|err| format!("cannot set the mode of the command file {}: {err}", path.display()))?;
         }
     }
     // Read and write: the pipe then never sees its last writer go.

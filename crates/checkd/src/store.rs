@@ -159,6 +159,8 @@ pub struct Store {
     /// the time before which its readings are no longer kept.
     trend_added: Vec<(String, i64, f64)>,
     trend_kept_from: BTreeMap<String, i64>,
+    /// For `replace`: the next write starts from empty tables.
+    wipe: bool,
     /// Whether the tables were made and the version checked: at once for
     /// `new`, at the first use that reaches the database for `deferred`.
     ready: bool,
@@ -184,6 +186,7 @@ impl Store {
             program: None,
             trend_added: Vec::new(),
             trend_kept_from: BTreeMap::new(),
+            wipe: false,
             ready: false,
         }
     }
@@ -303,11 +306,39 @@ impl Store {
         }
     }
 
+    /// Puts a snapshot in place of all the state the store holds, in one
+    /// transaction: for `checkd import-retention`, while checkd is stopped.
+    /// The log is kept.
+    pub fn replace(&mut self, snapshot: &Snapshot, now: i64) -> Result<(), String> {
+        self.ensure()?;
+        self.objects.clear();
+        self.comments.clear();
+        self.downtimes.clear();
+        self.meta = None;
+        self.program = None;
+        self.wipe = true;
+        let written = self.write(snapshot, &[], now);
+        self.wipe = false;
+        written
+    }
+
+    /// When checkd last wrote the store, in seconds, if it has.
+    pub fn saved_at(&mut self) -> Result<Option<i64>, String> {
+        self.ensure()?;
+        let rows = self.backend.query("SELECT value FROM meta WHERE key = 'saved_at'")?;
+        Ok(rows.first().and_then(|row| row.first()).map(int))
+    }
+
     /// Writes what changed since the last write, and the log lines.
     /// `now` is in seconds.
     pub fn write(&mut self, snapshot: &Snapshot, log: &[(i64, String)], now: i64) -> Result<(), String> {
         self.ensure()?;
         let mut statements = Vec::new();
+        if self.wipe {
+            for sql in ["DELETE FROM objects", "DELETE FROM settings", "DELETE FROM comments", "DELETE FROM downtimes", "DELETE FROM meta WHERE key <> 'schema_version'"] {
+                statements.push(Statement { sql, values: vec![] });
+            }
+        }
         let mut objects = Vec::new();
         for object in &snapshot.objects {
             let key = (object.host.clone(), object.service.clone().unwrap_or_default());
@@ -1009,6 +1040,29 @@ mod tests {
         // This checkd, one release back, does not touch it.
         let err = prepare(&mut backend, &[]).unwrap_err();
         assert!(err.contains("version 3, from a newer checkd"), "{err}");
+    }
+
+    #[test]
+    fn a_replaced_state_leaves_nothing_of_the_old_but_the_log() {
+        let dir = std::env::temp_dir().join(format!("checkd-store-replace-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("replace.sqlite");
+        let _ = std::fs::remove_file(&path);
+        let path = path.to_string_lossy().into_owned();
+        let comment = |id: u64, text: &str| CommentState { id, host: "a".into(), service: None, entry_type: 1, persistent: true, entry: 1, author: "ann".into(), text: text.into(), expires: None };
+        let old = Snapshot { objects: vec![object("a", None, 2), object("b", Some("disk"), 1)], comments: vec![comment(1, "old")], next_comment: 1, ..Snapshot::default() };
+        let mut store = Store::new(Box::new(Sqlite::open(&path).unwrap())).unwrap();
+        store.write(&old, &[(1, "[1] an old line".into())], 1).unwrap();
+        let new = Snapshot { objects: vec![object("a", None, 0)], comments: vec![comment(7, "new")], next_comment: 7, ..Snapshot::default() };
+        store.replace(&new, 2).unwrap();
+        let mut again = Store::new(Box::new(Sqlite::open(&path).unwrap())).unwrap();
+        let loaded = again.load().unwrap().unwrap();
+        assert_eq!(loaded.objects.len(), 1);
+        assert_eq!(loaded.objects[0].state, 0);
+        assert_eq!(loaded.comments.iter().map(|c| c.text.as_str()).collect::<Vec<_>>(), ["new"]);
+        assert_eq!(loaded.next_comment, 7);
+        assert_eq!(again.recent_log(10).unwrap().len(), 1);
+        assert_eq!(again.saved_at().unwrap(), Some(2));
     }
 
     #[test]

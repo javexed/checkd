@@ -12,7 +12,8 @@
 #   status.dat      Naemon's status file as it was at the end
 #   status/<n>.dat  with 'status' as the last argument: the status file
 #                   as it was in each second of the run
-#   retention.dat   the state Naemon saved when it was stopped
+#   retention.dat   the state Naemon saved when it was stopped (a case
+#                   that has a retention.dat starts from it)
 #   stdout.txt      what Naemon printed
 #   oracle.version  the Naemon version
 set -euo pipefail

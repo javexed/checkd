@@ -63,8 +63,8 @@ All of it is off until asked for, and a config that uses none of it is a
 config Naemon takes too.
 
 - **State that survives.** In SQLite or PostgreSQL, written as things
-  happen; it reads an existing `retention.dat` once
-  ([docs/store.md](docs/store.md)). The configuration is read again on
+  happen; it reads an existing `retention.dat`, and writes one for the
+  way back to Naemon ([docs/store.md](docs/store.md)). The configuration is read again on
   SIGHUP without losing state ([docs/reload.md](docs/reload.md)).
 - **Failover.** Two nodes on one PostgreSQL database; in two test runs
   in containers the standby took over 14 seconds after the leader was
