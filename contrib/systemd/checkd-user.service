@@ -20,7 +20,8 @@ TimeoutStopSec=30s
 StateDirectory=checkd
 RuntimeDirectory=checkd
 RuntimeDirectoryPreserve=yes
-NoNewPrivileges=yes
+# No NoNewPrivileges=yes: setuid plugins (check_icmp, check_dhcp) would
+# fail with it. Without such plugins, add it back.
 
 [Install]
 WantedBy=default.target

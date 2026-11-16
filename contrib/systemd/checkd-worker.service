@@ -17,7 +17,8 @@ ExecStart=/usr/local/bin/checkd worker --engine engine.example.invalid:4730 --na
 Restart=always
 RestartSec=5s
 KillMode=mixed
-NoNewPrivileges=yes
+# No NoNewPrivileges=yes: setuid plugins (check_icmp, check_dhcp) would
+# fail with it. Without such plugins, add it back.
 ProtectSystem=full
 PrivateTmp=yes
 LimitNOFILE=65536

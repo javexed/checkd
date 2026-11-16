@@ -24,12 +24,18 @@ KillMode=mixed
 TimeoutStopSec=30s
 # The password of a PostgreSQL store, if there is one:
 #Environment=CHECKD_STORE_PASSWORD_FILE=/etc/checkd/store.password
-# The state, the log and the Livestatus socket.
+# The state, the log and the Livestatus socket. The socket and the
+# command file are for checkd's group (mode 0660): add the user of a web
+# interface to the group `checkd` (usermod -aG checkd nuthatch), and no
+# one else gets in, as the directory is the group's only.
 StateDirectory=checkd
 LogsDirectory=checkd
 RuntimeDirectory=checkd
+RuntimeDirectoryMode=0750
 RuntimeDirectoryPreserve=yes
-NoNewPrivileges=yes
+# No NoNewPrivileges=yes: plugins such as check_icmp and check_dhcp are
+# setuid root, and would fail with it. Without such plugins (checkd:ping
+# needs none), add it back.
 ProtectSystem=full
 PrivateTmp=yes
 LimitNOFILE=65536

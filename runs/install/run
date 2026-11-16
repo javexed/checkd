@@ -73,6 +73,17 @@ check "Livestatus answers at /run/checkd/live" wait_for 10 answers
 checked() { [ "$(ask 'GET services
 Stats: has_been_checked = 1')" = "$1" ]; }
 check "both services are checked within 30 s" wait_for 30 checked 2
+
+# Who gets in: checkd's group, and no one else.
+in_it sh -ec 'useradd -M -G checkd web; useradd -M stranger' >/dev/null
+check "the socket is the group's, mode 0660, in a directory of 0750" \
+    in_it sh -c '[ "$(stat -c %a:%G /run/checkd/live)" = 660:checkd ] && [ "$(stat -c %a /run/checkd)" = 750 ]'
+as_user() { printf 'GET status\nColumns: program_start\n\n' | docker exec -i -u "$1" "$name" unixcat /run/checkd/live; }
+check "the command file is the group's too, mode 0660" in_it sh -c '[ "$(stat -c %a:%G /run/checkd/checkd.cmd)" = 660:checkd ]'
+check "a user in the group checkd asks Livestatus" as_user web
+refused_to() { ! as_user stranger; }
+check "a user outside it cannot" refused_to
+check "setuid plugins can run: no NoNewPrivileges" in_it sh -c '[ "$(systemctl show -p NoNewPrivileges --value checkd)" = no ]'
 check "the log is in /var/log/checkd" in_it test -s /var/log/checkd/checkd.log
 
 # Reload: a new host comes in, and what is known of the others stays.

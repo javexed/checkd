@@ -39,7 +39,15 @@ under `/run/checkd`. Without `--store`, the state is kept in
   only when it can be used ([reload](reload.md)).
 - `systemctl stop checkd` saves the state.
 - A Naemon site moving over: on its first start on an empty store,
-  checkd reads Naemon's `retention.dat` ([store](store.md)).
+  checkd reads Naemon's `retention.dat` ([store](store.md)). Going back:
+  `checkd export-retention` writes one for Naemon.
+- The Livestatus socket and the command file have mode 0660, for the
+  user `checkd` and its group, and `/run/checkd` is the group's only: a
+  web interface such as nuthatch or Thruk gets in when its user is in
+  the group (`usermod -aG checkd nuthatch`).
+- Setuid plugins (`check_icmp`, `check_dhcp`) work under the unit, which
+  for that leaves out `NoNewPrivileges`. Where no plugin is setuid, add
+  `NoNewPrivileges=yes` in a drop-in (`systemctl edit checkd`).
 
 ## A remote worker
 

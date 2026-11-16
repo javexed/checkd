@@ -42,6 +42,13 @@ pub fn listen(path: Option<&Path>, tcp: Option<&str>) -> Result<mpsc::UnboundedR
         }
         let listener = UnixListener::bind(path)
             .map_err(|err| format!("cannot make the Livestatus socket {}: {err}", path.display()))?;
+        // For checkd's user and group, whatever the umask: a web interface
+        // whose user is in checkd's group connects, others do not.
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o660))
+                .map_err(|err| format!("cannot set the mode of the Livestatus socket {}: {err}", path.display()))?;
+        }
         let asks = asks.clone();
         tokio::spawn(async move {
             loop {
