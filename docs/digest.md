@@ -70,7 +70,8 @@ What to know:
 - Every notification to such a contact is late by up to the wait, a
   single one too.
 - Notifications held when checkd stops or reads its configuration again
-  are not sent; the log says how many.
+  go out then, without waiting the rest of the wait; checkd waits up to
+  a minute for their commands to end.
 - The engine counts each held notification as sent when the digest goes
   out, whether or not the digest command succeeds.
 - A digest's command runs on the engine's machine, also where the

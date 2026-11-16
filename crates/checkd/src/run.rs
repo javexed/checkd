@@ -19,7 +19,7 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use checkd_config::maincfg::PathMap;
-use checkd_config::{Options, load};
+use checkd_config::Options;
 use checkd_core::engine::{Effect, Engine, JobKind, JobResult, Ms};
 use checkd_core::snapshot::Snapshot;
 use checkd_core::timeperiod::Zone;
@@ -99,15 +99,18 @@ const LOST_LEASE: u8 = 3;
 enum Ended {
     Exit(ExitCode),
     /// The configuration is read again. With no store, the state goes
-    /// along here.
-    Reload(Box<Snapshot>),
+    /// along here, and so does the configuration as it was checked: it is
+    /// not read a second time, so a file changed in between cannot end
+    /// checkd.
+    Reload(Box<Snapshot>, Box<checkd_config::Loaded>),
 }
 
 /// How `serve` ended.
 enum End {
     /// With the lease lost, or not.
     Stopped(bool),
-    Reload,
+    /// With the configuration that was checked.
+    Reload(Box<checkd_config::Loaded>),
 }
 
 /// The command file's lines, read by a thread that lives as long as the
@@ -117,23 +120,25 @@ type Pipe = (mpsc::UnboundedSender<String>, mpsc::UnboundedReceiver<String>);
 pub fn run(mut args: RunArgs) -> ExitCode {
     let mut pipe: Option<Pipe> = None;
     let mut carried = None;
+    let mut checked = None;
     loop {
-        match run_once(&mut args, &mut pipe, carried.take()) {
+        match run_once(&mut args, &mut pipe, carried.take(), checked.take()) {
             Ended::Exit(code) => return code,
-            Ended::Reload(snapshot) => carried = Some(snapshot),
+            Ended::Reload(snapshot, loaded) => {
+                carried = Some(snapshot);
+                checked = Some(loaded);
+            }
         }
     }
 }
 
 /// Loads the configuration and runs it until it is stopped, or told to
 /// read the configuration again.
-fn run_once(args: &mut RunArgs, pipe: &mut Option<Pipe>, carried: Option<Box<Snapshot>>) -> Ended {
-    let loaded = checkd_config::load_compact(
-        &args.main,
-        &Options {
-            path_map: args.path_map.clone(),
-        },
-    );
+fn run_once(args: &mut RunArgs, pipe: &mut Option<Pipe>, carried: Option<Box<Snapshot>>, checked: Option<Box<checkd_config::Loaded>>) -> Ended {
+    let loaded = match checked {
+        Some(loaded) => *loaded,
+        None => checkd_config::load_compact(&args.main, &Options { path_map: args.path_map.clone() }),
+    };
     for error in &loaded.diags.errors {
         eprintln!("error: {error}");
     }
@@ -306,7 +311,7 @@ fn run_once(args: &mut RunArgs, pipe: &mut Option<Pipe>, carried: Option<Box<Sna
     match runtime.block_on(serve(&mut engine, &mut log, args, store.as_mut(), hash, commands)) {
         Ok(End::Stopped(false)) => Ended::Exit(ExitCode::SUCCESS),
         Ok(End::Stopped(true)) => Ended::Exit(ExitCode::from(LOST_LEASE)),
-        Ok(End::Reload) => Ended::Reload(Box::new(engine.snapshot())),
+        Ok(End::Reload(loaded)) => Ended::Reload(Box::new(engine.snapshot()), loaded),
         Err(message) => {
             eprintln!("{message}");
             Ended::Exit(ExitCode::from(2))
@@ -559,6 +564,8 @@ async fn serve(
         lost |= save(engine, store, &mut unsaved, log, &mut store_failing, args.journal.as_deref());
     }
 
+    // The configuration a reload takes, as it was checked.
+    let mut reloaded: Option<Box<checkd_config::Loaded>> = None;
     let why = loop {
         // The tasks that wait for running commands get their turn here,
         // even when the engine always has something due: on this one
@@ -575,9 +582,10 @@ async fn serve(
                 // Only a configuration that can be used replaces the one
                 // that runs.
                 let options = Options { path_map: args.path_map.clone() };
-                let loaded = load(&args.main, &options);
-                if loaded.objects.is_some() && loaded.diags.errors.is_empty() {
+                let loaded = checkd_config::load_compact(&args.main, &options);
+                if loaded.main.is_some() && loaded.objects.is_some() && loaded.diags.errors.is_empty() {
                     log.line(&format!("{who}, restarting..."));
+                    reloaded = Some(Box::new(loaded));
                     break RELOAD;
                 }
                 log.line(&format!(
@@ -899,8 +907,42 @@ async fn serve(
         }
     };
 
-    if digests.held() > 0 {
-        log.line(&format!("Warning: {} notifications held for a digest are not sent: checkd ends before their wait is over", digests.held()));
+    // What is held for a digest goes out now, before checkd stops or reads
+    // its configuration again: the wait is cut short, nothing is dropped.
+    // A node that lost its lease sends nothing; the new leader notifies.
+    if digests.held() > 0 && !lost {
+        let held = digests.held();
+        let (sent, mut sent_back) = mpsc::unbounded_channel();
+        let (mut commands, mut longest) = (0usize, 0);
+        for release in digests.due(Ms::MAX) {
+            let job = match release {
+                crate::digest::Release::Single(job) => job,
+                crate::digest::Release::Together { done: ids, digest, log: line } => {
+                    log.line(&line);
+                    for id in ids {
+                        let result = JobResult { outcome: checkd_core::engine::Outcome::Exited(0), stdout: String::new(), stderr: String::new() };
+                        let _ = done.send((id, result));
+                    }
+                    digest
+                }
+            };
+            commands += 1;
+            longest = longest.max(job.timeout);
+            start(job, sent.clone(), &running);
+        }
+        let ending = if why == RELOAD { "checkd reads its configuration again" } else { "checkd stops" };
+        log.line(&format!("{held} notifications held for a digest go out now, in {commands} commands: {ending} before their wait is over"));
+        // As long as the slowest may take, and no longer than a minute.
+        let all = async {
+            for _ in 0..commands {
+                sent_back.recv().await;
+            }
+        };
+        if tokio::time::timeout(Duration::from_millis(longest.clamp(0, 60_000) as u64), all).await.is_err() {
+            log.line("Warning: a notification held for a digest did not end in time and is stopped");
+        }
+    } else if digests.held() > 0 {
+        log.line(&format!("Warning: {} notifications held for a digest are not sent: this node no longer holds the lease", digests.held()));
     }
     // Nobody is left waiting: what waits is answered with what is known.
     for p in parked.drain(..) {
@@ -921,7 +963,10 @@ async fn serve(
     telemetry.shutdown().await;
     let _ = &held_notifications;
     log.line(&format!("Successfully shutdown... (PID={pid})"));
-    Ok(if reloading && !lost { End::Reload } else { End::Stopped(lost) })
+    Ok(match reloaded {
+        Some(loaded) if reloading && !lost => End::Reload(loaded),
+        _ => End::Stopped(lost),
+    })
 }
 
 /// What the loop ends with to read the configuration again.
