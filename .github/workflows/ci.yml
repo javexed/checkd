@@ -9,10 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     container: rust:1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: cargo test --workspace --all-features --locked
   agent-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: cargo test --locked -p checkd-agent
