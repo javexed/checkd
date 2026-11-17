@@ -1,5 +1,7 @@
 # Where a number is going
 
+**Experimental.** Its options may change before 1.0.
+
 "The disk is full in four days", not only "the disk is at 90%": a
 service that watches a number of another service's performance data and
 says when it reaches its limit, if it goes on as it has.

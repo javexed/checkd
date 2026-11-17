@@ -93,6 +93,8 @@ following redirects, a proxy. For those there are plugins.
 
 ## Telling someone without a script
 
+**Experimental.** `checkd:notify`'s options may change before 1.0.
+
     define command {
         command_name  notify-service-ntfy
         command_line  checkd:notify -f ntfy -u https://ntfy.example.com/alerts -t "$HOSTNAME$/$SERVICEDESC$ is $SERVICESTATE$" -m "$NOTIFICATIONTYPE$: $SERVICEOUTPUT$"

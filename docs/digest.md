@@ -1,5 +1,7 @@
 # Fewer notifications for one cause
 
+**Experimental.** Digests, and their settings, may change before 1.0.
+
 Two things keep one fault from being told many times: dependencies,
 which Naemon has too, and digests, which are checkd's own.
 

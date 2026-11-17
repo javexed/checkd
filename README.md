@@ -81,14 +81,14 @@ config Naemon takes too.
 - **Checks without a plugin**: ping, a TCP port, a web page, a
   certificate, a service, and a host's disks, memory, load and CPU, with
   a margin against a value that wavers at a limit; and a notification to
-  ntfy, Slack or a webhook without a script
+  ntfy, Slack or a webhook without a script, which is experimental
   ([docs/builtin.md](docs/builtin.md)).
 - **Passive results over HTTP** from a job elsewhere, with an alarm when
   none comes ([docs/passive.md](docs/passive.md)).
 - **A service made of others**, OK while enough of its members are
   ([docs/aggregate.md](docs/aggregate.md)), and one that says when a
-  disk will be full ([docs/trend.md](docs/trend.md)).
-- **Fewer notifications for one cause**: several to one contact as one
+  disk will be full, which is experimental ([docs/trend.md](docs/trend.md)).
+- **Fewer notifications for one cause**: several to one contact as one; experimental
   ([docs/digest.md](docs/digest.md)).
 - **Downtimes** for everything that fits a pattern, and ones that come
   round with a timeperiod ([docs/downtimes.md](docs/downtimes.md)).
@@ -120,7 +120,8 @@ A recent stable Rust (it is developed on 1.99; the 2024 edition), on Linux.
 
     cargo build --release -p checkd
 
-The binary is `target/release/checkd`. Features: `postgres` (the
+or, for remote workers and agents, `cargo build --release -p checkd
+--features workers`. The binary is `target/release/checkd`. Features: `postgres` (the
 PostgreSQL store and failover), `workers` (remote workers), `otel`
 (OpenTelemetry); `tls-checks`, on by default, is TLS for the checks
 without a plugin. [docs/install.md](docs/install.md) has unit files for
