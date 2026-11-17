@@ -102,7 +102,8 @@ config Naemon takes too.
   those; `state`, `downtime` and `comment` on a log line or a command;
   a request with a `WaitCondition` is answered at once.
 
-A web interface written beside it, nuthatch, is a project of its own.
+A web interface written beside it,
+[nuthatch](https://github.com/javexed/nuthatch), is a project of its own.
 
 ## What it runs, and as whom
 

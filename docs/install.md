@@ -11,6 +11,7 @@ systemd, and a distribution other than Arch Linux.
 
 ## Build
 
+    git clone https://github.com/javexed/checkd.git && cd checkd
     cargo build --release -p checkd --features postgres,workers
 
 Leave out the features you do not need: `postgres` for a PostgreSQL store
