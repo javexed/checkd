@@ -6,18 +6,18 @@
 //!   `state = 2;;host_name = web`), `limit`.
 //! - `POST /api/v1/command` takes the body as one external command, as the
 //!   command file would (`NAME;argument;...`, without the time).
-//! - `GET` or `POST /api/v1/push/<token>` is a result for the service
-//!   whose `_CHECKD_PUSH_TOKEN` the token is (`crate::push`).
+//! - `GET` or `POST /api/v1/passive/<token>` is a result for the service
+//!   whose `_CHECKD_PASSIVE_TOKEN` the token is (`crate::passive`).
 //! - `GET /metrics` gives the engine's own health in Prometheus' text
 //!   format.
 //!
 //! Without `CHECKD_HTTP_TOKEN` the API listens on the loopback only, and
 //! a read names its columns and is refused what holds a secret or says
-//! what is run: custom variables (push tokens among them), command
+//! what is run: custom variables (passive tokens among them), command
 //! lines, a contact's addresses.
 //!
 //! With `CHECKD_HTTP_TOKEN` set, every request needs it as
-//! `Authorization: Bearer <token>`, but for a push, which has a token of
+//! `Authorization: Bearer <token>`, but for a passive result, which has a token of
 //! its own. Without it, commands are refused: the API is then read-only.
 //!
 //! A request goes to the engine's loop, which answers it between events,
@@ -166,8 +166,8 @@ pub async fn listen(addr: &str) -> Result<mpsc::UnboundedReceiver<Ask>, String> 
                     })
                     .collect();
                 let authorized = token.is_some() && bearer.as_deref() == token.as_deref();
-                // A push carries its own token, in its path.
-                let reply = if token.is_some() && !authorized && !path.starts_with("/api/v1/push/") {
+                // A passive result carries its own token, in its path.
+                let reply = if token.is_some() && !authorized && !path.starts_with("/api/v1/passive/") {
                     Reply::text(401, "a bearer token is needed\n")
                 } else {
                     let (send, answer) = oneshot::channel();

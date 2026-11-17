@@ -45,7 +45,7 @@ problem here.
 | Livestatus socket | a Livestatus `broker_module` line, or `--livestatus` | whoever may open the socket. A query's `AuthUser` limits what is shown, but the caller chooses it: the socket itself is the gate |
 | Livestatus over TCP | `--livestatus-tcp`, or failover | **anyone who reaches the port**; no password, no TLS. For a trusted network or the loopback only |
 | HTTP API | `--http` | with `CHECKD_HTTP_TOKEN` set, whoever has the token; without it, it listens on the loopback only, nobody may send commands, and reads are refused custom variables, command lines and contacts' addresses; the loopback still lets every user of this machine read states and plugin output. Plain HTTP: put a proxy that does TLS in front, off the loopback |
-| Pushed results | `--http`, and a service with `_CHECKD_PUSH_TOKEN` | whoever has that service's token, for that one service's state |
+| Passive results over HTTP | `--http`, and a service with `_CHECKD_PASSIVE_TOKEN` | whoever has that service's token, for that one service's state |
 | Remote workers | `--workers` | TLS, a certificate authority of the site's, and a token for each worker |
 | Failover peer | `--failover` | the other node, over a trusted network: see [docs/failover.md](docs/failover.md) |
 
@@ -58,7 +58,7 @@ problem here.
   so that it need not be on the command line, where other users of the
   machine can see it; one written in `--store postgres:...` is taken
   too, and is seen there.
-- Tokens of pushed results are custom variables in the config: whoever
+- Tokens of passive results are custom variables in the config: whoever
   can read the config, or custom variables over Livestatus, can read
   them.
 - Nothing is sent anywhere unless configured: performance data to

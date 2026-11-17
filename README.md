@@ -13,7 +13,7 @@ every case compared below, and where no case was written, nobody knows
 yet.
 Then it does some things Naemon does not: its state survives a kill, two
 nodes fail over, checks can run without a plugin, and a job elsewhere can
-push its result in.
+send its result in over HTTP.
 
 ## Status: young, and honest about it
 
@@ -83,8 +83,8 @@ config Naemon takes too.
   a margin against a value that wavers at a limit; and a notification to
   ntfy, Slack or a webhook without a script
   ([docs/builtin.md](docs/builtin.md)).
-- **Results pushed in** over HTTP by a job elsewhere, with an alarm when
-  none comes ([docs/push.md](docs/push.md)).
+- **Passive results over HTTP** from a job elsewhere, with an alarm when
+  none comes ([docs/passive.md](docs/passive.md)).
 - **A service made of others**, OK while enough of its members are
   ([docs/aggregate.md](docs/aggregate.md)), and one that says when a
   disk will be full ([docs/trend.md](docs/trend.md)).
@@ -132,7 +132,7 @@ systemd, as a system service and as a user's.
 
 `checkd verify` reads the main config and everything it names, prints
 warnings and errors, and says whether the config can be used. It also
-checks checkd's own additions: `checkd:` command lines, push tokens,
+checks checkd's own additions: `checkd:` command lines, passive tokens,
 recurring downtimes and digests. It exits 0
 when it can, 1 when it cannot, and 2 when the command itself was wrong.
 

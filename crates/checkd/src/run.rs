@@ -512,20 +512,20 @@ async fn serve(
     let mut effects = Vec::new();
     // Livestatus requests that wait for something to happen, and what has
     // happened since they were last looked at.
-    let (mut pushes, push_notes) = crate::push::Pushes::new(engine);
-    for note in push_notes {
+    let (mut passive, passive_notes) = crate::passive::Passive::new(engine);
+    for note in passive_notes {
         log.line(&note);
     }
-    if pushes.any() && http.is_none() {
-        log.line("Warning: services have a _CHECKD_PUSH_TOKEN, and no pushes can come: checkd was started without --http");
+    if passive.any() && http.is_none() {
+        log.line("Warning: services have a _CHECKD_PASSIVE_TOKEN, and no result can come: checkd was started without --http");
     }
     let (recurring, recurring_notes) = crate::recurring::Recurring::new(engine);
     for note in recurring_notes {
         log.line(&note);
     }
     if !engine.settings().check_external_commands {
-        if pushes.any() {
-            log.line("Warning: services have a _CHECKD_PUSH_TOKEN, and check_external_commands=0: pushes are refused");
+        if passive.any() {
+            log.line("Warning: services have a _CHECKD_PASSIVE_TOKEN, and check_external_commands=0: their results are refused");
         }
         if recurring.any() {
             log.line("Warning: recurring downtimes are configured, and check_external_commands=0: none is scheduled");
@@ -773,11 +773,11 @@ async fn serve(
                 }
             }
             Some(ask) = async { http.as_mut()?.recv().await }, if http.is_some() => {
-                if let Some(token) = ask.path.strip_prefix("/api/v1/push/") {
+                if let Some(token) = ask.path.strip_prefix("/api/v1/passive/") {
                     let param = |name: &str| ask.query.iter().find(|(n, _)| n == name).map(|(_, v)| v.as_str());
                     let output = param("output").unwrap_or(&ask.body);
                     let taken = if engine.settings().check_external_commands {
-                        pushes.take(token, param("state").unwrap_or(""), output, now())
+                        passive.take(token, param("state").unwrap_or(""), output, now())
                     } else {
                         Err("external commands are off: check_external_commands=0".to_string())
                     };
@@ -990,7 +990,7 @@ async fn serve(
 }
 
 /// What `checkd verify` says of checkd's own additions to a configuration:
-/// pushes, recurring downtimes, digests and `checkd:` command lines. The
+/// passive tokens, recurring downtimes, digests and `checkd:` command lines. The
 /// same warnings `run` gives at the start.
 pub fn extension_warnings(objects: checkd_config::model::Objects, main: &checkd_config::maincfg::MainConfig) -> Vec<String> {
     let mut notes = Vec::new();
@@ -1002,12 +1002,12 @@ pub fn extension_warnings(objects: checkd_config::model::Objects, main: &checkd_
         }
     }
     let (engine, _) = Engine::new(objects, main, Box::new(Local), now());
-    notes.extend(crate::push::Pushes::new(&engine).1);
+    notes.extend(crate::passive::Passive::new(&engine).1);
     notes.extend(crate::recurring::Recurring::new(&engine).1);
     notes.extend(crate::digest::Digests::new(&engine).1);
     if !engine.settings().check_external_commands {
-        if crate::push::Pushes::new(&engine).0.any() {
-            notes.push("services have a _CHECKD_PUSH_TOKEN, and check_external_commands=0: pushes are refused".to_string());
+        if crate::passive::Passive::new(&engine).0.any() {
+            notes.push("services have a _CHECKD_PASSIVE_TOKEN, and check_external_commands=0: their results are refused".to_string());
         }
         if crate::recurring::Recurring::new(&engine).0.any() {
             notes.push("recurring downtimes are configured, and check_external_commands=0: none is scheduled".to_string());

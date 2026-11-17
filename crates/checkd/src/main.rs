@@ -17,7 +17,7 @@ mod livestatus;
 #[allow(dead_code)]
 mod local;
 mod perfexport;
-mod push;
+mod passive;
 mod recurring;
 mod postgres;
 mod run;
