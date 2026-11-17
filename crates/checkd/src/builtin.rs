@@ -1058,8 +1058,8 @@ mod tests {
         let runtime = tokio::runtime::Builder::new_current_thread().max_blocking_threads(1).enable_all().build().unwrap();
         runtime.block_on(async {
             let mine = run("checkd:ping -H 127.0.0.1", 5000).await;
-            if mine.stdout.contains("no socket for echo requests") {
-                return; // not allowed here: nothing to measure
+            if mine.stdout.contains("no socket for echo requests") || mine.stdout.contains("not available on this system") {
+                return; // not allowed or not made here: nothing to measure
             }
             assert!(matches!(mine.outcome, Outcome::Exited(0)), "{mine:?}");
             assert!(mine.stdout.contains("packet loss = 0%"), "{}", mine.stdout);

@@ -392,6 +392,8 @@ mod tests {
         assert!(public_key_info(b"\x30\x03\x02\x01\x00").is_none());
     }
 
+    // Scripts stand in for binaries; Windows agents do not update themselves yet.
+    #[cfg(unix)]
     #[tokio::test]
     async fn a_binary_that_does_not_run_is_not_put_in_place() {
         let dir = std::env::temp_dir().join(format!("checkd-update-{}", std::process::id()));
