@@ -212,7 +212,9 @@ fn run_once(args: &mut RunArgs, pipe: &mut Option<Pipe>, carried: Option<Box<Sna
     // Loading the configuration frees much more than it keeps; the C
     // allocator holds on to that unless told: about a third of the memory
     // of a large configuration.
+    // glibc's; musl (the static release build) gives memory back on its own.
     // SAFETY: a plain call into the C library.
+    #[cfg(target_env = "gnu")]
     unsafe {
         libc::malloc_trim(0);
     }

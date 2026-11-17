@@ -103,7 +103,8 @@ in a container so that nothing is installed here:
 
     scripts/build-agents.sh
 
-The binaries and their `SHA256SUMS` land in `dist/agent/`.
+The binaries and their `SHA256SUMS` land in `dist/agent/`. Each release
+on GitHub has the same, as `checkd-agents-<version>.tar.gz`.
 
 ## On the host
 

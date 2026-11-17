@@ -1,0 +1,24 @@
+# A release for a tag v<version>: checkd for Linux (x86_64 and aarch64,
+# static, every feature) and the agents, built by scripts/build-release.sh,
+# with their SHA256SUMS. The tag must be the version in Cargo.toml.
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The tag is the version
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
+          [ "$GITHUB_REF_NAME" = "v$version" ] || { echo "tag $GITHUB_REF_NAME, but Cargo.toml says $version"; exit 1; }
+      - name: Build
+        run: scripts/build-release.sh
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/release/* --title "checkd $GITHUB_REF_NAME" --generate-notes --verify-tag

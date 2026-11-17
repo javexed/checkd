@@ -9,6 +9,17 @@ at the end runs on a desktop machine. Both unit files pass
 `systemd-analyze verify`. Not tried: the worker's unit, failover under
 systemd, and a distribution other than Arch Linux.
 
+## From a release
+
+Each release on GitHub has checkd for Linux, x86_64 and aarch64, static
+and with every feature, and the agents (`checkd-agents-<version>.tar.gz`),
+with a `SHA256SUMS`:
+
+    sha256sum -c --ignore-missing SHA256SUMS
+    install -m 755 checkd-<version>-linux-x86_64 /usr/local/bin/checkd
+
+Then on to [Install](#install), past the copy of the binary.
+
 ## Build
 
     git clone https://github.com/javexed/checkd.git && cd checkd
