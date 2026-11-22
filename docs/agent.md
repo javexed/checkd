@@ -92,7 +92,38 @@ authority; plain `http://` is taken only to this machine.
 
 The agent runs as its own user, so its binary must be in a directory
 that user may write, as nuthatch's installer puts it. `checkd worker`
-refuses `--update-from`: it is updated with checkd. Linux only.
+refuses `--update-from`: it is updated with checkd. Linux and Windows
+(x86_64); a Windows agent asks with `&os=windows`.
+
+### Signed binaries
+
+With `--update-signer <file>`, a PEM certificate, the agent takes only
+a binary signed by that certificate's key: Ed25519, ECDSA P-256 or
+P-384, or RSA (PKCS#1 v1.5, SHA-256). Only the key counts; the
+certificate's issuer and dates do not, so a certificate renewed with
+the same key goes on working. The agent asks with `&signer=<SHA-256 of
+the key>`, in hex, and the answer is `update <file> <SHA-256> <time>
+<signature>`: the signature, in hex, is of
+
+    checkd-agent update
+    <file>
+    <SHA-256>
+    <time>
+
+each line ending in a newline, `<time>` in seconds since 1970. The
+agent keeps the time of the binary it has (`checkd-agent.signed`
+beside it) and refuses one signed at that time or before: an old binary
+with a good signature does not come back. A binary that is not signed,
+or not by that key, is refused.
+
+### Going back
+
+A new binary is on trial (`checkd-agent.trial`) until it connects to an
+engine. One that has not within ten minutes, or was started three times
+without, puts the binary before it (`checkd-agent.old`) back and ends,
+to be started anew; the one it replaced is refused for a day
+(`checkd-agent.refused`, and `&refused=<SHA-256>` when it asks), so that
+it is not fetched again at once.
 
 ## Building
 

@@ -59,6 +59,10 @@ options:
   --update-pin <hex>    the SHA-256 of nuthatch's public key, for
                         --update-from over https without a public
                         certificate
+  --update-signer <file>
+                        take only binaries signed by the key of this
+                        certificate (PEM), and none signed before the
+                        one it has
 ";
 
 pub struct WorkerArgs {
@@ -87,6 +91,7 @@ pub fn parse(mut args: impl Iterator<Item = String>) -> Result<WorkerArgs, Strin
     };
     let mut update_from = None;
     let mut update_pin = None;
+    let mut update_signer = None;
     while let Some(arg) = args.next() {
         let mut value = |what: &str| args.next().ok_or(format!("{arg} needs {what}"));
         let number = |text: String| text.parse::<f64>().map_err(|_| format!("'{text}' is not a number"));
@@ -107,6 +112,7 @@ pub fn parse(mut args: impl Iterator<Item = String>) -> Result<WorkerArgs, Strin
             "--load-limit15" => out.load_limits[2] = Some(number(value("a number")?)?),
             "--update-from" => update_from = Some(crate::update::Url::read(&value("an address")?)?),
             "--update-pin" => update_pin = Some(crate::update::read_pin(&value("a SHA-256")?)?),
+            "--update-signer" => update_signer = Some(crate::update::read_signer(std::path::Path::new(&value("a file name")?))?),
             "--help" | "-h" => return Err(USAGE.to_string()),
             _ => return Err(format!("'{arg}' is not an option of worker\n\n{USAGE}")),
         }
@@ -114,12 +120,13 @@ pub fn parse(mut args: impl Iterator<Item = String>) -> Result<WorkerArgs, Strin
     if out.engines.is_empty() || out.name.is_empty() || out.token_file.as_os_str().is_empty() || out.ca.as_os_str().is_empty() {
         return Err(format!("worker needs --engine, --name, --token-file and --ca\n\n{USAGE}"));
     }
-    match (update_from, update_pin) {
+    match (update_from, update_pin, update_signer) {
         // checkd worker is part of checkd: replaced with checkd, not by this.
-        (Some(_), _) if !crate::SELF_UPDATE => return Err("--update-from is for checkd-agent".into()),
-        (Some(from), pin) => out.update = Some(crate::update::Update { from, pin }),
-        (None, Some(_)) => return Err("--update-pin goes with --update-from".into()),
-        (None, None) => {}
+        (Some(_), _, _) if !crate::SELF_UPDATE => return Err("--update-from is for checkd-agent".into()),
+        (Some(from), pin, signer) => out.update = Some(crate::update::Update { from, pin, signer }),
+        (None, Some(_), _) => return Err("--update-pin goes with --update-from".into()),
+        (None, _, Some(_)) => return Err("--update-signer goes with --update-from".into()),
+        (None, None, None) => {}
     }
     Ok(out)
 }
@@ -396,6 +403,8 @@ async fn session(
         _ => return Err(format!("the engine said: {}", answer.trim_end())),
     };
     say(&format!("Connected to {engine}, for pools {pools}"));
+    // A binary on trial since an update has shown it works.
+    crate::update::CONNECTED.store(true, std::sync::atomic::Ordering::Relaxed);
 
     let (done, mut results) = mpsc::unbounded_channel::<(u64, JobResult)>();
     let running = crate::runner::Running::default();

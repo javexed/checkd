@@ -1,0 +1,5 @@
+Certificates and signatures made by nuthatch's signing.ts (signBinary)
+for update.rs's tests: each signs
+`checkd-agent update\ncheckd-agent-linux-x86_64\n<ab x 32>\n1800000000\n`.
+The Ed25519 certificate is one nuthatch made itself (selfSigned); the
+P-384 and RSA ones are from openssl. Their keys were not kept.
