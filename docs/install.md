@@ -1,5 +1,9 @@
 # Installing checkd
 
+New to this? The recommended start is
+[checkd and nuthatch together on your own machine](https://github.com/javexed/nuthatch/blob/main/docs/install.md#recommended-if-you-are-new-without-root),
+without root, with a config to begin from.
+
 `runs/install/run` follows the system service's steps below, line for
 line, in a container that runs systemd and nothing else, and then looks:
 the service runs as its user, checks and answers Livestatus, reloads,

@@ -40,7 +40,9 @@ Version 0.1.0, in daily use on its author's site. Options, file layouts
 and the extensions below may still change before 1.0; a store is
 migrated from one version to the next. It has not yet run a large site
 or a config from someone else's running installation; where no case was
-written, nothing is known. Installing: [docs/install.md](docs/install.md).
+written, nothing is known. Installing: [docs/install.md](docs/install.md);
+if you are new, [checkd and nuthatch together on your own machine](https://github.com/javexed/nuthatch/blob/main/docs/install.md#recommended-if-you-are-new-without-root)
+is the recommended start.
 
 If you run Naemon in production, start with `checkd verify` on your
 config: it only reads. `checkd run --shadow <Naemon's Livestatus
