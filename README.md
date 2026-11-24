@@ -36,13 +36,27 @@ the languages, models and ways of working of today:
 
 ## Where it stands
 
-Version 0.1.0, in daily use on its author's site. Options, file layouts
-and the extensions below may still change before 1.0; a store is
-migrated from one version to the next. It has not yet run a large site
+Version 0.1.0. Options, file layouts and the extensions below may still
+change before 1.0; a store is migrated from one version to the next. It has not yet run a large site
 or a config from someone else's running installation; where no case was
-written, nothing is known. Installing: [docs/install.md](docs/install.md);
-if you are new, [checkd and nuthatch together on your own machine](https://github.com/javexed/nuthatch/blob/main/docs/install.md#recommended-if-you-are-new-without-root)
-is the recommended start.
+written, nothing is known.
+
+## Quick start
+
+checkd, and nuthatch to see it in a browser, on your own machine without
+root. Needs Rust, Node 22.18 or later, and pnpm:
+
+    git clone https://github.com/javexed/checkd.git ~/checkd
+    git clone https://github.com/javexed/nuthatch.git ~/nuthatch
+    ~/nuthatch/contrib/quick-start
+
+It builds both, writes a first config that watches this machine with
+checks that need no plugin, asks for a password for the user `admin`,
+and starts both as user services. Then open <http://127.0.0.1:7780>.
+The same by hand, and on a server:
+[docs/install.md](docs/install.md).
+
+## Beside a Naemon you run
 
 If you run Naemon in production, start with `checkd verify` on your
 config: it only reads. `checkd run --shadow <Naemon's Livestatus
