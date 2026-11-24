@@ -15,20 +15,32 @@ Then it does some things Naemon does not: its state survives a kill, two
 nodes fail over, checks can run without a plugin, and a job elsewhere can
 send its result in over HTTP.
 
-## Status: young, and honest about it
+## In the spirit of Naemon and Nagios Core
 
-- **One installation.** checkd runs one small site, its author's. It has
-  not run a large site, and no config from someone else's running
-  installation has been tried.
-- **Tested against Naemon, not against the world.** What it does is
-  compared, case by case, with recordings of Naemon Core 1.5.2 (below).
-  Where no case was written, nothing is known.
-- **Much of the code was written by an AI model** (Claude), directed and
-  reviewed by one person: see [CONTRIBUTING.md](CONTRIBUTING.md), also for
-  what that means for the clean-room rule.
-- **Version 0.1.0.** Options, file layouts and the extensions below may
-  change before 1.0; a store is migrated from one version to the next.
-  Nothing is packaged; you build it.
+checkd is meant as a continuation of those engines, in their spirit:
+open, plain, and dependable, taking the configs, plugins and habits
+people already have. It keeps what they settled and carries it on with
+the languages, models and ways of working of today:
+
+- **A new language.** Rust, one static binary, no runtime to install.
+- **Kept, not reinvented.** The object config, the plugins, external
+  commands and Livestatus, compared case by case with recordings of
+  Naemon Core 1.5.2 (below).
+- **What a site asks for now.** State that survives a kill, two nodes
+  that fail over, checks without a plugin, results sent in over HTTP,
+  agents and remote workers.
+- **Built a new way.** Much of the code is written by an AI model
+  (Claude), directed and reviewed by one person, and held to those
+  recordings: see [CONTRIBUTING.md](CONTRIBUTING.md), also for what
+  that means for the clean-room rule.
+
+## Where it stands
+
+Version 0.1.0, in daily use on its author's site. Options, file layouts
+and the extensions below may still change before 1.0; a store is
+migrated from one version to the next. It has not yet run a large site
+or a config from someone else's running installation; where no case was
+written, nothing is known. Installing: [docs/install.md](docs/install.md).
 
 If you run Naemon in production, start with `checkd verify` on your
 config: it only reads. `checkd run --shadow <Naemon's Livestatus
