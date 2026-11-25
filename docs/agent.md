@@ -67,10 +67,12 @@ that installs the agent, and once the agent has connected renames it to
 Once connected, an agent of an `agents=` directory sends what its
 machine is and runs: its own version (`agent`, as `--version` says it),
 the system and its version, processors, memory,
-disks, the services running and the TCP ports listened on. It sends it
+disks, the services running, the TCP ports listened on, and the kind
+of container it runs in (`lxc`, `docker`, as systemd writes it in
+`/run/systemd/container`; empty on a machine of its own). It sends it
 again once a day. checkd writes it to `<host>.inventory.json` beside the
 token, where nuthatch reads it to propose checks. Gathering it only
-reads: on Linux from `/proc`, `statvfs` and `systemctl list-units`; on
+reads: on Linux from `/proc`, `/run`, `statvfs` and `systemctl list-units`; on
 Windows by one fixed PowerShell script (`local.rs`). An agent of a
 `worker=` line is not asked.
 

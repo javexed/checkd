@@ -388,7 +388,7 @@ async fn machine() -> String {
         .collect();
     let ports: Vec<String> = listening().into_iter().map(|(port, address)| format!(r#"{{"port":{port},"address":{}}}"#, json(&address))).collect();
     format!(
-        r#"{{"version":1,"os":{{"family":"linux","name":{},"id":{},"version":{},"kernel":{},"arch":{}}},"hostname":{},"cpus":{},"memory":{},"disks":[{}],"services":[{}],"ports":[{}]}}"#,
+        r#"{{"version":1,"os":{{"family":"linux","name":{},"id":{},"version":{},"kernel":{},"arch":{}}},"hostname":{},"cpus":{},"memory":{},"disks":[{}],"services":[{}],"ports":[{}],"container":{}}}"#,
         json(&name),
         json(&id),
         json(&version),
@@ -399,7 +399,10 @@ async fn machine() -> String {
         memory,
         disks.join(","),
         services.join(","),
-        ports.join(",")
+        ports.join(","),
+        // The kind of container this runs in (lxc, docker, ...), which
+        // systemd writes inside one; empty on a machine of its own.
+        json(&read("/run/systemd/container"))
     )
 }
 
@@ -475,5 +478,6 @@ mod tests {
         let text = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(inventory());
         assert!(text.starts_with(&format!(r#"{{"agent":"{}","version":1,"os":{{"family":"linux""#, env!("CHECKD_VERSION"))), "{text}");
         assert!(text.contains(r#""disks":[{"path":"#), "{text}");
+        assert!(text.contains(r#","container":""#), "{text}");
     }
 }
