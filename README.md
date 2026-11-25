@@ -50,9 +50,10 @@ root. Needs Rust, Node 22.18 or later, and pnpm:
     git clone https://github.com/javexed/nuthatch.git ~/nuthatch
     ~/nuthatch/contrib/quick-start
 
-It builds both, writes a first config that watches this machine with
-checks that need no plugin, asks for a password for the user `admin`,
-and starts both as user services. Then open <http://127.0.0.1:7780>.
+It asks a few questions (the port, the first user and a password),
+builds both, writes a first config that watches this machine with
+checks that need no plugin, and starts both as user services. Then open
+<http://127.0.0.1:7780>. To ask nothing: `--yes` and options (`--help`).
 The same by hand, and on a server:
 [docs/install.md](docs/install.md).
 
